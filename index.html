@@ -3,139 +3,176 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plataforma LAPI - Prototipo V3 (Integrado)</title>
+    <title>Portal LAP.IA - Gestión Inteligente</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
-                extend: {
-                    colors: {
-                        lapiOrange: '#F26522',
-                        lapiLight: '#FFF5F0',
-                        lapiDark: '#D9531E'
-                    }
-                }
+                extend: { colors: { lapiOrange: '#F26522', lapiLight: '#FFF5F0', lapiDark: '#D9531E' } }
             }
         }
     </script>
     <style>
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .chat-scroll::-webkit-scrollbar { width: 6px; }
+        .chat-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans h-screen flex overflow-hidden">
 
-    <div id="pantalla-login" class="absolute inset-0 bg-lapiLight flex items-center justify-center z-50">
-        <div class="bg-white p-8 rounded-lg shadow-xl w-96 border-t-4 border-lapiOrange">
-            <h1 class="text-2xl font-bold text-center text-gray-800 mb-6">Portal LAPI</h1>
-            <label class="block text-sm font-medium text-gray-600 mb-2">Selecciona tu acceso:</label>
-            <select id="selector-acceso" class="w-full p-2 border border-gray-300 rounded mb-4 focus:ring-2 focus:ring-lapiOrange">
-                <option value="sucursal-centro">Sucursal - Centro Histórico</option>
-                <option value="sucursal-sur">Sucursal - Zona Sur</option>
-                <option value="admin">Administrador General</option>
-            </select>
-            <button onclick="iniciarSesion()" class="w-full bg-lapiOrange hover:bg-lapiDark text-white font-bold py-2 rounded transition">
-                Ingresar a la plataforma
-            </button>
+    <div id="modal-notas" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center fade-in">
+        <div class="bg-white rounded-lg shadow-2xl w-full max-w-md mx-4 flex flex-col max-h-[80vh]">
+            <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-lg">
+                <h3 class="font-bold text-gray-800" id="modal-titulo">Comentarios del Documento</h3>
+                <button onclick="cerrarModal()" class="text-gray-500 hover:text-red-500 transition font-bold text-xl">&times;</button>
+            </div>
+            <div id="modal-chat" class="p-4 flex-1 overflow-y-auto space-y-3 chat-scroll bg-gray-50"></div>
+            <div class="p-4 border-t border-gray-200 bg-white rounded-b-lg flex space-x-2">
+                <input type="text" id="input-nota" class="flex-1 border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-lapiOrange outline-none" placeholder="Escribe una observación...">
+                <button onclick="agregarNota()" class="bg-lapiOrange hover:bg-lapiDark text-white px-4 py-2 rounded text-sm font-bold transition">Enviar</button>
+            </div>
         </div>
     </div>
 
-    <aside id="sidebar" class="hidden w-64 bg-gray-800 text-white flex-col shadow-lg">
-        <div class="p-4 bg-gray-900 border-b border-gray-700">
-            <h2 class="text-xl font-bold text-lapiOrange">LAPI</h2>
-            <p id="usuario-actual" class="text-xs text-gray-400">Usuario</p>
+    <div id="pantalla-login" class="absolute inset-0 bg-lapiLight flex items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-96 border-t-4 border-lapiOrange">
+            <div class="text-center mb-6">
+                <h1 class="text-3xl font-extrabold text-gray-800 tracking-tight">Portal <span class="text-lapiOrange">LAP.IA</span></h1>
+                <p class="text-xs text-gray-500 mt-1">Gestión Documental Inteligente</p>
+            </div>
+            <label class="block text-sm font-medium text-gray-600 mb-2">Selecciona tu acceso:</label>
+            <select id="selector-acceso" class="w-full p-2 border border-gray-300 rounded mb-4 focus:ring-2 focus:ring-lapiOrange bg-white">
+                <option value="admin" class="font-bold">👑 Administrador General</option>
+            </select>
+            <button onclick="iniciarSesion()" class="w-full bg-lapiOrange hover:bg-lapiDark text-white font-bold py-2 rounded transition shadow-md">Ingresar a la plataforma</button>
+        </div>
+    </div>
+
+    <aside id="sidebar" class="hidden w-64 bg-gray-900 text-white flex-col shadow-lg z-40">
+        <div class="p-5 border-b border-gray-800">
+            <h2 class="text-2xl font-extrabold tracking-tight">LAP<span class="text-lapiOrange">.IA</span></h2>
+            <p id="usuario-actual" class="text-xs text-gray-400 mt-1">Usuario</p>
         </div>
         <nav class="flex-1 p-4 space-y-2">
-            <button onclick="mostrarVista('vista-admin')" id="btn-nav-admin" class="w-full text-left p-2 rounded hover:bg-gray-700 transition hidden">Panel General (Admin)</button>
-            <button onclick="mostrarVista('vista-registro')" id="btn-nav-registro" class="w-full text-left p-2 rounded hover:bg-gray-700 transition bg-gray-700">Registro de Estudios</button>
-            <button onclick="mostrarVista('vista-carga')" id="btn-nav-carga" class="w-full text-left p-2 rounded hover:bg-gray-700 transition">Carga de Archivos</button>
+            <button onclick="mostrarVista('vista-admin', this)" id="btn-nav-admin" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium">Panel de Red</button>
+            <button onclick="mostrarVista('vista-admin-directorio', this)" id="btn-nav-directorio" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium flex justify-between items-center">Directorio ➔</button>
+            <button onclick="mostrarVista('vista-registro', this)" id="btn-nav-registro" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium">Registro de Estudios</button>
+            <button onclick="mostrarVista('vista-carga', this)" id="btn-nav-carga" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium">Módulo Documental</button>
         </nav>
-        <div class="p-4 border-t border-gray-700">
-            <button onclick="cerrarSesion()" class="text-sm text-red-400 hover:text-red-300 w-full text-left">← Salir</button>
-        </div>
+        <div class="p-4 border-t border-gray-800"><button onclick="cerrarSesion()" class="text-sm text-red-400 hover:text-red-300 w-full text-left">Salir del Sistema</button></div>
     </aside>
 
     <main id="contenido-principal" class="hidden flex-1 flex flex-col overflow-y-auto bg-gray-50">
         
-        <header class="bg-white shadow p-4 flex justify-between items-center">
+        <header class="bg-white shadow-sm p-4 flex justify-between items-center z-10">
             <h2 id="titulo-vista" class="text-xl font-bold text-gray-700">Cargando...</h2>
-            <div class="flex items-center space-x-2">
-                <label class="text-sm text-gray-500">Fecha operativa:</label>
-                <input type="date" id="fecha-global" onchange="cambiarFecha()" class="border border-gray-300 rounded p-1 text-sm focus:ring-lapiOrange">
+            <div class="flex items-center space-x-3 bg-gray-100 p-2 rounded-lg border border-gray-200">
+                <label class="text-sm font-bold text-gray-500">Día operativo:</label>
+                <input type="date" id="fecha-global" onchange="cambiarFecha()" class="border-none bg-transparent rounded p-1 text-sm font-bold focus:ring-0 text-lapiOrange outline-none cursor-pointer">
             </div>
         </header>
 
         <div class="p-6 h-full">
             
             <section id="vista-admin" class="hidden space-y-6">
-                <div class="grid grid-cols-3 gap-4">
-                    <div class="bg-white p-4 rounded shadow border-l-4 border-blue-500">
-                        <p class="text-sm text-gray-500">Total Estudios (General)</p>
-                        <p class="text-2xl font-bold">142</p>
-                    </div>
-                    <div class="bg-white p-4 rounded shadow border-l-4 border-lapiOrange">
-                        <p class="text-sm text-gray-500">Archivos Faltantes</p>
-                        <p class="text-2xl font-bold">18</p>
-                    </div>
-                    <div class="bg-white p-4 rounded shadow border-l-4 border-green-500">
-                        <p class="text-sm text-gray-500">Revisado por IA</p>
-                        <p class="text-2xl font-bold">85%</p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-white p-4 rounded-lg shadow-sm border-l-4 border-blue-500"><p class="text-sm text-gray-500 font-medium">Estudios Totales (Red)</p><p id="admin-totales" class="text-3xl font-bold text-gray-800">0</p></div>
+                    <div class="bg-white p-4 rounded-lg shadow-sm border-l-4 border-lapiOrange"><p class="text-sm text-gray-500 font-medium">Progreso Global Carga</p><p id="admin-carga" class="text-3xl font-bold text-gray-800">0%</p></div>
+                    <div class="bg-white p-4 rounded-lg shadow-sm border-l-4 border-green-500"><p class="text-sm text-gray-500 font-medium">Aprobación LAP.IA Global</p><p id="admin-ia" class="text-3xl font-bold text-gray-800">0%</p></div>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <div class="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center"><h3 class="font-bold text-gray-700">Estado Operativo por Sucursal</h3></div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead><tr class="bg-white text-gray-500 border-b"><th class="p-4 font-medium">Sucursal</th><th class="p-4 font-medium text-center">Estudios</th><th class="p-4 font-medium">Carga Física</th><th class="p-4 font-medium">Aprobación LAP.IA</th><th class="p-4 font-medium text-center">Acción</th></tr></thead>
+                            <tbody id="tabla-admin-body"></tbody>
+                        </table>
                     </div>
                 </div>
-                <div class="bg-white p-4 rounded shadow">
-                    <h3 class="font-bold text-gray-700 mb-4">Estado de Sucursales de esta Fecha</h3>
-                    <table class="w-full text-left text-sm">
-                        <tr class="bg-gray-100"><th class="p-2">Sucursal</th><th class="p-2">Estudios</th><th class="p-2">Progreso Carga</th><th class="p-2">IA Status</th><th class="p-2">Acción</th></tr>
-                        <tr class="border-b"><td class="p-2">Centro Histórico</td><td class="p-2">24</td><td class="p-2"><div class="bg-gray-200 rounded h-2 w-full"><div class="bg-green-500 h-2 rounded w-full"></div></div>100%</td><td class="p-2 text-green-600">Completado</td><td class="p-2"><button class="text-blue-500 underline">Revisar</button></td></tr>
-                    </table>
+            </section>
+
+            <section id="vista-admin-directorio" class="hidden flex flex-col h-full">
+                <div class="bg-white p-6 rounded-lg shadow-sm flex-1 border-t-4 border-lapiOrange">
+                    <h3 class="font-bold text-gray-700 text-lg mb-2">Directorio de Sucursales LAPI</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" id="grid-directorio"></div>
+                </div>
+            </section>
+
+            <section id="vista-admin-detalle" class="hidden flex flex-col h-full space-y-4">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-4 rounded-lg shadow-sm border-l-4 border-blue-600 gap-4">
+                    <div><h3 class="font-bold text-gray-800 text-xl" id="detalle-titulo">Sucursal</h3><p class="text-sm text-gray-500">Auditoría LAP.IA</p></div>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="simularDescarga('subidos')" class="bg-blue-100 hover:bg-blue-200 text-blue-700 border border-blue-300 text-xs font-bold py-2 px-4 rounded transition flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                            Descargar Subidos
+                        </button>
+                        <button onclick="simularDescarga('revisados')" class="bg-green-100 hover:bg-green-200 text-green-700 border border-green-300 text-xs font-bold py-2 px-4 rounded transition flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                            Descargar Revisados IA
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-white p-3 rounded-lg shadow-sm border-l-4 border-blue-400"><p class="text-xs text-gray-500 font-medium">Estudios Registrados</p><p id="audit-estudios" class="text-2xl font-bold text-gray-800">0</p></div>
+                    <div class="bg-white p-3 rounded-lg shadow-sm border-l-4 border-lapiOrange"><p class="text-xs text-gray-500 font-medium">Progreso de Carga</p><p id="audit-carga" class="text-2xl font-bold text-gray-800">0%</p></div>
+                    <div class="bg-white p-3 rounded-lg shadow-sm border-l-4 border-green-400"><p class="text-xs text-gray-500 font-medium">Aprobación LAP.IA</p><p id="audit-ia" class="text-2xl font-bold text-gray-800">0%</p></div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-sm flex-1 flex flex-col border-t border-gray-100">
+                    <div class="flex justify-between items-center mb-4 pb-2 border-b border-gray-100">
+                        <h3 class="font-bold text-gray-700">Archivos del Día</h3>
+                        <select id="filtro-admin" onchange="generarVistaDetalleAdmin()" class="border border-gray-300 text-sm rounded p-1 text-gray-600 focus:ring-lapiOrange outline-none">
+                            <option value="registro">Ordenar por: Registro</option>
+                            <option value="paciente">Ordenar por: Paciente</option>
+                            <option value="estudio">Ordenar por: Tipo de Estudio</option>
+                        </select>
+                    </div>
+                    <div id="contenedorDetalleAdmin" class="flex-1 overflow-y-auto space-y-3 pr-2"></div>
                 </div>
             </section>
 
             <section id="vista-registro" class="hidden h-full flex flex-col lg:flex-row gap-6">
-                <div class="bg-white p-6 rounded-lg shadow w-full lg:w-1/2 border-t-4 border-lapiOrange">
-                    <h3 class="font-bold text-gray-700 mb-4">Nuevo Registro</h3>
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-600">Nombre del Paciente</label>
-                            <input type="text" id="nombrePaciente" class="mt-1 w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-lapiOrange">
-                        </div>
+                <div class="bg-white p-6 rounded-lg shadow-sm w-full lg:w-1/2 border-t-4 border-lapiOrange">
+                    <h3 class="font-bold text-gray-700 mb-4 text-lg">Nuevo Registro de Estudio</h3>
+                    <div class="space-y-5">
+                        <div><label class="block text-sm font-medium text-gray-600 mb-1">Nombre del Paciente</label><input type="text" id="nombrePaciente" class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-lapiOrange outline-none"></div>
                         <div>
                             <label class="block text-sm font-medium text-gray-600 mb-2">Estudios Realizados:</label>
                             <div class="grid grid-cols-2 gap-2">
-                                <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" value="Espirometría" class="estudio-cb text-lapiOrange focus:ring-lapiOrange h-4 w-4"><span>Espirometría</span></label>
-                                <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" value="Audiometría" class="estudio-cb text-lapiOrange focus:ring-lapiOrange h-4 w-4"><span>Audiometría</span></label>
-                                <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" value="Electrocardiograma" class="estudio-cb text-lapiOrange focus:ring-lapiOrange h-4 w-4"><span>Electrocardiograma</span></label>
-                                <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" value="Historia Clínica" class="estudio-cb text-lapiOrange focus:ring-lapiOrange h-4 w-4"><span>Historia Clínica</span></label>
+                                <label class="flex items-center space-x-2 p-2 border rounded hover:bg-lapiLight cursor-pointer"><input type="checkbox" value="Espirometría" class="estudio-cb text-lapiOrange h-4 w-4"><span class="text-sm font-medium">Espirometría</span></label>
+                                <label class="flex items-center space-x-2 p-2 border rounded hover:bg-lapiLight cursor-pointer"><input type="checkbox" value="Audiometría" class="estudio-cb text-lapiOrange h-4 w-4"><span class="text-sm font-medium">Audiometría</span></label>
+                                <label class="flex items-center space-x-2 p-2 border rounded hover:bg-lapiLight cursor-pointer"><input type="checkbox" value="Electrocardiograma" class="estudio-cb text-lapiOrange h-4 w-4"><span class="text-sm font-medium">Electro</span></label>
+                                <label class="flex items-center space-x-2 p-2 border rounded hover:bg-lapiLight cursor-pointer"><input type="checkbox" value="Historia Clínica" class="estudio-cb text-lapiOrange h-4 w-4"><span class="text-sm font-medium">Historia Clínica</span></label>
                             </div>
                         </div>
-                        <button onclick="agregarPaciente()" class="w-full bg-lapiOrange hover:bg-lapiDark text-white font-bold py-2 px-4 rounded transition">
-                            Guardar Registro
-                        </button>
+                        <button onclick="agregarPaciente()" class="w-full bg-lapiOrange text-white font-bold py-3 rounded shadow-md">+ Guardar Registro</button>
                     </div>
                 </div>
-
-                <div class="bg-white p-6 rounded-lg shadow w-full lg:w-1/2 overflow-y-auto">
-                    <h3 class="font-bold text-gray-700 mb-4 border-b pb-2">Pacientes registrados este día</h3>
-                    <ul id="listaPacientes" class="space-y-2 text-sm">
-                        </ul>
+                <div class="bg-white p-6 rounded-lg shadow-sm w-full lg:w-1/2 flex flex-col">
+                    <div class="flex justify-between items-center mb-4 border-b pb-2"><h3 class="font-bold text-gray-700 text-lg">Pacientes de Hoy</h3><span id="contador-pacientes" class="bg-gray-200 text-xs font-bold px-2 py-1 rounded-full">0</span></div>
+                    <ul id="listaPacientes" class="space-y-3 text-sm flex-1 overflow-y-auto pr-2"></ul>
                 </div>
             </section>
 
-            <section id="vista-carga" class="hidden h-full flex flex-col">
-                <div class="bg-white p-6 rounded-lg shadow flex-1 flex flex-col border-t-4 border-lapiOrange">
-                    <div class="flex justify-between items-center mb-4 border-b pb-2">
-                        <p class="text-sm text-gray-500">Espacios de carga generados automáticamente basados en el registro de hoy.</p>
-                        <span class="text-xs font-bold bg-lapiLight text-lapiOrange px-2 py-1 rounded border border-lapiOrange">IA Status: Esperando archivos</span>
-                    </div>
-                    
-                    <div id="contenedorArchivos" class="flex-1 overflow-y-auto space-y-3 pr-2">
-                        </div>
+            <section id="vista-carga" class="hidden h-full flex flex-col space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-white p-3 rounded-lg shadow-sm border-l-4 border-blue-400"><p class="text-xs text-gray-500 font-medium">Estudios Registrados</p><p id="sucursal-estudios" class="text-2xl font-bold text-gray-800">0</p></div>
+                    <div class="bg-white p-3 rounded-lg shadow-sm border-l-4 border-lapiOrange"><p class="text-xs text-gray-500 font-medium">Tu Progreso de Carga</p><p id="sucursal-carga" class="text-2xl font-bold text-gray-800">0%</p></div>
+                    <div class="bg-white p-3 rounded-lg shadow-sm border-l-4 border-green-400"><p class="text-xs text-gray-500 font-medium">Tu Aprobación LAP.IA</p><p id="sucursal-ia" class="text-2xl font-bold text-gray-800">0%</p></div>
+                </div>
 
-                    <div class="mt-4 pt-4 border-t border-gray-200">
-                        <button class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded opacity-50 cursor-not-allowed transition" id="btnEnviar" disabled>
-                            Analizar todos los documentos con IA
-                        </button>
+                <div class="bg-white p-6 rounded-lg shadow-sm flex-1 flex flex-col border-t-4 border-lapiOrange">
+                    <div class="flex justify-between items-center mb-4 border-b pb-2 border-gray-100">
+                        <div><h3 class="font-bold text-gray-700 text-lg">Módulo de Análisis LAP.IA</h3></div>
+                        <select id="filtro-sucursal" onchange="generarCajasDeCarga()" class="border border-gray-300 text-sm rounded p-1 text-gray-600 focus:ring-lapiOrange outline-none">
+                            <option value="registro">Ordenar por: Registro</option>
+                            <option value="paciente">Ordenar por: Paciente</option>
+                            <option value="estudio">Ordenar por: Tipo de Estudio</option>
+                        </select>
                     </div>
+                    <div id="contenedorArchivos" class="flex-1 overflow-y-auto space-y-3 pr-2 pb-4"></div>
                 </div>
             </section>
 
@@ -143,205 +180,384 @@
     </main>
 
     <script>
-        // --- BASE DE DATOS SIMULADA ---
-        // Guardaremos los datos por fecha: { '2023-10-25': [{id:1, nombre: 'Juan', estudios: []}] }
-        let bdSimulada = {}; 
-        let fechaActualStr = '';
+        const SUCURSALES = [
+            "Balbuena", "Hospital General", "Condesa", "Metepec", "Cuautitlán", 
+            "Lindavista", "Lomas Verdes", "Satélite", "Encuentro Fortuna", 
+            "Martín Carrera", "Santa Martha", "Plaza Central", "Santa Fe", 
+            "Interlomas", "Polanco", "City Shop Del Valle", "Miramontes", 
+            "Plateros", "Revolución", "Gabriel Mancera", "Calzada Del Hueso", 
+            "Gran Sur", "General Anaya", "Mixcoac", "Plaza San Jerónimo", "Amores"
+        ].sort(); 
 
-        // --- INICIALIZACIÓN ---
+        let bdGlobal = {}; 
+        let fechaActualStr = '';
+        let sucursalActual = '';
+        let rolActual = ''; 
+        let sucursalAuditada = ''; 
+        let docKeyActivo = ''; 
+
         window.onload = () => {
+            const selector = document.getElementById('selector-acceso');
+            SUCURSALES.forEach(sucursal => {
+                const option = document.createElement('option');
+                option.value = sucursal;
+                option.textContent = `📍 Sucursal - ${sucursal}`;
+                selector.appendChild(option);
+            });
+            generarDirectorioUI();
             const inputFecha = document.getElementById('fecha-global');
             inputFecha.valueAsDate = new Date();
-            fechaActualStr = inputFecha.value;
-            bdSimulada[fechaActualStr] = []; // Inicializa el arreglo para hoy
+            cambiarFecha(); 
         };
 
-        // --- NAVEGACIÓN Y LOGIN ---
+        function inicializarDiaYSucursal() {
+            if (!bdGlobal[fechaActualStr]) bdGlobal[fechaActualStr] = {};
+            if (sucursalActual !== 'admin' && sucursalActual !== '' && !bdGlobal[fechaActualStr][sucursalActual]) {
+                bdGlobal[fechaActualStr][sucursalActual] = { pacientes: [], docsStatus: {} };
+            }
+        }
+
+        function cambiarFecha() {
+            fechaActualStr = document.getElementById('fecha-global').value;
+            inicializarDiaYSucursal();
+            actualizarUI();
+        }
+
         function iniciarSesion() {
             const acceso = document.getElementById('selector-acceso').value;
-            const esAdmin = acceso === 'admin';
-            
+            rolActual = acceso === 'admin' ? 'admin' : 'sucursal';
+            sucursalActual = acceso === 'admin' ? '' : acceso;
+            inicializarDiaYSucursal();
+
             document.getElementById('pantalla-login').classList.add('hidden');
             document.getElementById('sidebar').classList.remove('hidden');
             document.getElementById('sidebar').classList.add('flex');
             document.getElementById('contenido-principal').classList.remove('hidden');
-
-            document.getElementById('usuario-actual').textContent = esAdmin ? 'Modo Administrador' : 'Modo Sucursal';
+            document.getElementById('usuario-actual').textContent = rolActual === 'admin' ? 'Administrador LAPI' : `${sucursalActual}`;
             
-            if (esAdmin) {
+            if (rolActual === 'admin') {
                 document.getElementById('btn-nav-admin').classList.remove('hidden');
+                document.getElementById('btn-nav-directorio').classList.remove('hidden');
                 document.getElementById('btn-nav-registro').classList.add('hidden');
                 document.getElementById('btn-nav-carga').classList.add('hidden');
                 mostrarVista('vista-admin', document.getElementById('btn-nav-admin'));
             } else {
                 document.getElementById('btn-nav-admin').classList.add('hidden');
+                document.getElementById('btn-nav-directorio').classList.add('hidden');
                 document.getElementById('btn-nav-registro').classList.remove('hidden');
                 document.getElementById('btn-nav-carga').classList.remove('hidden');
                 mostrarVista('vista-registro', document.getElementById('btn-nav-registro'));
             }
+            actualizarUI();
         }
 
         function cerrarSesion() {
             document.getElementById('pantalla-login').classList.remove('hidden');
             document.getElementById('sidebar').classList.add('hidden');
-            document.getElementById('sidebar').classList.remove('flex');
             document.getElementById('contenido-principal').classList.add('hidden');
         }
 
         function mostrarVista(idVista, btnElement) {
-            // Ocultar todas las vistas
-            document.getElementById('vista-admin').classList.add('hidden');
-            document.getElementById('vista-registro').classList.add('hidden');
-            document.getElementById('vista-carga').classList.add('hidden');
-
-            // Quitar clase activa de botones
-            document.querySelectorAll('#sidebar nav button').forEach(b => b.classList.remove('bg-gray-700'));
-            
-            // Mostrar la seleccionada
+            ['vista-admin', 'vista-admin-directorio', 'vista-admin-detalle', 'vista-registro', 'vista-carga'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            document.querySelectorAll('#sidebar nav button').forEach(b => b.classList.remove('bg-gray-800', 'border-l-4', 'border-lapiOrange'));
             document.getElementById(idVista).classList.remove('hidden');
-            if(btnElement) btnElement.classList.add('bg-gray-700');
+            if(btnElement) btnElement.classList.add('bg-gray-800', 'border-l-4', 'border-lapiOrange');
 
             const titulos = {
-                'vista-admin': 'Panel de Control General',
-                'vista-registro': 'Registro Diario de Estudios',
-                'vista-carga': 'Gestión y Carga de Archivos'
+                'vista-admin': 'Panel de Control de Red LAP.IA', 'vista-admin-directorio': 'Directorio Operativo de Red',
+                'vista-admin-detalle': 'Auditoría Documental', 'vista-registro': `Registro - ${sucursalActual}`, 'vista-carga': `Análisis LAP.IA - ${sucursalActual}`
             };
             document.getElementById('titulo-vista').textContent = titulos[idVista];
-        }
-
-        // --- LÓGICA DE FECHAS ---
-        function cambiarFecha() {
-            fechaActualStr = document.getElementById('fecha-global').value;
-            // Si no hay registros en esta fecha, creamos un arreglo vacío
-            if (!bdSimulada[fechaActualStr]) {
-                bdSimulada[fechaActualStr] = [];
-            }
-            // Actualizamos la pantalla con los datos de esta nueva fecha
-            actualizarUI();
-        }
-
-        // --- LÓGICA DE NEGOCIO (REGISTRO Y CARGA) ---
-        function agregarPaciente() {
-            const inputNombre = document.getElementById('nombrePaciente');
-            const checkboxes = document.querySelectorAll('.estudio-cb:checked');
-            
-            const nombre = inputNombre.value.trim();
-            const estudiosSeleccionados = Array.from(checkboxes).map(cb => cb.value);
-
-            if (nombre === '' || estudiosSeleccionados.length === 0) {
-                alert('Por favor, ingresa el nombre y al menos un estudio.');
-                return;
-            }
-
-            const nuevoPaciente = {
-                id: Date.now(),
-                nombre: nombre,
-                estudios: estudiosSeleccionados
-            };
-
-            // Guardar en la fecha actual
-            bdSimulada[fechaActualStr].push(nuevoPaciente);
-
-            actualizarUI();
-
-            // Limpiar formulario
-            inputNombre.value = '';
-            checkboxes.forEach(cb => cb.checked = false);
-        }
-
-        function eliminarPaciente(id) {
-            // Filtramos la lista para remover el paciente con ese ID
-            bdSimulada[fechaActualStr] = bdSimulada[fechaActualStr].filter(p => p.id !== id);
             actualizarUI();
         }
 
         function actualizarUI() {
-            actualizarListaPacientes();
-            generarCajasDeCarga();
+            if (rolActual === 'admin') {
+                actualizarDashboardAdmin();
+                if (!document.getElementById('vista-admin-detalle').classList.contains('hidden')) generarVistaDetalleAdmin();
+            } else {
+                actualizarListaPacientes();
+                generarCajasDeCarga();
+                actualizarEstadisticasLocales(sucursalActual, 'sucursal');
+            }
         }
 
-        function actualizarListaPacientes() {
-            const ul = document.getElementById('listaPacientes');
-            ul.innerHTML = ''; 
-            
-            const pacientesDelDia = bdSimulada[fechaActualStr] || [];
+        // --- MATEMÁTICAS ESTADÍSTICAS Y ORDENAMIENTO ---
+        function calcularEstadisticasSucursal(dataSucursal) {
+            let req = 0, subidos = 0, aprobados = 0, estudios = 0, docKeysRequeridos = []; let historias = 0;
+            if(!dataSucursal || dataSucursal.pacientes.length === 0) return { req, subidos, aprobados, docKeysRequeridos, estudios };
 
-            if(pacientesDelDia.length === 0) {
-                ul.innerHTML = '<li class="text-gray-400 italic">No hay pacientes registrados en esta fecha.</li>';
-                return;
+            dataSucursal.pacientes.forEach(p => {
+                estudios += p.estudios.length;
+                p.estudios.forEach(est => {
+                    docKeysRequeridos.push({ key: `doc-${p.id}-${est}`, tipo: est, nombre: p.nombre, desc: 'Archivo PDF/JPG Principal' });
+                    if (est === 'Electrocardiograma') docKeysRequeridos.push({ key: `cons-${p.id}-Electro`, tipo: 'Consentimiento', nombre: p.nombre, desc: 'Documento firmado requerido' });
+                    if (est === 'Historia Clínica') historias++;
+                });
+            });
+            if (historias > 0) docKeysRequeridos.push({ key: `acumulado-historias`, tipo: 'Etiquetas Folios', nombre: `Acumulado General`, desc: `Concentrado de ${historias} historias clínicas` });
+
+            req = docKeysRequeridos.length;
+            docKeysRequeridos.forEach(item => {
+                let info = dataSucursal.docsStatus[item.key];
+                if (info && info.estado !== 'pendiente') { subidos++; if (info.estado === 'aprobado') aprobados++; }
+            });
+            return { req, subidos, aprobados, docKeysRequeridos, estudios };
+        }
+
+        function ordenarDocumentos(docs, tipoFiltro) {
+            if (tipoFiltro === 'paciente') return docs.sort((a, b) => a.nombre.localeCompare(b.nombre));
+            else if (tipoFiltro === 'estudio') return docs.sort((a, b) => a.tipo.localeCompare(b.tipo));
+            return docs; 
+        }
+
+        function actualizarEstadisticasLocales(sucursal, prefixTarget) {
+            const data = bdGlobal[fechaActualStr]?.[sucursal];
+            const stats = calcularEstadisticasSucursal(data);
+            let pctCarga = stats.req > 0 ? Math.round((stats.subidos / stats.req) * 100) : 0;
+            let pctIA = stats.req > 0 ? Math.round((stats.aprobados / stats.req) * 100) : 0;
+            document.getElementById(`${prefixTarget}-estudios`).textContent = stats.estudios;
+            document.getElementById(`${prefixTarget}-carga`).textContent = `${pctCarga}%`;
+            document.getElementById(`${prefixTarget}-ia`).textContent = `${pctIA}%`;
+        }
+
+        // --- LÓGICA DE CHAT Y NOTAS ACTUALIZADA (SISTEMA DE VISTOS) ---
+        function obtenerTargetSucursal() { return rolActual === 'admin' ? sucursalAuditada : sucursalActual; }
+
+        function asegurarEstructuraDoc(docKey) {
+            const data = bdGlobal[fechaActualStr][obtenerTargetSucursal()];
+            // Agregamos contadores de "vistos" para saber quién ya leyó los mensajes
+            if (!data.docsStatus[docKey]) data.docsStatus[docKey] = { estado: 'pendiente', notas: [], horaSubida: null, vistosAdmin: 0, vistosSucursal: 0 };
+            return data.docsStatus[docKey];
+        }
+
+        function abrirModalNotas(docKey, titulo) {
+            docKeyActivo = docKey;
+            const statusObj = asegurarEstructuraDoc(docKey);
+            
+            // Al abrir el modal, actualizamos el contador de "vistos" del rol actual al total de mensajes
+            if (rolActual === 'admin') statusObj.vistosAdmin = statusObj.notas.length;
+            else statusObj.vistosSucursal = statusObj.notas.length;
+
+            document.getElementById('modal-titulo').textContent = `Chat: ${titulo}`;
+            document.getElementById('modal-notas').classList.remove('hidden');
+            renderizarChat();
+            actualizarUI(); // Refresca la UI de fondo para que el punto cambie a gris inmediatamente
+        }
+
+        function cerrarModal() {
+            document.getElementById('modal-notas').classList.add('hidden');
+            docKeyActivo = ''; document.getElementById('input-nota').value = '';
+        }
+
+        function renderizarChat() {
+            const chat = document.getElementById('modal-chat'); chat.innerHTML = '';
+            const statusObj = asegurarEstructuraDoc(docKeyActivo);
+
+            if(statusObj.notas.length === 0) {
+                chat.innerHTML = '<p class="text-center text-gray-400 text-sm mt-4 italic">No hay comentarios. Escribe el primero.</p>'; return;
             }
 
-            pacientesDelDia.forEach(p => {
-                const li = document.createElement('li');
-                li.className = 'bg-gray-100 p-3 rounded flex justify-between items-center fade-in border-l-4 border-lapiOrange';
-                li.innerHTML = `
-                    <div>
-                        <strong>${p.nombre}</strong> <br>
-                        <span class="text-xs text-gray-600">${p.estudios.join(', ')}</span>
-                    </div>
-                    <button onclick="eliminarPaciente(${p.id})" class="text-red-500 hover:text-red-700 text-sm font-bold p-1">
-                        ✕ Borrar
-                    </button>
-                `;
+            statusObj.notas.forEach(nota => {
+                const div = document.createElement('div');
+                let colorBg = 'bg-white'; let textColor = 'text-gray-800'; let align = 'justify-start'; let tagColor = 'bg-gray-200 text-gray-700';
+                
+                if (nota.autor === 'LAP.IA') { colorBg = 'bg-red-50 border border-red-200'; tagColor = 'bg-red-500 text-white'; textColor = 'text-red-800'; }
+                else if (nota.autor === 'Administrador') { colorBg = 'bg-blue-50'; tagColor = 'bg-blue-500 text-white'; align = 'justify-end'; }
+                else { colorBg = 'bg-orange-50'; tagColor = 'bg-lapiOrange text-white'; align = 'justify-end'; }
+
+                div.className = `flex ${align} mb-2 w-full`;
+                div.innerHTML = `<div class="${colorBg} p-2.5 rounded-lg shadow-sm max-w-[85%]"><div class="flex items-center space-x-2 mb-1"><span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${tagColor}">${nota.autor}</span></div><p class="text-sm ${textColor}">${nota.texto}</p></div>`;
+                chat.appendChild(div);
+            });
+            chat.scrollTop = chat.scrollHeight; 
+        }
+
+        function agregarNota() {
+            const input = document.getElementById('input-nota'); const texto = input.value.trim();
+            if(texto === '') return;
+            const statusObj = asegurarEstructuraDoc(docKeyActivo);
+            const autor = rolActual === 'admin' ? 'Administrador' : sucursalActual;
+            statusObj.notas.push({ autor: autor, texto: texto });
+            
+            // Como el usuario acaba de escribir, automáticamente ya lo "vio"
+            if (rolActual === 'admin') statusObj.vistosAdmin = statusObj.notas.length;
+            else statusObj.vistosSucursal = statusObj.notas.length;
+
+            input.value = ''; renderizarChat(); actualizarUI();
+        }
+
+        // Lógica visual del botón de chat y punto de notificación
+        function crearBotonChat(docKey, titulo, statusObj) {
+            if (statusObj.estado === 'pendiente') return ''; 
+            
+            // Calculamos cuántos mensajes "no leídos" hay para el rol actual
+            let noLeidos = 0;
+            if (rolActual === 'admin') noLeidos = statusObj.notas.length - statusObj.vistosAdmin;
+            else noLeidos = statusObj.notas.length - statusObj.vistosSucursal;
+
+            let indicador = '';
+            if (noLeidos > 0) {
+                // Hay mensajes nuevos -> Punto Rojo
+                indicador = `<span class="absolute -top-1 -right-1 flex h-3 w-3"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-red-500 border border-white"></span></span>`;
+            } else if (statusObj.notas.length > 0) {
+                // Hay historial de chat, pero ya todo se leyó -> Punto Gris Fijo
+                indicador = `<span class="absolute -top-1 -right-1 flex h-3 w-3"><span class="relative inline-flex rounded-full h-3 w-3 bg-gray-400 border border-white"></span></span>`;
+            }
+
+            return `<button onclick="abrirModalNotas('${docKey}', '${titulo}')" class="relative bg-gray-100 hover:bg-gray-200 text-gray-600 p-2 rounded-lg transition ml-2 shadow-sm" title="Comentarios">💬 ${indicador}</button>`;
+        }
+
+        // Función de simulación de descarga
+        function simularDescarga(tipo) {
+            let mensaje = tipo === 'subidos' ? "preparando descarga de todos los archivos físicamente subidos" : "preparando descarga de los archivos aprobados por IA";
+            alert(`Sistema LAP.IA: ${mensaje} para la sucursal ${sucursalAuditada}.`);
+        }
+
+        // --- VISTAS ADMINISTRADOR ---
+        function generarDirectorioUI() {
+            const grid = document.getElementById('grid-directorio'); grid.innerHTML = '';
+            SUCURSALES.forEach(sucursal => {
+                const card = document.createElement('button');
+                card.onclick = () => { sucursalAuditada = sucursal; document.querySelectorAll('#sidebar nav button').forEach(b => b.classList.remove('bg-gray-800', 'border-l-4', 'border-lapiOrange')); mostrarVista('vista-admin-detalle'); };
+                card.className = "bg-gray-50 hover:bg-lapiLight border border-gray-200 p-4 rounded-lg text-left transition flex items-center shadow-sm";
+                card.innerHTML = `<div class="bg-gray-200 text-gray-500 rounded-full w-8 h-8 flex items-center justify-center font-bold mr-3 text-sm">${sucursal.charAt(0)}</div> <span class="font-bold text-gray-700">${sucursal}</span>`;
+                grid.appendChild(card);
+            });
+        }
+
+        function actualizarDashboardAdmin() {
+            const tbody = document.getElementById('tabla-admin-body'); tbody.innerHTML = '';
+            let granTotal = 0; let granReq = 0; let granSub = 0; let granAprob = 0;
+
+            SUCURSALES.forEach(suc => {
+                const data = bdGlobal[fechaActualStr]?.[suc];
+                const stats = calcularEstadisticasSucursal(data);
+                if (stats.estudios > 0) {
+                    granTotal += stats.estudios; granReq += stats.req; granSub += stats.subidos; granAprob += stats.aprobados;
+                    let pctCarga = stats.req > 0 ? Math.round((stats.subidos/stats.req)*100) : 0;
+                    let pctIA = stats.req > 0 ? Math.round((stats.aprobados/stats.req)*100) : 0;
+                    
+                    const tr = document.createElement('tr'); tr.className = 'border-b hover:bg-gray-50 transition';
+                    tr.innerHTML = `<td class="p-4 font-bold text-gray-700">${suc}</td><td class="p-4 text-center font-medium">${stats.estudios}</td><td class="p-4"><div class="flex items-center space-x-2"><div class="bg-gray-200 rounded-full h-2 w-full"><div class="bg-gray-600 h-2 rounded-full" style="width: ${pctCarga}%"></div></div><span class="text-xs font-bold w-8">${pctCarga}%</span></div></td><td class="p-4"><div class="flex items-center space-x-2"><div class="bg-orange-100 rounded-full h-2 w-full"><div class="bg-lapiOrange h-2 rounded-full" style="width: ${pctIA}%"></div></div><span class="text-xs font-bold text-lapiOrange w-8">${pctIA}%</span></div></td><td class="p-4 text-center"><button onclick="sucursalAuditada='${suc}'; mostrarVista('vista-admin-detalle')" class="text-blue-600 hover:text-blue-800 underline font-bold text-sm bg-blue-50 px-3 py-1 rounded">Auditar ➔</button></td>`;
+                    tbody.appendChild(tr);
+                }
+            });
+            if(granTotal === 0) tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-gray-500 italic">No hay registros hoy.</td></tr>';
+            document.getElementById('admin-totales').textContent = granTotal;
+            document.getElementById('admin-carga').textContent = `${granReq>0?Math.round((granSub/granReq)*100):0}%`;
+            document.getElementById('admin-ia').textContent = `${granReq>0?Math.round((granAprob/granReq)*100):0}%`;
+        }
+
+        function generarVistaDetalleAdmin() {
+            document.getElementById('detalle-titulo').innerHTML = `<span class="text-lapiOrange">Auditoría:</span> ${sucursalAuditada}`;
+            actualizarEstadisticasLocales(sucursalAuditada, 'audit');
+            const contenedor = document.getElementById('contenedorDetalleAdmin'); contenedor.innerHTML = '';
+            
+            const stats = calcularEstadisticasSucursal(bdGlobal[fechaActualStr]?.[sucursalAuditada]);
+            if (stats.req === 0) { contenedor.innerHTML = `<div class="text-center text-gray-400 p-10 border-2 border-dashed rounded">Sin registros.</div>`; return; }
+
+            const filtroVal = document.getElementById('filtro-admin').value;
+            const documentosOrdenados = ordenarDocumentos(stats.docKeysRequeridos, filtroVal);
+
+            documentosOrdenados.forEach(item => {
+                const statusObj = asegurarEstructuraDoc(item.key);
+                const box = document.createElement('div');
+                box.className = 'border-gray-200 border bg-white p-4 rounded-lg flex flex-col md:flex-row justify-between items-center shadow-sm';
+                
+                let badge = '<span class="text-gray-400 font-bold text-xs flex items-center">⚠️ Faltante</span>';
+                if (statusObj.estado === 'subido') badge = '<span class="text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-200 font-bold text-xs">📁 Subido</span>';
+                else if (statusObj.estado === 'aprobado') badge = '<span class="text-green-700 bg-green-100 px-2 py-1 rounded border border-green-300 font-bold text-xs">✅ Aprobado IA</span>';
+                else if (statusObj.estado === 'rechazado') badge = '<span class="text-red-700 bg-red-100 px-2 py-1 rounded border border-red-300 font-bold text-xs">❌ Rechazado IA</span>';
+                else if (statusObj.estado === 'analizando') badge = '<span class="text-lapiOrange font-bold text-xs">🧠 Analizando...</span>';
+                
+                const infoExtra = statusObj.horaSubida ? `<span class="text-lapiOrange ml-2 text-[10px] font-bold">Subido: ${statusObj.horaSubida}</span>` : '';
+                const btnChat = crearBotonChat(item.key, item.tipo, statusObj);
+
+                box.innerHTML = `<div class="flex-1 w-full flex items-center justify-between">
+                                    <div>
+                                        <h4 class="text-sm font-bold text-gray-800">${item.tipo} <span class="text-gray-500 font-normal ml-1">| ${item.nombre}</span></h4>
+                                        <p class="text-xs text-gray-400 mt-0.5">${item.desc} ${infoExtra}</p>
+                                    </div>
+                                    <div class="ml-4 flex items-center">${badge} ${btnChat}</div>
+                                 </div>`;
+                contenedor.appendChild(box);
+            });
+        }
+
+        // --- VISTAS SUCURSAL ---
+        function agregarPaciente() {
+            const input = document.getElementById('nombrePaciente'); const cbs = document.querySelectorAll('.estudio-cb:checked');
+            if (input.value.trim() === '' || cbs.length === 0) { alert('Datos incompletos.'); return; }
+            bdGlobal[fechaActualStr][sucursalActual].pacientes.push({ id: Date.now(), nombre: input.value.trim(), estudios: Array.from(cbs).map(cb => cb.value) });
+            input.value = ''; cbs.forEach(cb => cb.checked = false); actualizarUI();
+        }
+        function eliminarPaciente(id) { bdGlobal[fechaActualStr][sucursalActual].pacientes = bdGlobal[fechaActualStr][sucursalActual].pacientes.filter(p => p.id !== id); actualizarUI(); }
+        function actualizarListaPacientes() {
+            const ul = document.getElementById('listaPacientes'); ul.innerHTML = '';
+            const pacs = bdGlobal[fechaActualStr][sucursalActual].pacientes;
+            document.getElementById('contador-pacientes').textContent = pacs.length;
+            pacs.forEach(p => {
+                const li = document.createElement('li'); li.className = 'bg-gray-50 p-3 rounded flex justify-between items-center border border-gray-100';
+                li.innerHTML = `<div><strong class="text-gray-700">${p.nombre}</strong><br><span class="text-xs text-gray-500 font-medium">${p.estudios.join(', ')}</span></div><button onclick="eliminarPaciente(${p.id})" class="text-red-400 hover:text-red-600 font-bold text-xs p-2">Borrar</button>`;
                 ul.appendChild(li);
             });
         }
 
         function generarCajasDeCarga() {
-            const contenedor = document.getElementById('contenedorArchivos');
-            contenedor.innerHTML = ''; 
-            let historiasClinicasTotales = 0;
+            const contenedor = document.getElementById('contenedorArchivos'); contenedor.innerHTML = ''; 
+            const stats = calcularEstadisticasSucursal(bdGlobal[fechaActualStr][sucursalActual]);
+            if (stats.req === 0) { contenedor.innerHTML = '<div class="text-center text-gray-400 mt-10 italic border-2 border-dashed p-8 rounded">Registra pacientes primero.</div>'; return; }
 
-            const pacientesDelDia = bdSimulada[fechaActualStr] || [];
+            const filtroVal = document.getElementById('filtro-sucursal').value;
+            const documentosOrdenados = ordenarDocumentos(stats.docKeysRequeridos, filtroVal);
 
-            if (pacientesDelDia.length === 0) {
-                contenedor.innerHTML = '<div class="text-center text-gray-400 mt-10 italic">Añade pacientes para ver los archivos requeridos...</div>';
-                return;
-            }
-
-            pacientesDelDia.forEach(paciente => {
-                paciente.estudios.forEach(estudio => {
-                    crearCajita(contenedor, `${estudio} - ${paciente.nombre}`, 'Archivo PDF/JPG');
-                    if (estudio === 'Electrocardiograma') {
-                        crearCajita(contenedor, `Consentimiento Electro - ${paciente.nombre}`, 'Documento Firmado');
-                    }
-                    if (estudio === 'Historia Clínica') {
-                        historiasClinicasTotales++;
-                    }
-                });
+            documentosOrdenados.forEach(item => {
+                const statusObj = asegurarEstructuraDoc(item.key);
+                const box = document.createElement('div');
+                box.className = `${item.key === 'acumulado-historias' ? 'border-lapiOrange border-2 bg-lapiLight' : 'border-gray-200 border bg-white'} p-4 rounded-lg flex flex-col md:flex-row justify-between items-center shadow-sm mb-3`;
+                
+                let btnUI = ''; 
+                if (statusObj.estado === 'pendiente') btnUI = `<button onclick="accionDocumento('${item.key}', 'subir')" class="bg-gray-200 hover:bg-gray-300 text-sm font-bold py-1.5 px-4 rounded transition border border-gray-300">Subir Archivo</button>`;
+                else if (statusObj.estado === 'subido') btnUI = `<div class="flex items-center"><span class="text-xs text-gray-500 mr-2 font-bold">✓ Subido</span> <button onclick="accionDocumento('${item.key}', 'analizar')" class="bg-gray-800 text-white hover:bg-gray-900 text-sm font-bold py-1.5 px-3 rounded shadow-md transition">✨ Analizar IA</button></div>`;
+                else if (statusObj.estado === 'analizando') btnUI = `<span class="text-lapiOrange text-sm font-bold animate-pulse">🧠 Analizando...</span>`;
+                else if (statusObj.estado === 'aprobado') btnUI = `<span class="bg-green-100 text-green-700 border border-green-300 px-3 py-1 rounded text-sm font-bold">✅ Aprobado</span>`;
+                else if (statusObj.estado === 'rechazado') {
+                    btnUI = `<div class="flex items-center"><span class="bg-red-100 text-red-700 border border-red-300 px-2 py-1 rounded text-xs font-bold mr-2">❌ Rechazado IA</span> <button onclick="accionDocumento('${item.key}', 'subir')" class="text-xs underline text-gray-500 hover:text-gray-700">Resubir</button></div>`;
+                }
+                
+                const infoExtra = statusObj.horaSubida ? `<span class="text-lapiOrange ml-2 text-[10px] font-bold">Subido a las ${statusObj.horaSubida}</span>` : '';
+                const btnChat = crearBotonChat(item.key, item.tipo, statusObj);
+                
+                box.innerHTML = `<div class="flex-1 w-full"><div class="flex items-center justify-between w-full"><div><h4 class="text-sm font-bold">${item.tipo} <span class="text-lapiOrange ml-1">${item.nombre}</span></h4><p class="text-xs text-gray-400 mt-0.5">${item.desc} ${infoExtra}</p></div><div class="ml-4 flex items-center">${btnUI} ${btnChat}</div></div></div>`;
+                contenedor.appendChild(box);
             });
+        }
 
-            if (historiasClinicasTotales > 0) {
-                crearCajita(contenedor, `Etiquetas con Folios (Acumulado de ${historiasClinicasTotales} historias)`, 'Documento PDF', true);
+        function accionDocumento(docKey, accion) {
+            const statusObj = asegurarEstructuraDoc(docKey);
+            if (accion === 'subir') {
+                statusObj.estado = 'subido';
+                statusObj.horaSubida = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+                // Reset de notas al resubir el documento
+                statusObj.notas = []; statusObj.vistosAdmin = 0; statusObj.vistosSucursal = 0;
+                actualizarUI();
+            } else if (accion === 'analizar') {
+                statusObj.estado = 'analizando'; actualizarUI();
+                setTimeout(() => {
+                    const aprobado = Math.random() > 0.5; // IA simula error 50% de las veces
+                    if (aprobado) {
+                        statusObj.estado = 'aprobado';
+                    } else {
+                        statusObj.estado = 'rechazado';
+                        const err = ['Firma no detectada o ilegible', 'El folio de la etiqueta no coincide', 'Faltan páginas en el archivo escaneado'][Math.floor(Math.random() * 3)];
+                        statusObj.notas.push({ autor: 'LAP.IA', texto: `El documento presenta una anomalía: ${err}. Por favor, verifícalo y vuelve a cargarlo.` });
+                    }
+                    actualizarUI();
+                }, 1500);
             }
-        }
-
-        function crearCajita(contenedor, titulo, descripcion, destacado = false) {
-            const box = document.createElement('div');
-            const borderStyle = destacado ? 'border-lapiOrange border-2 bg-lapiLight' : 'border-gray-200 border bg-white';
-            
-            box.className = `${borderStyle} p-3 rounded-lg flex justify-between items-center fade-in shadow-sm`;
-            box.innerHTML = `
-                <div>
-                    <h4 class="text-sm font-bold text-gray-700">${titulo}</h4>
-                    <p class="text-xs text-gray-500">${descripcion}</p>
-                </div>
-                <div>
-                    <button class="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold py-1 px-3 rounded transition" onclick="simularCarga(this)">
-                        Subir Archivo
-                    </button>
-                </div>
-            `;
-            contenedor.appendChild(box);
-        }
-
-        function simularCarga(boton) {
-            boton.textContent = 'Cargado ✓';
-            boton.className = 'bg-green-100 text-green-700 border border-green-500 text-xs font-bold py-1 px-3 rounded cursor-default';
-            boton.disabled = true;
-            
-            document.getElementById('btnEnviar').classList.remove('opacity-50', 'cursor-not-allowed');
-            document.getElementById('btnEnviar').disabled = false;
         }
     </script>
 </body>
