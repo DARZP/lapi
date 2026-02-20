@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plataforma LAPI - Prototipo V2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        lapiOrange: '#F26522',
+                        lapiLight: '#FFF5F0',
+                        lapiDark: '#D9531E'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans h-screen flex overflow-hidden">
+
+    <div id="pantalla-login" class="absolute inset-0 bg-lapiLight flex items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-96 border-t-4 border-lapiOrange">
+            <h1 class="text-2xl font-bold text-center text-gray-800 mb-6">Portal LAPI</h1>
+            <label class="block text-sm font-medium text-gray-600 mb-2">Selecciona tu acceso:</label>
+            <select id="selector-acceso" class="w-full p-2 border border-gray-300 rounded mb-4 focus:ring-2 focus:ring-lapiOrange">
+                <option value="admin">Administrador General</option>
+                <option value="sucursal-centro">Sucursal - Centro Histórico</option>
+                <option value="sucursal-sur">Sucursal - Zona Sur</option>
+            </select>
+            <button onclick="iniciarSesion()" class="w-full bg-lapiOrange hover:bg-lapiDark text-white font-bold py-2 rounded transition">
+                Ingresar a la plataforma
+            </button>
+        </div>
+    </div>
+
+    <aside id="sidebar" class="hidden w-64 bg-gray-800 text-white flex-col shadow-lg">
+        <div class="p-4 bg-gray-900 border-b border-gray-700">
+            <h2 class="text-xl font-bold text-lapiOrange">LAPI</h2>
+            <p id="usuario-actual" class="text-xs text-gray-400">Usuario</p>
+        </div>
+        <nav class="flex-1 p-4 space-y-2">
+            <button onclick="mostrarVista('vista-admin')" id="btn-nav-admin" class="w-full text-left p-2 rounded hover:bg-gray-700 transition hidden">Panel General (Admin)</button>
+            <button onclick="mostrarVista('vista-registro')" id="btn-nav-registro" class="w-full text-left p-2 rounded hover:bg-gray-700 transition">Registro de Estudios</button>
+            <button onclick="mostrarVista('vista-carga')" id="btn-nav-carga" class="w-full text-left p-2 rounded hover:bg-gray-700 transition">Carga de Archivos</button>
+        </nav>
+        <div class="p-4 border-t border-gray-700">
+            <button onclick="cerrarSesion()" class="text-sm text-red-400 hover:text-red-300 w-full text-left">← Salir</button>
+        </div>
+    </aside>
+
+    <main id="contenido-principal" class="hidden flex-1 flex flex-col overflow-y-auto bg-gray-50">
+        
+        <header class="bg-white shadow p-4 flex justify-between items-center">
+            <h2 id="titulo-vista" class="text-xl font-bold text-gray-700">Cargando...</h2>
+            <div class="flex items-center space-x-2">
+                <label class="text-sm text-gray-500">Fecha operativa:</label>
+                <input type="date" id="fecha-global" class="border border-gray-300 rounded p-1 text-sm focus:ring-lapiOrange">
+            </div>
+        </header>
+
+        <div class="p-6">
+            
+            <section id="vista-admin" class="hidden space-y-6">
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="bg-white p-4 rounded shadow border-l-4 border-blue-500">
+                        <p class="text-sm text-gray-500">Total Estudios Hoy</p>
+                        <p class="text-2xl font-bold">142</p>
+                    </div>
+                    <div class="bg-white p-4 rounded shadow border-l-4 border-lapiOrange">
+                        <p class="text-sm text-gray-500">Archivos Faltantes</p>
+                        <p class="text-2xl font-bold">18</p>
+                    </div>
+                    <div class="bg-white p-4 rounded shadow border-l-4 border-green-500">
+                        <p class="text-sm text-gray-500">Revisado por IA</p>
+                        <p class="text-2xl font-bold">85%</p>
+                    </div>
+                </div>
+                
+                <div class="bg-white p-4 rounded shadow">
+                    <h3 class="font-bold text-gray-700 mb-4">Estado de Sucursales</h3>
+                    <table class="w-full text-left text-sm">
+                        <tr class="bg-gray-100"><th class="p-2">Sucursal</th><th class="p-2">Estudios</th><th class="p-2">Progreso Carga</th><th class="p-2">IA Status</th><th class="p-2">Acción</th></tr>
+                        <tr class="border-b"><td class="p-2">Centro Histórico</td><td class="p-2">24</td><td class="p-2"><div class="bg-gray-200 rounded h-2 w-full"><div class="bg-green-500 h-2 rounded w-full"></div></div>100%</td><td class="p-2 text-green-600">Completado</td><td class="p-2"><button class="text-blue-500 underline">Revisar</button></td></tr>
+                        <tr class="border-b"><td class="p-2">Zona Sur</td><td class="p-2">15</td><td class="p-2"><div class="bg-gray-200 rounded h-2 w-full"><div class="bg-lapiOrange h-2 rounded w-3/4"></div></div>75%</td><td class="p-2 text-lapiOrange">Pendiente</td><td class="p-2"><button class="text-blue-500 underline">Revisar</button></td></tr>
+                    </table>
+                </div>
+            </section>
+
+            <section id="vista-registro" class="hidden">
+                <div class="bg-white p-6 rounded shadow">
+                    <p class="text-gray-500 mb-4">Aquí va la interfaz de agregar pacientes y seleccionar estudios de la versión anterior. Ahora conectada a la fecha seleccionada arriba.</p>
+                    <div class="border-2 border-dashed border-gray-300 p-10 text-center text-gray-400 rounded">
+                        Módulo de Registro Activo
+                    </div>
+                </div>
+            </section>
+
+            <section id="vista-carga" class="hidden">
+                <div class="bg-white p-6 rounded shadow border-t-4 border-lapiOrange">
+                    <p class="text-gray-500 mb-4">Aquí se generarán las cajas de subida dinámicamente basadas en el registro. Puedes consultar días anteriores cambiando la fecha arriba.</p>
+                    <div class="border-2 border-dashed border-gray-300 p-10 text-center text-gray-400 rounded">
+                        Módulo de Carga Activo
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <script>
+        // Establecer fecha de hoy por defecto en el input date
+        document.getElementById('fecha-global').valueAsDate = new Date();
+
+        function iniciarSesion() {
+            const acceso = document.getElementById('selector-acceso').value;
+            const esAdmin = acceso === 'admin';
+            
+            // Ocultar login, mostrar app y sidebar
+            document.getElementById('pantalla-login').classList.add('hidden');
+            document.getElementById('sidebar').classList.remove('hidden');
+            document.getElementById('sidebar').classList.add('flex');
+            document.getElementById('contenido-principal').classList.remove('hidden');
+
+            // Configurar la interfaz según el rol
+            document.getElementById('usuario-actual').textContent = esAdmin ? 'Modo Administrador' : 'Modo Sucursal';
+            
+            if (esAdmin) {
+                document.getElementById('btn-nav-admin').classList.remove('hidden');
+                document.getElementById('btn-nav-registro').classList.add('hidden');
+                document.getElementById('btn-nav-carga').classList.add('hidden');
+                mostrarVista('vista-admin');
+            } else {
+                document.getElementById('btn-nav-admin').classList.add('hidden');
+                document.getElementById('btn-nav-registro').classList.remove('hidden');
+                document.getElementById('btn-nav-carga').classList.remove('hidden');
+                mostrarVista('vista-registro');
+            }
+        }
+
+        function cerrarSesion() {
+            document.getElementById('pantalla-login').classList.remove('hidden');
+            document.getElementById('sidebar').classList.add('hidden');
+            document.getElementById('sidebar').classList.remove('flex');
+            document.getElementById('contenido-principal').classList.add('hidden');
+        }
+
+        function mostrarVista(idVista) {
+            // Ocultar todas las vistas
+            document.getElementById('vista-admin').classList.add('hidden');
+            document.getElementById('vista-registro').classList.add('hidden');
+            document.getElementById('vista-carga').classList.add('hidden');
+
+            // Mostrar la seleccionada
+            document.getElementById(idVista).classList.remove('hidden');
+
+            // Actualizar el título
+            const titulos = {
+                'vista-admin': 'Panel de Control General',
+                'vista-registro': 'Registro Diario de Estudios',
+                'vista-carga': 'Gestión y Carga de Archivos'
+            };
+            document.getElementById('titulo-vista').textContent = titulos[idVista];
+        }
+    </script>
+</body>
+</html>
