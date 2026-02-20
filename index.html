@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plataforma LAPI - Prototipo V2</title>
+    <title>Plataforma LAPI - Prototipo V3 (Integrado)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -18,6 +18,10 @@
             }
         }
     </script>
+    <style>
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans h-screen flex overflow-hidden">
 
@@ -26,9 +30,9 @@
             <h1 class="text-2xl font-bold text-center text-gray-800 mb-6">Portal LAPI</h1>
             <label class="block text-sm font-medium text-gray-600 mb-2">Selecciona tu acceso:</label>
             <select id="selector-acceso" class="w-full p-2 border border-gray-300 rounded mb-4 focus:ring-2 focus:ring-lapiOrange">
-                <option value="admin">Administrador General</option>
                 <option value="sucursal-centro">Sucursal - Centro Histórico</option>
                 <option value="sucursal-sur">Sucursal - Zona Sur</option>
+                <option value="admin">Administrador General</option>
             </select>
             <button onclick="iniciarSesion()" class="w-full bg-lapiOrange hover:bg-lapiDark text-white font-bold py-2 rounded transition">
                 Ingresar a la plataforma
@@ -43,7 +47,7 @@
         </div>
         <nav class="flex-1 p-4 space-y-2">
             <button onclick="mostrarVista('vista-admin')" id="btn-nav-admin" class="w-full text-left p-2 rounded hover:bg-gray-700 transition hidden">Panel General (Admin)</button>
-            <button onclick="mostrarVista('vista-registro')" id="btn-nav-registro" class="w-full text-left p-2 rounded hover:bg-gray-700 transition">Registro de Estudios</button>
+            <button onclick="mostrarVista('vista-registro')" id="btn-nav-registro" class="w-full text-left p-2 rounded hover:bg-gray-700 transition bg-gray-700">Registro de Estudios</button>
             <button onclick="mostrarVista('vista-carga')" id="btn-nav-carga" class="w-full text-left p-2 rounded hover:bg-gray-700 transition">Carga de Archivos</button>
         </nav>
         <div class="p-4 border-t border-gray-700">
@@ -57,16 +61,16 @@
             <h2 id="titulo-vista" class="text-xl font-bold text-gray-700">Cargando...</h2>
             <div class="flex items-center space-x-2">
                 <label class="text-sm text-gray-500">Fecha operativa:</label>
-                <input type="date" id="fecha-global" class="border border-gray-300 rounded p-1 text-sm focus:ring-lapiOrange">
+                <input type="date" id="fecha-global" onchange="cambiarFecha()" class="border border-gray-300 rounded p-1 text-sm focus:ring-lapiOrange">
             </div>
         </header>
 
-        <div class="p-6">
+        <div class="p-6 h-full">
             
             <section id="vista-admin" class="hidden space-y-6">
                 <div class="grid grid-cols-3 gap-4">
                     <div class="bg-white p-4 rounded shadow border-l-4 border-blue-500">
-                        <p class="text-sm text-gray-500">Total Estudios Hoy</p>
+                        <p class="text-sm text-gray-500">Total Estudios (General)</p>
                         <p class="text-2xl font-bold">142</p>
                     </div>
                     <div class="bg-white p-4 rounded shadow border-l-4 border-lapiOrange">
@@ -78,31 +82,59 @@
                         <p class="text-2xl font-bold">85%</p>
                     </div>
                 </div>
-                
                 <div class="bg-white p-4 rounded shadow">
-                    <h3 class="font-bold text-gray-700 mb-4">Estado de Sucursales</h3>
+                    <h3 class="font-bold text-gray-700 mb-4">Estado de Sucursales de esta Fecha</h3>
                     <table class="w-full text-left text-sm">
                         <tr class="bg-gray-100"><th class="p-2">Sucursal</th><th class="p-2">Estudios</th><th class="p-2">Progreso Carga</th><th class="p-2">IA Status</th><th class="p-2">Acción</th></tr>
                         <tr class="border-b"><td class="p-2">Centro Histórico</td><td class="p-2">24</td><td class="p-2"><div class="bg-gray-200 rounded h-2 w-full"><div class="bg-green-500 h-2 rounded w-full"></div></div>100%</td><td class="p-2 text-green-600">Completado</td><td class="p-2"><button class="text-blue-500 underline">Revisar</button></td></tr>
-                        <tr class="border-b"><td class="p-2">Zona Sur</td><td class="p-2">15</td><td class="p-2"><div class="bg-gray-200 rounded h-2 w-full"><div class="bg-lapiOrange h-2 rounded w-3/4"></div></div>75%</td><td class="p-2 text-lapiOrange">Pendiente</td><td class="p-2"><button class="text-blue-500 underline">Revisar</button></td></tr>
                     </table>
                 </div>
             </section>
 
-            <section id="vista-registro" class="hidden">
-                <div class="bg-white p-6 rounded shadow">
-                    <p class="text-gray-500 mb-4">Aquí va la interfaz de agregar pacientes y seleccionar estudios de la versión anterior. Ahora conectada a la fecha seleccionada arriba.</p>
-                    <div class="border-2 border-dashed border-gray-300 p-10 text-center text-gray-400 rounded">
-                        Módulo de Registro Activo
+            <section id="vista-registro" class="hidden h-full flex flex-col lg:flex-row gap-6">
+                <div class="bg-white p-6 rounded-lg shadow w-full lg:w-1/2 border-t-4 border-lapiOrange">
+                    <h3 class="font-bold text-gray-700 mb-4">Nuevo Registro</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600">Nombre del Paciente</label>
+                            <input type="text" id="nombrePaciente" class="mt-1 w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-lapiOrange">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-2">Estudios Realizados:</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" value="Espirometría" class="estudio-cb text-lapiOrange focus:ring-lapiOrange h-4 w-4"><span>Espirometría</span></label>
+                                <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" value="Audiometría" class="estudio-cb text-lapiOrange focus:ring-lapiOrange h-4 w-4"><span>Audiometría</span></label>
+                                <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" value="Electrocardiograma" class="estudio-cb text-lapiOrange focus:ring-lapiOrange h-4 w-4"><span>Electrocardiograma</span></label>
+                                <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" value="Historia Clínica" class="estudio-cb text-lapiOrange focus:ring-lapiOrange h-4 w-4"><span>Historia Clínica</span></label>
+                            </div>
+                        </div>
+                        <button onclick="agregarPaciente()" class="w-full bg-lapiOrange hover:bg-lapiDark text-white font-bold py-2 px-4 rounded transition">
+                            Guardar Registro
+                        </button>
                     </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow w-full lg:w-1/2 overflow-y-auto">
+                    <h3 class="font-bold text-gray-700 mb-4 border-b pb-2">Pacientes registrados este día</h3>
+                    <ul id="listaPacientes" class="space-y-2 text-sm">
+                        </ul>
                 </div>
             </section>
 
-            <section id="vista-carga" class="hidden">
-                <div class="bg-white p-6 rounded shadow border-t-4 border-lapiOrange">
-                    <p class="text-gray-500 mb-4">Aquí se generarán las cajas de subida dinámicamente basadas en el registro. Puedes consultar días anteriores cambiando la fecha arriba.</p>
-                    <div class="border-2 border-dashed border-gray-300 p-10 text-center text-gray-400 rounded">
-                        Módulo de Carga Activo
+            <section id="vista-carga" class="hidden h-full flex flex-col">
+                <div class="bg-white p-6 rounded-lg shadow flex-1 flex flex-col border-t-4 border-lapiOrange">
+                    <div class="flex justify-between items-center mb-4 border-b pb-2">
+                        <p class="text-sm text-gray-500">Espacios de carga generados automáticamente basados en el registro de hoy.</p>
+                        <span class="text-xs font-bold bg-lapiLight text-lapiOrange px-2 py-1 rounded border border-lapiOrange">IA Status: Esperando archivos</span>
+                    </div>
+                    
+                    <div id="contenedorArchivos" class="flex-1 overflow-y-auto space-y-3 pr-2">
+                        </div>
+
+                    <div class="mt-4 pt-4 border-t border-gray-200">
+                        <button class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded opacity-50 cursor-not-allowed transition" id="btnEnviar" disabled>
+                            Analizar todos los documentos con IA
+                        </button>
                     </div>
                 </div>
             </section>
@@ -111,32 +143,41 @@
     </main>
 
     <script>
-        // Establecer fecha de hoy por defecto en el input date
-        document.getElementById('fecha-global').valueAsDate = new Date();
+        // --- BASE DE DATOS SIMULADA ---
+        // Guardaremos los datos por fecha: { '2023-10-25': [{id:1, nombre: 'Juan', estudios: []}] }
+        let bdSimulada = {}; 
+        let fechaActualStr = '';
 
+        // --- INICIALIZACIÓN ---
+        window.onload = () => {
+            const inputFecha = document.getElementById('fecha-global');
+            inputFecha.valueAsDate = new Date();
+            fechaActualStr = inputFecha.value;
+            bdSimulada[fechaActualStr] = []; // Inicializa el arreglo para hoy
+        };
+
+        // --- NAVEGACIÓN Y LOGIN ---
         function iniciarSesion() {
             const acceso = document.getElementById('selector-acceso').value;
             const esAdmin = acceso === 'admin';
             
-            // Ocultar login, mostrar app y sidebar
             document.getElementById('pantalla-login').classList.add('hidden');
             document.getElementById('sidebar').classList.remove('hidden');
             document.getElementById('sidebar').classList.add('flex');
             document.getElementById('contenido-principal').classList.remove('hidden');
 
-            // Configurar la interfaz según el rol
             document.getElementById('usuario-actual').textContent = esAdmin ? 'Modo Administrador' : 'Modo Sucursal';
             
             if (esAdmin) {
                 document.getElementById('btn-nav-admin').classList.remove('hidden');
                 document.getElementById('btn-nav-registro').classList.add('hidden');
                 document.getElementById('btn-nav-carga').classList.add('hidden');
-                mostrarVista('vista-admin');
+                mostrarVista('vista-admin', document.getElementById('btn-nav-admin'));
             } else {
                 document.getElementById('btn-nav-admin').classList.add('hidden');
                 document.getElementById('btn-nav-registro').classList.remove('hidden');
                 document.getElementById('btn-nav-carga').classList.remove('hidden');
-                mostrarVista('vista-registro');
+                mostrarVista('vista-registro', document.getElementById('btn-nav-registro'));
             }
         }
 
@@ -147,22 +188,160 @@
             document.getElementById('contenido-principal').classList.add('hidden');
         }
 
-        function mostrarVista(idVista) {
+        function mostrarVista(idVista, btnElement) {
             // Ocultar todas las vistas
             document.getElementById('vista-admin').classList.add('hidden');
             document.getElementById('vista-registro').classList.add('hidden');
             document.getElementById('vista-carga').classList.add('hidden');
 
+            // Quitar clase activa de botones
+            document.querySelectorAll('#sidebar nav button').forEach(b => b.classList.remove('bg-gray-700'));
+            
             // Mostrar la seleccionada
             document.getElementById(idVista).classList.remove('hidden');
+            if(btnElement) btnElement.classList.add('bg-gray-700');
 
-            // Actualizar el título
             const titulos = {
                 'vista-admin': 'Panel de Control General',
                 'vista-registro': 'Registro Diario de Estudios',
                 'vista-carga': 'Gestión y Carga de Archivos'
             };
             document.getElementById('titulo-vista').textContent = titulos[idVista];
+        }
+
+        // --- LÓGICA DE FECHAS ---
+        function cambiarFecha() {
+            fechaActualStr = document.getElementById('fecha-global').value;
+            // Si no hay registros en esta fecha, creamos un arreglo vacío
+            if (!bdSimulada[fechaActualStr]) {
+                bdSimulada[fechaActualStr] = [];
+            }
+            // Actualizamos la pantalla con los datos de esta nueva fecha
+            actualizarUI();
+        }
+
+        // --- LÓGICA DE NEGOCIO (REGISTRO Y CARGA) ---
+        function agregarPaciente() {
+            const inputNombre = document.getElementById('nombrePaciente');
+            const checkboxes = document.querySelectorAll('.estudio-cb:checked');
+            
+            const nombre = inputNombre.value.trim();
+            const estudiosSeleccionados = Array.from(checkboxes).map(cb => cb.value);
+
+            if (nombre === '' || estudiosSeleccionados.length === 0) {
+                alert('Por favor, ingresa el nombre y al menos un estudio.');
+                return;
+            }
+
+            const nuevoPaciente = {
+                id: Date.now(),
+                nombre: nombre,
+                estudios: estudiosSeleccionados
+            };
+
+            // Guardar en la fecha actual
+            bdSimulada[fechaActualStr].push(nuevoPaciente);
+
+            actualizarUI();
+
+            // Limpiar formulario
+            inputNombre.value = '';
+            checkboxes.forEach(cb => cb.checked = false);
+        }
+
+        function eliminarPaciente(id) {
+            // Filtramos la lista para remover el paciente con ese ID
+            bdSimulada[fechaActualStr] = bdSimulada[fechaActualStr].filter(p => p.id !== id);
+            actualizarUI();
+        }
+
+        function actualizarUI() {
+            actualizarListaPacientes();
+            generarCajasDeCarga();
+        }
+
+        function actualizarListaPacientes() {
+            const ul = document.getElementById('listaPacientes');
+            ul.innerHTML = ''; 
+            
+            const pacientesDelDia = bdSimulada[fechaActualStr] || [];
+
+            if(pacientesDelDia.length === 0) {
+                ul.innerHTML = '<li class="text-gray-400 italic">No hay pacientes registrados en esta fecha.</li>';
+                return;
+            }
+
+            pacientesDelDia.forEach(p => {
+                const li = document.createElement('li');
+                li.className = 'bg-gray-100 p-3 rounded flex justify-between items-center fade-in border-l-4 border-lapiOrange';
+                li.innerHTML = `
+                    <div>
+                        <strong>${p.nombre}</strong> <br>
+                        <span class="text-xs text-gray-600">${p.estudios.join(', ')}</span>
+                    </div>
+                    <button onclick="eliminarPaciente(${p.id})" class="text-red-500 hover:text-red-700 text-sm font-bold p-1">
+                        ✕ Borrar
+                    </button>
+                `;
+                ul.appendChild(li);
+            });
+        }
+
+        function generarCajasDeCarga() {
+            const contenedor = document.getElementById('contenedorArchivos');
+            contenedor.innerHTML = ''; 
+            let historiasClinicasTotales = 0;
+
+            const pacientesDelDia = bdSimulada[fechaActualStr] || [];
+
+            if (pacientesDelDia.length === 0) {
+                contenedor.innerHTML = '<div class="text-center text-gray-400 mt-10 italic">Añade pacientes para ver los archivos requeridos...</div>';
+                return;
+            }
+
+            pacientesDelDia.forEach(paciente => {
+                paciente.estudios.forEach(estudio => {
+                    crearCajita(contenedor, `${estudio} - ${paciente.nombre}`, 'Archivo PDF/JPG');
+                    if (estudio === 'Electrocardiograma') {
+                        crearCajita(contenedor, `Consentimiento Electro - ${paciente.nombre}`, 'Documento Firmado');
+                    }
+                    if (estudio === 'Historia Clínica') {
+                        historiasClinicasTotales++;
+                    }
+                });
+            });
+
+            if (historiasClinicasTotales > 0) {
+                crearCajita(contenedor, `Etiquetas con Folios (Acumulado de ${historiasClinicasTotales} historias)`, 'Documento PDF', true);
+            }
+        }
+
+        function crearCajita(contenedor, titulo, descripcion, destacado = false) {
+            const box = document.createElement('div');
+            const borderStyle = destacado ? 'border-lapiOrange border-2 bg-lapiLight' : 'border-gray-200 border bg-white';
+            
+            box.className = `${borderStyle} p-3 rounded-lg flex justify-between items-center fade-in shadow-sm`;
+            box.innerHTML = `
+                <div>
+                    <h4 class="text-sm font-bold text-gray-700">${titulo}</h4>
+                    <p class="text-xs text-gray-500">${descripcion}</p>
+                </div>
+                <div>
+                    <button class="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold py-1 px-3 rounded transition" onclick="simularCarga(this)">
+                        Subir Archivo
+                    </button>
+                </div>
+            `;
+            contenedor.appendChild(box);
+        }
+
+        function simularCarga(boton) {
+            boton.textContent = 'Cargado ✓';
+            boton.className = 'bg-green-100 text-green-700 border border-green-500 text-xs font-bold py-1 px-3 rounded cursor-default';
+            boton.disabled = true;
+            
+            document.getElementById('btnEnviar').classList.remove('opacity-50', 'cursor-not-allowed');
+            document.getElementById('btnEnviar').disabled = false;
         }
     </script>
 </body>
