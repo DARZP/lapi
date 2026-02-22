@@ -259,10 +259,10 @@
             btn.innerHTML = `<div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div> Analizando PDF...`;
             badge.className = "bg-orange-100 text-lapiOrange text-xs font-bold px-3 py-1 rounded-full border border-orange-200 animate-pulse";
             badge.textContent = "🧠 IA Leyendo Documento...";
-            panel.innerHTML = `<div class="w-full h-full flex flex-col items-center justify-center space-y-4"><div class="w-10 h-10 border-4 border-lapiOrange border-t-transparent rounded-full animate-spin"></div><p class="text-gray-500 font-bold animate-pulse text-center">Enviando a servidor seguro...<br><span class="text-xs font-normal">Esto toma de 5 a 15 segundos</span></p></div>`;
+            panel.innerHTML = `<div class="w-full h-full flex flex-col items-center justify-center space-y-4"><div class="w-10 h-10 border-4 border-lapiOrange border-t-transparent rounded-full animate-spin"></div><p class="text-gray-500 font-bold animate-pulse text-center">Enviando a servidor seguro...<br><span class="text-xs font-normal">Esto puede tardar hasta 15 segundos</span></p></div>`;
 
             try {
-                // NUEVA RUTA: Llamamos a nuestro propio backend en Netlify
+                // Llamamos a nuestro backend en Netlify
                 const response = await fetch('/.netlify/functions/analizarDocumento', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -272,22 +272,29 @@
                     })
                 });
 
+                // Extraemos el texto crudo de la respuesta del servidor primero
+                const responseText = await response.text();
+
                 if (!response.ok) {
-                    throw new Error(`Error del servidor: ${response.status}`);
+                    // Si el backend mandó nuestro JSON de error personalizado, lo intentamos leer
+                    try {
+                        const errorObj = JSON.parse(responseText);
+                        throw new Error(errorObj.error || `Error 500 Interno`);
+                    } catch(e) {
+                        // Si Netlify mandó un error general (como un Timeout), mostramos el texto
+                        throw new Error(`Falla del servidor Netlify: ${responseText.substring(0, 100)}...`);
+                    }
                 }
 
-                // Recibimos el JSON procesado por nuestro backend
-                const resultadoIA = await response.json();
-                
-                if(resultadoIA.error) throw new Error(resultadoIA.error);
-
+                // Si todo salió bien, convertimos a JSON y mostramos
+                const resultadoIA = JSON.parse(responseText);
                 mostrarResultadosAPI(resultadoIA, tipo);
 
             } catch (error) {
-                console.error("Error completo:", error);
+                console.error("Error capturado:", error);
                 badge.className = "bg-red-100 text-red-700 text-xs font-bold px-3 py-1 rounded-full";
                 badge.textContent = "Error de Conexión";
-                panel.innerHTML = `<div class="text-center w-full"><p class="text-red-500 text-sm font-bold mb-2">Error de comunicación.</p><p class="text-xs text-gray-500 max-w-sm mx-auto mb-4">Motivo: ${error.message}</p><button onclick="resetLibre()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm font-bold hover:bg-gray-300">↻ Intentar de nuevo</button></div>`;
+                panel.innerHTML = `<div class="text-center w-full"><p class="text-red-500 text-sm font-bold mb-2">Error del Backend.</p><p class="text-xs text-gray-700 max-w-md mx-auto mb-4 bg-red-50 p-3 rounded border border-red-200 font-mono text-left">${error.message}</p><button onclick="resetLibre()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm font-bold hover:bg-gray-300">↻ Intentar de nuevo</button></div>`;
             } finally {
                 btn.innerHTML = `✨ Ejecutar LAP.IA`;
                 btn.disabled = false;
