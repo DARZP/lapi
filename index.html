@@ -228,9 +228,8 @@
         // CONFIGURACIÓN DE IA Y API
         // ==============================================================================
         const API_KEY = 'AIzaSyBBr8qAplG48x9GyEAER9cXPXtXAHWvPjg';
-        let pdfBase64Actual = null; // Guardará el PDF en memoria para mandarlo a la IA
+        let pdfBase64Actual = null;
 
-        // El Prompt Maestro que diseñamos basado en tus reglas exactas
         const PROMPT_HISTORIA_CLINICA = `
         Eres un auditor médico experto de LAP.IA. Analiza estrictamente la Historia Clínica Ocupacional adjunta en PDF. 
         Evalúa las siguientes 5 categorías de reglas. 
@@ -245,22 +244,22 @@
         Si todo en una categoría se cumple, pass: true y el comentario debe ser breve (ej. "Validado correctamente").
         Si falla, pass: false y especifica la falla exacta (ej. "Falta código postal" o "Incongruencia en apartado de visión").
         
-        DEVUELVE ÚNICAMENTE un objeto JSON estricto con esta estructura, sin markdown (sin \`\`\`json):
+        DEVUELVE ÚNICAMENTE un objeto JSON estricto con esta estructura, sin bloques de código markdown:
         {
-          "aprobadoGeneral": true/false,
+          "aprobadoGeneral": true,
           "motivoPrincipal": "Resumen de la falla principal o 'Documento óptimo'",
           "checklist": [
-            { "categoria": "1. Integridad Demográfica y Administrativa", "pass": true/false, "comentario": "..." },
-            { "categoria": "2. Historial y Riesgos Laborales", "pass": true/false, "comentario": "..." },
-            { "categoria": "3. Antecedentes Patológicos y Hábitos", "pass": true/false, "comentario": "..." },
-            { "categoria": "4. Congruencia Clínica (Cross-Validation)", "pass": true/false, "comentario": "..." },
-            { "categoria": "5. Exploración Física y Cierre", "pass": true/false, "comentario": "..." }
+            { "categoria": "1. Integridad Demográfica y Administrativa", "pass": true, "comentario": "..." },
+            { "categoria": "2. Historial y Riesgos Laborales", "pass": true, "comentario": "..." },
+            { "categoria": "3. Antecedentes Patológicos y Hábitos", "pass": true, "comentario": "..." },
+            { "categoria": "4. Congruencia Clínica (Cross-Validation)", "pass": true, "comentario": "..." },
+            { "categoria": "5. Exploración Física y Cierre", "pass": true, "comentario": "..." }
           ]
         }
         `;
 
         // ==============================================================================
-        // LÓGICA DEL LABORATORIO (NUEVO: PROCESAMIENTO DE ARCHIVO REAL)
+        // LÓGICA DEL LABORATORIO CON PROTECCIÓN DE ERRORES API
         // ==============================================================================
         
         function procesarPDFLocal(event) {
@@ -268,10 +267,7 @@
             if (file && file.type === "application/pdf") {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    // Extraer solo la parte base64 (quitando 'data:application/pdf;base64,')
                     pdfBase64Actual = e.target.result.split(',')[1];
-                    
-                    // Actualizar UI
                     document.getElementById('libre-icono-subida').textContent = '📄';
                     document.getElementById('libre-texto-subida').textContent = file.name;
                     document.getElementById('libre-texto-subida').classList.add('text-lapiOrange');
@@ -294,14 +290,12 @@
             const panel = document.getElementById('libre-resultados');
             const badge = document.getElementById('libre-status');
             
-            // Estado de "Cargando"
             btn.disabled = true;
             btn.innerHTML = `<div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div> Analizando PDF...`;
             badge.className = "bg-orange-100 text-lapiOrange text-xs font-bold px-3 py-1 rounded-full border border-orange-200 animate-pulse";
             badge.textContent = "🧠 IA Leyendo Documento...";
-            panel.innerHTML = `<div class="w-full h-full flex flex-col items-center justify-center space-y-4"><div class="w-10 h-10 border-4 border-lapiOrange border-t-transparent rounded-full animate-spin"></div><p class="text-gray-500 font-bold animate-pulse text-center">Extrayendo texto y cruzando congruencias clínicas...<br><span class="text-xs font-normal">Esto toma de 5 a 10 segundos</span></p></div>`;
+            panel.innerHTML = `<div class="w-full h-full flex flex-col items-center justify-center space-y-4"><div class="w-10 h-10 border-4 border-lapiOrange border-t-transparent rounded-full animate-spin"></div><p class="text-gray-500 font-bold animate-pulse text-center">Extrayendo texto y cruzando congruencias clínicas...<br><span class="text-xs font-normal">Esto toma de 5 a 15 segundos</span></p></div>`;
 
-            // Construir el cuerpo de la petición para Gemini
             const requestBody = {
                 contents: [{
                     parts: [
@@ -310,32 +304,43 @@
                     ]
                 }],
                 generationConfig: {
-                    response_mime_type: "application/json" // Forzar respuesta JSON
+                    response_mime_type: "application/json" 
                 }
             };
 
             try {
-                // LLAMADA REAL A LA API
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+                // SE CORRIGIÓ EL ENDPOINT A gemini-1.5-flash-latest
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(requestBody)
                 });
 
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error("Detalle del error de Google API:", errorText);
+                    throw new Error(`Código ${response.status}`);
+                }
+
                 const data = await response.json();
                 
-                // Procesar respuesta JSON generada por Gemini
-                const textoJSON = data.candidates[0].content.parts[0].text;
-                const resultadoIA = JSON.parse(textoJSON);
+                if (!data.candidates || data.candidates.length === 0) {
+                    throw new Error("Respuesta vacía de la API");
+                }
+
+                let textoJSON = data.candidates[0].content.parts[0].text;
                 
-                // Actualizar interfaz con los resultados de la IA
+                // Limpieza de formato por si la API envía "```json" a pesar de pedir application/json
+                textoJSON = textoJSON.replace(/```json/g, '').replace(/```/g, '').trim();
+                
+                const resultadoIA = JSON.parse(textoJSON);
                 mostrarResultadosAPI(resultadoIA, tipo);
 
             } catch (error) {
-                console.error("Error en la API:", error);
+                console.error("Error completo:", error);
                 badge.className = "bg-red-100 text-red-700 text-xs font-bold px-3 py-1 rounded-full";
                 badge.textContent = "Error de Conexión";
-                panel.innerHTML = `<p class="text-red-500 text-sm text-center">Ocurrió un error al contactar a la IA. Revisa la consola o tu conexión.</p><button onclick="resetLibre()" class="mt-4 text-gray-500 underline text-xs">Intentar de nuevo</button>`;
+                panel.innerHTML = `<div class="text-center w-full"><p class="text-red-500 text-sm font-bold mb-2">Ocurrió un error al contactar a la IA.</p><p class="text-xs text-gray-500 max-w-sm mx-auto mb-4">Revisa la consola (F12) para ver los detalles técnicos. Motivo técnico: ${error.message}</p><button onclick="resetLibre()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm font-bold hover:bg-gray-300">↻ Intentar de nuevo</button></div>`;
             } finally {
                 btn.innerHTML = `✨ Ejecutar LAP.IA`;
             }
@@ -380,7 +385,7 @@
 
         function resetLibre() {
             pdfBase64Actual = null;
-            document.getElementById('input-pdf-real').value = ""; // Limpiar input file
+            document.getElementById('input-pdf-real').value = ""; 
             document.getElementById('libre-icono-subida').textContent = '📁'; document.getElementById('libre-texto-subida').textContent = 'Haz clic para adjuntar PDF'; document.getElementById('libre-texto-subida').classList.remove('text-lapiOrange');
             document.getElementById('btn-libre-analizar').classList.add('opacity-50', 'cursor-not-allowed'); document.getElementById('btn-libre-analizar').disabled = true;
             document.getElementById('libre-status').className = "bg-gray-100 text-gray-500 text-xs font-bold px-3 py-1 rounded-full border border-gray-200"; document.getElementById('libre-status').textContent = "Esperando PDF...";
@@ -388,14 +393,20 @@
         }
 
         // ==============================================================================
-        // EL RESTO DEL CÓDIGO (Variables, UI, Base de datos) SE MANTIENE INTACTO
+        // EL RESTO DEL CÓDIGO SE MANTIENE INTACTO Y PROTEGIDO DE ERRORES DE INICIO
         // ==============================================================================
         const SUCURSALES = ["Balbuena", "Hospital General", "Condesa", "Metepec", "Cuautitlán", "Lindavista", "Lomas Verdes", "Satélite", "Encuentro Fortuna", "Martín Carrera", "Santa Martha", "Plaza Central", "Santa Fe", "Interlomas", "Polanco", "City Shop Del Valle", "Miramontes", "Plateros", "Revolución", "Gabriel Mancera", "Calzada Del Hueso", "Gran Sur", "General Anaya", "Mixcoac", "Plaza San Jerónimo", "Amores"].sort(); 
         let bdGlobal = {}; let fechaActualStr = ''; let sucursalActual = ''; let rolActual = ''; let sucursalAuditada = ''; let docKeyActivo = ''; 
 
-        window.onload = () => { const selector = document.getElementById('selector-acceso'); SUCURSALES.forEach(sucursal => { const option = document.createElement('option'); option.value = sucursal; option.textContent = `📍 Sucursal - ${sucursal}`; selector.appendChild(option); }); generarDirectorioUI(); document.getElementById('fecha-global').valueAsDate = new Date(); cambiarFecha(); };
+        window.onload = () => { 
+            const selector = document.getElementById('selector-acceso'); SUCURSALES.forEach(sucursal => { const option = document.createElement('option'); option.value = sucursal; option.textContent = `📍 Sucursal - ${sucursal}`; selector.appendChild(option); }); 
+            generarDirectorioUI(); 
+            const inputFecha = document.getElementById('fecha-global'); inputFecha.valueAsDate = new Date(); fechaActualStr = inputFecha.value; 
+            // SE QUITÓ LA LLAMADA INICIAL A actualizarUI() PARA EVITAR EL ERROR DE 'PACIENTES'
+        };
+
         function inicializarDiaYSucursal() { if (!bdGlobal[fechaActualStr]) bdGlobal[fechaActualStr] = {}; if (sucursalActual !== 'admin' && sucursalActual !== '' && !bdGlobal[fechaActualStr][sucursalActual]) bdGlobal[fechaActualStr][sucursalActual] = { pacientes: [], docsStatus: {} }; }
-        function cambiarFecha() { fechaActualStr = document.getElementById('fecha-global').value; inicializarDiaYSucursal(); actualizarUI(); }
+        function cambiarFecha() { fechaActualStr = document.getElementById('fecha-global').value; inicializarDiaYSucursal(); if (rolActual !== '') actualizarUI(); }
 
         function iniciarSesion() {
             const acceso = document.getElementById('selector-acceso').value;
@@ -407,7 +418,7 @@
             actualizarUI();
         }
 
-        function cerrarSesion() { document.getElementById('pantalla-login').classList.remove('hidden'); document.getElementById('sidebar').classList.add('hidden'); document.getElementById('contenido-principal').classList.add('hidden'); }
+        function cerrarSesion() { rolActual = ''; sucursalActual = ''; document.getElementById('pantalla-login').classList.remove('hidden'); document.getElementById('sidebar').classList.add('hidden'); document.getElementById('contenido-principal').classList.add('hidden'); }
 
         function mostrarVista(idVista, btnElement) {
             ['vista-admin', 'vista-admin-directorio', 'vista-admin-detalle', 'vista-registro', 'vista-carga', 'vista-analisis-libre'].forEach(id => document.getElementById(id).classList.add('hidden'));
@@ -420,6 +431,9 @@
         }
 
         function actualizarUI() {
+            // SEGURO ADICIONAL
+            if (!rolActual) return;
+            
             if (rolActual === 'admin') {
                 actualizarDashboardAdmin(); if (!document.getElementById('vista-admin-detalle').classList.contains('hidden')) generarVistaDetalleAdmin();
             } else {
@@ -443,10 +457,9 @@
 
         function cerrarModal(idModal) { document.getElementById(idModal).classList.add('hidden'); docKeyActivo = ''; document.getElementById('input-nota').value = ''; }
 
-        // --- FUNCIONES MATEMÁTICAS / ESTADÍSTICAS ---
         function calcularEstadisticasSucursal(dataSucursal) {
             let req = 0, subidos = 0, aprobados = 0, estudios = 0, docKeysRequeridos = []; let countElectro = 0, countHistoria = 0, countEspiro = 0, countAudio = 0;
-            if(!dataSucursal || dataSucursal.pacientes.length === 0) return { req, subidos, aprobados, docKeysRequeridos, estudios };
+            if(!dataSucursal || !dataSucursal.pacientes || dataSucursal.pacientes.length === 0) return { req, subidos, aprobados, docKeysRequeridos, estudios };
             dataSucursal.pacientes.forEach(p => { estudios += p.estudios.length; p.estudios.forEach(est => {
                 if (est === 'Electrocardiograma') { docKeysRequeridos.push({ key: `doc-${p.id}-Electro`, tipo: 'Electrocardiograma', nombre: p.nombre, desc: 'Trazo individual (PDF/JPG)' }); countElectro++; } 
                 else if (est === 'Historia Clínica') { docKeysRequeridos.push({ key: `doc-${p.id}-Historia`, tipo: 'Historia Clínica', nombre: p.nombre, desc: 'Historia individual' }); countHistoria++; } 
@@ -467,7 +480,6 @@
         function ordenarDocumentos(docs, tipoFiltro) { if (tipoFiltro === 'paciente') return docs.sort((a, b) => a.nombre.localeCompare(b.nombre)); else if (tipoFiltro === 'estudio') return docs.sort((a, b) => a.tipo.localeCompare(b.tipo)); return docs; }
         function actualizarEstadisticasLocales(sucursal, prefixTarget) { const data = bdGlobal[fechaActualStr]?.[sucursal]; const stats = calcularEstadisticasSucursal(data); document.getElementById(`${prefixTarget}-estudios`).textContent = stats.estudios; document.getElementById(`${prefixTarget}-carga`).textContent = `${stats.req > 0 ? Math.round((stats.subidos / stats.req) * 100) : 0}%`; document.getElementById(`${prefixTarget}-ia`).textContent = `${stats.req > 0 ? Math.round((stats.aprobados / stats.req) * 100) : 0}%`; }
 
-        // --- SISTEMA BASE (CHAT Y ESTADOS) ---
         function obtenerTargetSucursal() { return rolActual === 'admin' ? sucursalAuditada : sucursalActual; }
         function asegurarEstructuraDoc(docKey) { const data = bdGlobal[fechaActualStr][obtenerTargetSucursal()]; if (!data.docsStatus[docKey]) data.docsStatus[docKey] = { estado: 'pendiente', notas: [], horaSubida: null, vistosAdmin: 0, vistosSucursal: 0, checklist: [] }; return data.docsStatus[docKey]; }
         function abrirModalNotas(docKey, titulo) { docKeyActivo = docKey; const statusObj = asegurarEstructuraDoc(docKey); if (rolActual === 'admin') statusObj.vistosAdmin = statusObj.notas.length; else statusObj.vistosSucursal = statusObj.notas.length; document.getElementById('modal-titulo').textContent = `Chat: ${titulo}`; document.getElementById('modal-notas').classList.remove('hidden'); renderizarChat(); actualizarUI(); }
@@ -482,8 +494,16 @@
         
         function agregarPaciente() { const input = document.getElementById('nombrePaciente'); const cbs = document.querySelectorAll('.estudio-cb:checked'); if (input.value.trim() === '' || cbs.length === 0) { alert('Ingresa nombre y selecciona al menos un estudio.'); return; } bdGlobal[fechaActualStr][sucursalActual].pacientes.push({ id: Date.now(), nombre: input.value.trim(), estudios: Array.from(cbs).map(cb => cb.value) }); input.value = ''; cbs.forEach(cb => cb.checked = false); actualizarUI(); }
         function eliminarPaciente(id) { bdGlobal[fechaActualStr][sucursalActual].pacientes = bdGlobal[fechaActualStr][sucursalActual].pacientes.filter(p => p.id !== id); actualizarUI(); }
-        function actualizarListaPacientes() { const ul = document.getElementById('listaPacientes'); ul.innerHTML = ''; const pacs = bdGlobal[fechaActualStr][sucursalActual].pacientes; document.getElementById('contador-pacientes').textContent = pacs.length; pacs.forEach(p => { const li = document.createElement('li'); li.className = 'bg-gray-50 p-3 rounded flex justify-between items-center border border-gray-100'; li.innerHTML = `<div><strong class="text-gray-700">${p.nombre}</strong><br><span class="text-xs text-gray-500 font-medium">${p.estudios.join(', ')}</span></div><button onclick="eliminarPaciente(${p.id})" class="text-red-400 hover:text-red-600 font-bold text-xs p-2">Borrar</button>`; ul.appendChild(li); }); }
-        function generarCajasDeCarga() { const contenedor = document.getElementById('contenedorArchivos'); contenedor.innerHTML = ''; const stats = calcularEstadisticasSucursal(bdGlobal[fechaActualStr][sucursalActual]); if (stats.req === 0) { contenedor.innerHTML = '<div class="text-center text-gray-400 mt-10 italic border-2 border-dashed p-8 rounded">Registra pacientes primero.</div>'; return; } const documentosOrdenados = ordenarDocumentos(stats.docKeysRequeridos, document.getElementById('filtro-sucursal').value); documentosOrdenados.forEach(item => { renderizarCajaDocumento(item, contenedor, true); }); }
+        function actualizarListaPacientes() { 
+            const ul = document.getElementById('listaPacientes'); ul.innerHTML = ''; 
+            if (!sucursalActual || !bdGlobal[fechaActualStr] || !bdGlobal[fechaActualStr][sucursalActual]) return;
+            const pacs = bdGlobal[fechaActualStr][sucursalActual].pacientes; document.getElementById('contador-pacientes').textContent = pacs.length; pacs.forEach(p => { const li = document.createElement('li'); li.className = 'bg-gray-50 p-3 rounded flex justify-between items-center border border-gray-100'; li.innerHTML = `<div><strong class="text-gray-700">${p.nombre}</strong><br><span class="text-xs text-gray-500 font-medium">${p.estudios.join(', ')}</span></div><button onclick="eliminarPaciente(${p.id})" class="text-red-400 hover:text-red-600 font-bold text-xs p-2">Borrar</button>`; ul.appendChild(li); }); 
+        }
+        function generarCajasDeCarga() { 
+            const contenedor = document.getElementById('contenedorArchivos'); contenedor.innerHTML = ''; 
+            if (!sucursalActual || !bdGlobal[fechaActualStr] || !bdGlobal[fechaActualStr][sucursalActual]) return;
+            const stats = calcularEstadisticasSucursal(bdGlobal[fechaActualStr][sucursalActual]); if (stats.req === 0) { contenedor.innerHTML = '<div class="text-center text-gray-400 mt-10 italic border-2 border-dashed p-8 rounded">Registra pacientes primero.</div>'; return; } const documentosOrdenados = ordenarDocumentos(stats.docKeysRequeridos, document.getElementById('filtro-sucursal').value); documentosOrdenados.forEach(item => { renderizarCajaDocumento(item, contenedor, true); }); 
+        }
 
         function renderizarCajaDocumento(item, contenedor, interactivo) {
             const statusObj = asegurarEstructuraDoc(item.key); const esAcumulado = item.key.startsWith('acumulado-'); const box = document.createElement('div'); box.className = `${esAcumulado ? 'border-lapiOrange border-2 bg-lapiLight' : 'border-gray-200 border bg-white'} p-4 rounded-lg flex flex-col md:flex-row justify-between items-center shadow-sm mb-3`;
@@ -511,7 +531,7 @@
             else if (accion === 'analizar') {
                 statusObj.estado = 'analizando'; actualizarUI();
                 setTimeout(() => {
-                    const aprobado = Math.random() > 0.6; // Simulación para los demás documentos
+                    const aprobado = Math.random() > 0.6; 
                     statusObj.checklist = [{ texto: 'Simulación base completada', pass: aprobado }];
                     if (aprobado) statusObj.estado = 'aprobado'; else { statusObj.estado = 'rechazado'; statusObj.notas.push({ autor: 'LAP.IA', texto: `Rechazo de simulación. Consulta los detalles.` }); }
                     actualizarUI();
