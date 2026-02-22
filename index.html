@@ -224,43 +224,8 @@
     </main>
 
     <script>
-        // ==============================================================================
-        // CONFIGURACIÓN DE IA Y API
-        // ==============================================================================
-        const API_KEY = 'AIzaSyBBr8qAplG48x9GyEAER9cXPXtXAHWvPjg';
-        let pdfBase64Actual = null;
+       let pdfBase64Actual = null;
 
-        const PROMPT_HISTORIA_CLINICA = `
-        Eres un auditor médico experto de LAP.IA. Analiza estrictamente la Historia Clínica Ocupacional adjunta en PDF. 
-        Evalúa las siguientes 5 categorías de reglas. 
-        
-        REGLAS DE EVALUACIÓN:
-        1. "1. Integridad Demográfica y Administrativa": Domicilio completo (calle, número, colonia, localidad, municipio, estado, CP). Contacto de emergencia completo (nombre, dirección, parentesco, celular/teléfono). Afiliación IMSS, RFC y CURP presentes. Grupo étnico y discapacidad respondidos.
-        2. "2. Historial y Riesgos Laborales": Tabla de empleos en orden cronológico inverso. Cantidad de empleos coincide con la pregunta 1. Si hay riesgos físicos/químicos/etc. (Sí), debe especificar años, horas y EPP. Recuadro de observaciones debe tener texto (mínimo "Ninguna").
-        3. "3. Antecedentes Patológicos y Hábitos": Si fuma/toma/drogas, deben estar llenos los detalles (cantidades/edades). Si tuvo cirugía/enfermedad/fractura, el recuadro final de "Observaciones del examinador" DEBE contener el detalle explicativo referenciando el número de pregunta (ej. "25. Apendicectomía..."). Tabla de vacunación con todas las celdas llenas. Detalle de tatuajes (tipo, color, tamaño, ubicación).
-        4. "4. Congruencia Clínica (Cross-Validation)": Verifica discrepancias. Si reporta "Alteración de la Visión" en Interrogatorio o "Ametropía" en agudeza visual, la Exploración Física de "Ojos" (4) NO puede decir "Sin datos patológicos". Si reporta Adoncia/Caries (51), Exploración "Boca-Faringe" (7) NO puede decir "Sin datos".
-        5. "5. Exploración Física y Cierre": Apartados del 1 al 30 de exploración deben tener respuesta. Actitud, Orientación, Atención, Memoria deben estar respondidos. Firmas del paciente y médico presentes.
-
-        Si todo en una categoría se cumple, pass: true y el comentario debe ser breve (ej. "Validado correctamente").
-        Si falla, pass: false y especifica la falla exacta (ej. "Falta código postal" o "Incongruencia en apartado de visión").
-        
-        DEVUELVE ÚNICAMENTE un objeto JSON estricto con esta estructura, sin bloques de código markdown:
-        {
-          "aprobadoGeneral": true,
-          "motivoPrincipal": "Resumen de la falla principal o 'Documento óptimo'",
-          "checklist": [
-            { "categoria": "1. Integridad Demográfica y Administrativa", "pass": true, "comentario": "..." },
-            { "categoria": "2. Historial y Riesgos Laborales", "pass": true, "comentario": "..." },
-            { "categoria": "3. Antecedentes Patológicos y Hábitos", "pass": true, "comentario": "..." },
-            { "categoria": "4. Congruencia Clínica (Cross-Validation)", "pass": true, "comentario": "..." },
-            { "categoria": "5. Exploración Física y Cierre", "pass": true, "comentario": "..." }
-          ]
-        }
-        `;
-
-        // ==============================================================================
-        // LÓGICA DEL LABORATORIO CON CONEXIÓN MEJORADA A GEMINI 2.0 FLASH
-        // ==============================================================================
         
         function procesarPDFLocal(event) {
             const file = event.target.files[0];
@@ -281,7 +246,7 @@
                 alert("Por favor, selecciona un archivo PDF válido.");
             }
         }
-
+        
         async function llamarAGeminiAPI() {
             if (!pdfBase64Actual) return;
             
@@ -294,60 +259,42 @@
             btn.innerHTML = `<div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div> Analizando PDF...`;
             badge.className = "bg-orange-100 text-lapiOrange text-xs font-bold px-3 py-1 rounded-full border border-orange-200 animate-pulse";
             badge.textContent = "🧠 IA Leyendo Documento...";
-            panel.innerHTML = `<div class="w-full h-full flex flex-col items-center justify-center space-y-4"><div class="w-10 h-10 border-4 border-lapiOrange border-t-transparent rounded-full animate-spin"></div><p class="text-gray-500 font-bold animate-pulse text-center">Extrayendo texto y cruzando congruencias clínicas...<br><span class="text-xs font-normal">Esto toma de 5 a 15 segundos</span></p></div>`;
-
-            const requestBody = {
-                contents: [{
-                    parts: [
-                        { text: PROMPT_HISTORIA_CLINICA },
-                        { inline_data: { mime_type: "application/pdf", data: pdfBase64Actual } }
-                    ]
-                }],
-                generationConfig: {
-                    response_mime_type: "application/json" 
-                }
-            };
+            panel.innerHTML = `<div class="w-full h-full flex flex-col items-center justify-center space-y-4"><div class="w-10 h-10 border-4 border-lapiOrange border-t-transparent rounded-full animate-spin"></div><p class="text-gray-500 font-bold animate-pulse text-center">Enviando a servidor seguro...<br><span class="text-xs font-normal">Esto toma de 5 a 15 segundos</span></p></div>`;
 
             try {
-                // ACTUALIZACIÓN DE SEGURIDAD: Conexión al modelo estable Gemini 2.0 Flash
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`, {
+                // NUEVA RUTA: Llamamos a nuestro propio backend en Netlify
+                const response = await fetch('/.netlify/functions/analizarDocumento', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(requestBody)
+                    body: JSON.stringify({ 
+                        pdfBase64: pdfBase64Actual,
+                        tipoDocumento: tipo
+                    })
                 });
 
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error("Detalle del error de Google API:", errorText);
-                    throw new Error(`Código de Error de Google: ${response.status}`);
+                    throw new Error(`Error del servidor: ${response.status}`);
                 }
 
-                const data = await response.json();
+                // Recibimos el JSON procesado por nuestro backend
+                const resultadoIA = await response.json();
                 
-                if (!data.candidates || data.candidates.length === 0) {
-                    throw new Error("Respuesta vacía de la API");
-                }
+                if(resultadoIA.error) throw new Error(resultadoIA.error);
 
-                let textoJSON = data.candidates[0].content.parts[0].text;
-                
-                // Limpieza de formato por si la IA añade markdown no deseado
-                textoJSON = textoJSON.replace(/```json/g, '').replace(/```/g, '').trim();
-                
-                const resultadoIA = JSON.parse(textoJSON);
                 mostrarResultadosAPI(resultadoIA, tipo);
 
             } catch (error) {
                 console.error("Error completo:", error);
                 badge.className = "bg-red-100 text-red-700 text-xs font-bold px-3 py-1 rounded-full";
                 badge.textContent = "Error de Conexión";
-                panel.innerHTML = `<div class="text-center w-full"><p class="text-red-500 text-sm font-bold mb-2">Ocurrió un error al contactar a la IA.</p><p class="text-xs text-gray-500 max-w-sm mx-auto mb-4">Revisa la consola (F12) para ver los detalles técnicos.<br>Motivo: ${error.message}</p><button onclick="resetLibre()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm font-bold hover:bg-gray-300">↻ Intentar de nuevo</button></div>`;
+                panel.innerHTML = `<div class="text-center w-full"><p class="text-red-500 text-sm font-bold mb-2">Error de comunicación.</p><p class="text-xs text-gray-500 max-w-sm mx-auto mb-4">Motivo: ${error.message}</p><button onclick="resetLibre()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm font-bold hover:bg-gray-300">↻ Intentar de nuevo</button></div>`;
             } finally {
                 btn.innerHTML = `✨ Ejecutar LAP.IA`;
                 btn.disabled = false;
                 btn.classList.remove('opacity-50', 'cursor-not-allowed');
             }
         }
-
+        
         function mostrarResultadosAPI(resultado, tipo) {
             const badge = document.getElementById('libre-status');
             const panel = document.getElementById('libre-resultados');
