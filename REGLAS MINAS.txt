@@ -1,0 +1,240 @@
+REGLAS DE MINAS POR SECCIONES
+
+
+SECCIÓN DE IDENTIFICACIÓN
+-Folio: se verifica coincida con el registrado en expediente 
+-El nombre debe coincidir con el registrado en expediente
+
+-NO REQUIERE VERIFICACIÓN YA QUE LA PLATAFORMA OBLIGA A LLENAR ESA INFORMACIÓN: 
+ Nombre
+ Nacionalidad
+ Originario de
+ Empresa 
+ Puesto 
+ Departamento 
+ Estado civil  
+ Religión 
+ Escolaridad y si fue completada o no
+ Grupo sanguineo y factor RH 
+ Acepta o no transfusiones
+
+-REQUIERE VERIFICACIÓN. SE DEBE VERIFICAR QUE CADA DATO TODO SIEMPRE DEBE ESTAR CONTESTADO: 
+ Grupo étnico 
+ Se considera o no con alguna discapacidad
+ Domicilio particular (nombre de calle, el # ext, # int, colonia, localidad, municipio, estado, C.P TODO siempre contestado)  
+ Telefono de casa
+ Telefono celular
+ Número de afiliación de IMSS
+ RFC 
+ CURP 
+ Contacto de emergencia (Nombre, dirección, parentesco, telefono de casa, celular)
+
+
+SECCIÓN ANTECEDENTES LABORALES
+1. NO REQUIERE VERIFICACIÓN. 
+2. REQUIERE VERIFICACIÓN: DEBE SER UNA ANTIGÜEDAD (AÑOS O AÑOS CON MESES)
+3. REQUIERE VERIFICACIÓN: 
+-LOS REGISTROS DEBEN ESTAR ORDENADOS CRONOLÓGICAMENTE, DEL MÁS RECIENTE AL MÁS ANTIGÜO, SE VERIFICA CON LA COLUMNA DE F.INGRESO, EN LA COLUMNA DE FUNCIÓN PRINCIPAL SE VERIFICA INCLUYA AL MENOS UN FACTOR DE RIESGO POR REGISTRO (QUÍMICOS, BIOLÓGICOS, ERGONÓMICOS, PSICOSOCIAL)
+
+A. FÍSICOS. 
+ SE SELECCIONA NO: NO REQUIERE VERIFICACIÓN
+ SE SELECCIONA SI: REQUIERE VERIFICACIÓN DE CADA AGENTE QUE INCLUYA INFORMACIÓN. Cada tipo de agente tiene detalles que debe incluir obligatoriamente
+
+-Ruido: Siempre debe incluir:
+ continuo o intermitente
+ fuente
+ frecuencia de exposición
+ espacio abierto o cerrado
+ con uso o sin uso de barrera acústica
+ con o sin uso de EPP y tipo utilizado
+
+-Vibración: Siempre debe incluir
+ fuente
+ región anatómica a la que es transmitida la vibración
+ con o sin uso de EPP y tipo utilizado
+
+-Radiación:
+ tipo ionizante o no ionizante
+ área donde se expone 
+ frecuencia y período de duración de exposición 
+ con o sin uso de EPP y tipo utilizado
+
+-Iluminación: 
+ tipo
+ fuente
+ con o sin uso de EPP y tipo utilizado
+
+-Temperaturas elevadas o abatidas
+ fuente
+ grados ºC
+ espacio abierto o cerrado
+ ventilación natural o mecánica
+ puesto fijo o rotatorio
+ con o sin uso de EPP y tipo utilizado
+
+-Trabajos en altura
+ altura en m
+ espacio abierto o cerrado
+ barandales o línea de vida
+ EPP y tipo utilizado
+
+-Espacios Confinados
+ tipo 
+ con o sin riesgo atmosférico y tipo de gas o gases
+ con o sin uso de EPP y tipo utilizado
+
+B. QUÍMICOS. 
+ SE SELECCIONA NO: REQUIERE VERIFICACIÓN DE LA LEYENDA "Niega exposición a SILICE, MONOXIDO DE CARBONO, CIANURO DE HIDROGENO, PLOMO, ESTIRENO, TOLUENO, ETILO BENCENO, XILENO." Misma que se encontrará en la parte final de la sección, en el cuadro de "Observaciones del examinador"
+ SE SELECCIONA SI: REQUIERE VERIFICACIÓN DE CADA AGENTE QUE INCLUYA INFORMACIÓN. Cada tipo de agente tiene detalles que debe incluir obligatoriamente
+
+-Polvo
+ tipo
+ vía de exposición
+ etapa del proceso en la que se expone
+ espacio abierto o cerrado
+ ventilación natural o mecánica
+ etapa del proceso en la que se expone
+ con o sin uso de EPP y tipo utilizado
+
+-Humo
+ tipo
+ vía de exposición
+ etapa del proceso en la que se expone
+ espacio abierto o cerrado
+ ventilación natural o mecánica
+ etapa del proceso en la que se expone
+ con o sin uso de EPP y tipo utilizado
+
+-Gases - Vapores
+ tipo
+ vía de exposición
+ etapa del proceso en la que se expone
+ espacio abierto o cerrado
+ ventilación natural o mecánica
+ etapa del proceso en la que se expone
+ con o sin uso de EPP y tipo utilizado
+
+-Plaguicidas
+ tipo
+ vía de exposición
+ etapa del proceso en la que se expone
+ espacio abierto o cerrado
+ ventilación natural o mecánica
+ etapa del proceso en la que se expone
+ con o sin uso de EPP y tipo utilizado
+
+-Sustancias químicas
+ tipo
+ vía de exposición
+ etapa del proceso en la que se expone
+ espacio abierto o cerrado
+ ventilación natural o mecánica
+ etapa del proceso en la que se expone
+ con o sin uso de EPP y tipo utilizado
+
+C. BIOLÓGICOS. NO REQUIERE DE VERIFICACIÓN
+
+D. ERGONÓMICOS
+ SE SELECCIONA NO: NO REQUIERE VERIFICACIÓN
+ SE SELECCIONA SI: REQUIERE VERIFICACIÓN DE CADA AGENTE QUE INCLUYA INFORMACIÓN. Cada tipo de agente tiene detalles que debe incluir obligatoriamente
+
+-Levantamiento carga
+ tipo de manejo: traslado, empuje, arrastre o levantamiento
+ tipo de objeto/s
+ peso aproximado
+ con o sin asas o puntos de agarre
+ distancia de transporte en metros
+ con o sin uso de EPP y tipo utilizado
+
+-Movimiento de repetición
+ segmento corporal utilizado
+ tipo de movimiento
+ con o sin aplicación de fuerza
+ con o sin uso de herramientas mecánicas
+ con o sin descansos durante la jornada laboral, cuántos y de cuánto tiempo
+
+-Sobrecarga postural
+ tipo de postura
+ continua o intermitente
+ rota o no de actividades durante la jornada
+ puede o no cambiar de postura libremente
+
+E. PSICOSOCIAL. NO REQUIERE DE VERIFICACIÓN
+
+
+SECCIÓN DE RIESGOS LABORALES
+4.SE SELECCIONA NO: NO REQUIERE VERIFICACIÓN
+  SE SELECCIONA SI: SE DESGLOSA INFORMACIÓN. REQUIERE VERIFICACIÓN DE QUE CADA UNO DE LOS DATOS SIEMPRE DEBE ESTAR CONTESTADO: 
+  Empresa:
+  Causa:
+  Días incapacidad:
+  ¿Cuándo?
+  ¿Qué le pasó?
+  ¿Secuelas?
+  ¿Concluyó el proceso?
+
+5.SE SELECCIONA NO: NO REQUIERE VERIFICACIÓN
+  SE SELECCIONA SI: SE DESGLOSA INFORMACIÓN. REQUIERE VERIFICACIÓN DE QUE CADA UNO DE LOS DATOS SIEMPRE DEBE ESTAR CONTESTADO: 
+  Empresa:
+  Causa:
+  Días incapacidad:
+  ¿Cuándo?
+  ¿Qué le pasó?
+  ¿Secuelas?
+  ¿Concluyó el proceso?
+
+6.NO REQUIERE VERIFICACIÓN
+  
+7.NO REQUIERE VERIFICACIÓN
+
+8.NO REQUIERE VERIFICACIÓN
+
+9.NO REQUIERE VERIFICACIÓN  
+
+10.NO REQUIERE VERIFICACIÓN
+
+11.NO REQUIERE VERIFICACIÓN
+
+CAJA DE OBSERVACIONES DEL EXAMINADOR
+SÓLO CUANDO EN AGENTES QUÍMICOS (B) SE SELECCIONA "NO": REQUIERE VERIFICACIÓN DE QUE SE ENCUENTRE LA LEYENDA: "Niega exposición a SILICE, MONOXIDO DE CARBONO, CIANURO DE HIDROGENO, PLOMO, ESTIRENO, TOLUENO, ETILO BENCENO, XILENO."
+
+
+SECCIÓN ANTECEDENTES HEREDO FAMILIARES
+12.NO REQUIERE VERIFICACIÓN
+
+13.NO EXISTE
+
+14.NO REQUIERE VERIFICACIÓN
+
+
+SECCIÓN ANTECEDENTES HÁBITOS Y COSTUMBRES DE VIDA
+15.NO REQUIERE VERIFICACIÓN
+
+16.NO REQUIERE VERIFICACIÓN
+
+17.NO REQUIERE VERIFICACIÓN
+
+18.NO EXISTE
+
+19.NO REQUIERE VERIFICACIÓN
+
+20.SÓLO SALE SI EN LA 19 SE CONTESTÓ QUE SI, NO REQUIERE VERIFICACIÓN
+
+21.SE SELECCIONA NO: NO REQUIERE VERIFICACIÓN
+   SE SELECCIONA SI: SE DESGLOSA "¿CUÁLES?" REQUIERE VERIFICACIÓN debe incluir obligatoriamente
+   Tipo de mascota
+   Cantidad por tipo de mascota
+   Intra o extradomiciliarias
+   Se encuentran o no vacunados y desparasitados
+
+
+22.NO REQUIERE VERIFICACIÓN
+
+
+SECCIÓN ANTECEDENTS PERSONALES PATOLÓGICOS
+23. 
+
+
+
+
+
