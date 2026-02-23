@@ -66,14 +66,21 @@
 
     <aside id="sidebar" class="hidden w-64 bg-gray-900 text-white flex-col shadow-lg z-40">
         <div class="p-5 border-b border-gray-800">
-            <h2 class="text-2xl font-extrabold tracking-tight">LAP<span class="text-lapiOrange">.IA</span></h2>
+            <h2 class="text-2xl font-extrabold tracking-tight cursor-pointer" onclick="mostrarVista('vista-inicio', document.getElementById('btn-nav-inicio'))">LAP<span class="text-lapiOrange">.IA</span></h2>
             <p id="usuario-actual" class="text-xs text-gray-400 mt-1">Usuario</p>
         </div>
         <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+            <button onclick="mostrarVista('vista-inicio', this)" id="btn-nav-inicio" class="w-full text-left p-3 rounded hover:bg-gray-800 transition font-medium flex items-center bg-gray-800 border-l-4 border-lapiOrange">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg> Inicio
+            </button>
+            
             <button onclick="mostrarVista('vista-admin', this)" id="btn-nav-admin" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium">Panel de Red</button>
             <button onclick="mostrarVista('vista-admin-directorio', this)" id="btn-nav-directorio" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium flex justify-between items-center">Directorio ➔</button>
+            <button onclick="mostrarVista('vista-minas', this)" id="btn-nav-minas" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium text-yellow-500">Módulo MINAS ⛏️</button>
+            
             <button onclick="mostrarVista('vista-registro', this)" id="btn-nav-registro" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium">Registro de Estudios</button>
             <button onclick="mostrarVista('vista-carga', this)" id="btn-nav-carga" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium">Módulo Documental</button>
+            
             <div class="pt-4 mt-2 border-t border-gray-800">
                 <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-2 font-bold px-2">Herramientas IA</p>
                 <button onclick="mostrarVista('vista-analisis-libre', this)" id="btn-nav-libre" class="w-full text-left p-3 rounded hover:bg-gray-800 transition font-medium flex items-center">
@@ -86,7 +93,7 @@
     </aside>
 
     <main id="contenido-principal" class="hidden flex-1 flex flex-col overflow-y-auto bg-gray-50">
-        <header class="bg-white shadow-sm p-4 flex justify-between items-center z-10">
+        <header class="bg-white shadow-sm p-4 flex justify-between items-center z-10 sticky top-0">
             <h2 id="titulo-vista" class="text-xl font-bold text-gray-700">Cargando...</h2>
             <div class="flex items-center space-x-3 bg-gray-100 p-2 rounded-lg border border-gray-200">
                 <label class="text-sm font-bold text-gray-500">Día operativo:</label>
@@ -94,8 +101,17 @@
             </div>
         </header>
 
-        <div class="p-6 h-full">
+        <div class="p-6 h-full relative">
             
+            <section id="vista-inicio" class="hidden flex-col items-center justify-center min-h-[80%] fade-in">
+                <div class="text-center mb-10">
+                    <h2 class="text-4xl font-extrabold text-gray-800 mb-2">Bienvenido a <span class="text-lapiOrange">LAP.IA</span></h2>
+                    <p class="text-gray-500">Selecciona el módulo con el que deseas trabajar hoy.</p>
+                </div>
+                <div id="grid-inicio" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-5xl">
+                    </div>
+            </section>
+
             <section id="vista-admin" class="hidden space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div class="bg-white p-4 rounded-lg shadow-sm border-l-4 border-blue-500"><p class="text-sm text-gray-500 font-medium">Estudios Totales (Red)</p><p id="admin-totales" class="text-3xl font-bold text-gray-800">0</p></div>
@@ -139,6 +155,52 @@
                         <select id="filtro-admin" onchange="generarVistaDetalleAdmin()" class="border border-gray-300 text-sm rounded p-1 text-gray-600 focus:ring-lapiOrange outline-none"><option value="registro">Ordenar por: Registro</option><option value="paciente">Ordenar por: Paciente</option><option value="estudio">Ordenar por: Tipo de Estudio</option></select>
                     </div>
                     <div id="contenedorDetalleAdmin" class="flex-1 overflow-y-auto space-y-3 pr-2"></div>
+                </div>
+            </section>
+
+            <section id="vista-minas" class="hidden h-full flex flex-col lg:flex-row gap-6">
+                <div class="bg-white p-6 rounded-lg shadow-sm w-full lg:w-1/3 border-t-4 border-yellow-500 flex flex-col h-full">
+                    <div>
+                        <h3 class="font-bold text-gray-800 text-xl mb-1 flex items-center"><span class="mr-2 text-2xl">⛏️</span> Registro MINAS</h3>
+                        <p class="text-xs text-gray-500 mb-6">Alta de pacientes para expedientes integrales.</p>
+                    </div>
+                    
+                    <div class="space-y-4 flex-1 overflow-y-auto">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Nombre del Paciente</label>
+                            <input type="text" id="nombrePacienteMinas" class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500 outline-none" placeholder="Ej. Juan Pérez">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Estudios Exclusivos (MINAS):</label>
+                            <div class="flex flex-col gap-2">
+                                <label class="flex items-center space-x-3 p-3 border rounded-lg hover:bg-yellow-50 cursor-pointer transition">
+                                    <input type="checkbox" value="Historia Clínica" class="cb-minas text-yellow-500 h-5 w-5 rounded">
+                                    <span class="text-sm font-bold text-gray-700">Historia Clínica</span>
+                                </label>
+                                <label class="flex items-center space-x-3 p-3 border rounded-lg hover:bg-yellow-50 cursor-pointer transition">
+                                    <input type="checkbox" value="Espirometría" class="cb-minas text-yellow-500 h-5 w-5 rounded">
+                                    <span class="text-sm font-bold text-gray-700">Espirometría</span>
+                                </label>
+                                <label class="flex items-center space-x-3 p-3 border rounded-lg hover:bg-yellow-50 cursor-pointer transition">
+                                    <input type="checkbox" value="Audiometría" class="cb-minas text-yellow-500 h-5 w-5 rounded">
+                                    <span class="text-sm font-bold text-gray-700">Audiometría</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="agregarPacienteMinas()" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 mt-4 rounded shadow-md transition">
+                        + Crear Expediente MINAS
+                    </button>
+                </div>
+                
+                <div class="bg-white p-6 rounded-lg shadow-sm w-full lg:w-2/3 flex flex-col border-t border-gray-200">
+                    <div class="flex justify-between items-center mb-4 border-b pb-2">
+                        <h3 class="font-bold text-gray-700 text-lg">Expedientes MINAS del Día</h3>
+                        <span id="contador-minas" class="bg-gray-100 text-gray-600 text-xs font-bold px-3 py-1 rounded-full border">0 Expedientes</span>
+                    </div>
+                    <div id="contenedorExpedientesMinas" class="flex-1 overflow-y-auto space-y-6 pr-2">
+                        <p class="text-center text-gray-400 mt-10 italic">Añade pacientes para gestionar sus expedientes integrales.</p>
+                    </div>
                 </div>
             </section>
 
@@ -224,8 +286,10 @@
     </main>
 
     <script>
-       let pdfBase64Actual = null;
-
+        // ==============================================================================
+        // CONFIGURACIÓN DE IA Y API (Laboratorio)
+        // ==============================================================================
+        let pdfBase64Actual = null;
         
         function procesarPDFLocal(event) {
             const file = event.target.files[0];
@@ -236,7 +300,6 @@
                     document.getElementById('libre-icono-subida').textContent = '📄';
                     document.getElementById('libre-texto-subida').textContent = file.name;
                     document.getElementById('libre-texto-subida').classList.add('text-lapiOrange');
-                    
                     const btn = document.getElementById('btn-libre-analizar');
                     btn.classList.remove('opacity-50', 'cursor-not-allowed');
                     btn.disabled = false;
@@ -249,7 +312,6 @@
         
         async function llamarAGeminiAPI() {
             if (!pdfBase64Actual) return;
-            
             const tipo = document.getElementById('libre-tipo').value;
             const btn = document.getElementById('btn-libre-analizar');
             const panel = document.getElementById('libre-resultados');
@@ -262,34 +324,23 @@
             panel.innerHTML = `<div class="w-full h-full flex flex-col items-center justify-center space-y-4"><div class="w-10 h-10 border-4 border-lapiOrange border-t-transparent rounded-full animate-spin"></div><p class="text-gray-500 font-bold animate-pulse text-center">Enviando a servidor seguro...<br><span class="text-xs font-normal">Esto puede tardar hasta 15 segundos</span></p></div>`;
 
             try {
-                // Llamamos a nuestro backend en Netlify
                 const response = await fetch('/.netlify/functions/analizarDocumento', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        pdfBase64: pdfBase64Actual,
-                        tipoDocumento: tipo
-                    })
+                    body: JSON.stringify({ pdfBase64: pdfBase64Actual, tipoDocumento: tipo })
                 });
 
-                // Extraemos el texto crudo de la respuesta del servidor primero
                 const responseText = await response.text();
-
                 if (!response.ok) {
-                    // Si el backend mandó nuestro JSON de error personalizado, lo intentamos leer
                     try {
                         const errorObj = JSON.parse(responseText);
                         throw new Error(errorObj.error || `Error 500 Interno`);
                     } catch(e) {
-                        // Si Netlify mandó un error general (como un Timeout), mostramos el texto
                         throw new Error(`Falla del servidor Netlify: ${responseText.substring(0, 100)}...`);
                     }
                 }
-
-                // Si todo salió bien, convertimos a JSON y mostramos
                 const resultadoIA = JSON.parse(responseText);
                 mostrarResultadosAPI(resultadoIA, tipo);
-
             } catch (error) {
                 console.error("Error capturado:", error);
                 badge.className = "bg-red-100 text-red-700 text-xs font-bold px-3 py-1 rounded-full";
@@ -305,37 +356,20 @@
         function mostrarResultadosAPI(resultado, tipo) {
             const badge = document.getElementById('libre-status');
             const panel = document.getElementById('libre-resultados');
-            
             badge.className = resultado.aprobadoGeneral ? "bg-green-100 text-green-700 text-xs font-bold px-3 py-1 rounded-full border border-green-300" : "bg-red-100 text-red-700 text-xs font-bold px-3 py-1 rounded-full border border-red-300";
             badge.textContent = resultado.aprobadoGeneral ? "✅ Aprobado por IA" : "❌ Rechazado por IA";
-            
             panel.className = "flex-1 overflow-y-auto bg-white p-0 border-none flex items-start justify-start";
             
             let htmlChecklist = `<div class="w-full"><h4 class="text-sm font-bold text-gray-600 mb-3 border-b pb-2">Reporte de Auditoría: <span class="text-lapiOrange">${tipo}</span></h4>`;
-            
-            if (!resultado.aprobadoGeneral) {
-                htmlChecklist += `<div class="bg-red-50 border-l-4 border-red-500 p-3 mb-4 rounded"><p class="text-xs text-red-700 font-bold">Falla Crítica Detectada:</p><p class="text-sm text-red-800">${resultado.motivoPrincipal}</p></div>`;
-            }
-
+            if (!resultado.aprobadoGeneral) htmlChecklist += `<div class="bg-red-50 border-l-4 border-red-500 p-3 mb-4 rounded"><p class="text-xs text-red-700 font-bold">Falla Crítica Detectada:</p><p class="text-sm text-red-800">${resultado.motivoPrincipal}</p></div>`;
             htmlChecklist += `<ul class="space-y-3">`;
-            
             resultado.checklist.forEach(item => {
                 const bgClass = item.pass ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200';
                 const icon = item.pass ? '✅' : '❌';
                 const titleColor = item.pass ? 'text-green-800' : 'text-red-800';
-                
-                htmlChecklist += `
-                    <li class="flex items-start p-3 rounded border ${bgClass}">
-                        <span class="mr-3 mt-0.5">${icon}</span>
-                        <div>
-                            <span class="text-sm font-bold ${titleColor} block">${item.categoria}</span>
-                            <span class="text-xs text-gray-600 mt-1 block">${item.comentario}</span>
-                        </div>
-                    </li>`;
+                htmlChecklist += `<li class="flex items-start p-3 rounded border ${bgClass}"><span class="mr-3 mt-0.5">${icon}</span><div><span class="text-sm font-bold ${titleColor} block">${item.categoria}</span><span class="text-xs text-gray-600 mt-1 block">${item.comentario}</span></div></li>`;
             });
-
             htmlChecklist += `</ul><div class="mt-6 p-4 bg-gray-50 rounded text-xs text-gray-500 text-center border border-gray-200"><button onclick="resetLibre()" class="text-lapiOrange hover:text-lapiDark font-bold transition">↻ Auditar un nuevo documento PDF</button></div></div>`;
-            
             panel.innerHTML = htmlChecklist;
         }
 
@@ -349,10 +383,11 @@
         }
 
         // ==============================================================================
-        // EL RESTO DEL CÓDIGO SE MANTIENE INTACTO Y PROTEGIDO DE ERRORES DE INICIO
+        // ESTRUCTURAS DE DATOS GLOBALES
         // ==============================================================================
         const SUCURSALES = ["Balbuena", "Hospital General", "Condesa", "Metepec", "Cuautitlán", "Lindavista", "Lomas Verdes", "Satélite", "Encuentro Fortuna", "Martín Carrera", "Santa Martha", "Plaza Central", "Santa Fe", "Interlomas", "Polanco", "City Shop Del Valle", "Miramontes", "Plateros", "Revolución", "Gabriel Mancera", "Calzada Del Hueso", "Gran Sur", "General Anaya", "Mixcoac", "Plaza San Jerónimo", "Amores"].sort(); 
-        let bdGlobal = {}; let fechaActualStr = ''; let sucursalActual = ''; let rolActual = ''; let sucursalAuditada = ''; let docKeyActivo = ''; 
+        let bdGlobal = {}; let bdMinas = {}; // NUEVO: Base de datos aislada para MINAS
+        let fechaActualStr = ''; let sucursalActual = ''; let rolActual = ''; let sucursalAuditada = ''; let docKeyActivo = ''; 
 
         window.onload = () => { 
             const selector = document.getElementById('selector-acceso'); SUCURSALES.forEach(sucursal => { const option = document.createElement('option'); option.value = sucursal; option.textContent = `📍 Sucursal - ${sucursal}`; selector.appendChild(option); }); 
@@ -360,39 +395,251 @@
             const inputFecha = document.getElementById('fecha-global'); inputFecha.valueAsDate = new Date(); fechaActualStr = inputFecha.value; 
         };
 
-        function inicializarDiaYSucursal() { if (!bdGlobal[fechaActualStr]) bdGlobal[fechaActualStr] = {}; if (sucursalActual !== 'admin' && sucursalActual !== '' && !bdGlobal[fechaActualStr][sucursalActual]) bdGlobal[fechaActualStr][sucursalActual] = { pacientes: [], docsStatus: {} }; }
+        function inicializarDiaYSucursal() { 
+            if (!bdGlobal[fechaActualStr]) bdGlobal[fechaActualStr] = {}; 
+            if (sucursalActual !== 'admin' && sucursalActual !== '' && !bdGlobal[fechaActualStr][sucursalActual]) bdGlobal[fechaActualStr][sucursalActual] = { pacientes: [], docsStatus: {} }; 
+            // NUEVO: Inicializar base de datos MINAS si no existe en la fecha
+            if (!bdMinas[fechaActualStr]) bdMinas[fechaActualStr] = { pacientes: [] };
+        }
+        
         function cambiarFecha() { fechaActualStr = document.getElementById('fecha-global').value; inicializarDiaYSucursal(); if (rolActual !== '') actualizarUI(); }
 
+        // ==============================================================================
+        // NAVEGACIÓN Y LAUNCHPAD
+        // ==============================================================================
         function iniciarSesion() {
             const acceso = document.getElementById('selector-acceso').value;
             rolActual = acceso === 'admin' ? 'admin' : 'sucursal'; sucursalActual = acceso === 'admin' ? '' : acceso;
             inicializarDiaYSucursal();
-            document.getElementById('pantalla-login').classList.add('hidden'); document.getElementById('sidebar').classList.remove('hidden'); document.getElementById('sidebar').classList.add('flex'); document.getElementById('contenido-principal').classList.remove('hidden');
+            
+            document.getElementById('pantalla-login').classList.add('hidden'); 
+            document.getElementById('sidebar').classList.remove('hidden'); document.getElementById('sidebar').classList.add('flex'); 
+            document.getElementById('contenido-principal').classList.remove('hidden');
             document.getElementById('usuario-actual').textContent = rolActual === 'admin' ? 'Administrador LAPI' : `${sucursalActual}`;
-            if (rolActual === 'admin') { ['btn-nav-admin', 'btn-nav-directorio'].forEach(id => document.getElementById(id).classList.remove('hidden')); ['btn-nav-registro', 'btn-nav-carga'].forEach(id => document.getElementById(id).classList.add('hidden')); mostrarVista('vista-admin', document.getElementById('btn-nav-admin')); } else { ['btn-nav-admin', 'btn-nav-directorio'].forEach(id => document.getElementById(id).classList.add('hidden')); ['btn-nav-registro', 'btn-nav-carga'].forEach(id => document.getElementById(id).classList.remove('hidden')); mostrarVista('vista-registro', document.getElementById('btn-nav-registro')); }
-            actualizarUI();
+            
+            if (rolActual === 'admin') { 
+                ['btn-nav-admin', 'btn-nav-directorio', 'btn-nav-minas'].forEach(id => document.getElementById(id).classList.remove('hidden')); 
+                ['btn-nav-registro', 'btn-nav-carga'].forEach(id => document.getElementById(id).classList.add('hidden')); 
+            } else { 
+                ['btn-nav-admin', 'btn-nav-directorio', 'btn-nav-minas'].forEach(id => document.getElementById(id).classList.add('hidden')); 
+                ['btn-nav-registro', 'btn-nav-carga'].forEach(id => document.getElementById(id).classList.remove('hidden')); 
+            }
+            
+            // LAUNCHPAD: En lugar de ir directo a un módulo, vamos al inicio
+            mostrarVista('vista-inicio', document.getElementById('btn-nav-inicio'));
         }
 
         function cerrarSesion() { rolActual = ''; sucursalActual = ''; document.getElementById('pantalla-login').classList.remove('hidden'); document.getElementById('sidebar').classList.add('hidden'); document.getElementById('contenido-principal').classList.add('hidden'); }
 
+        function renderizarInicio() {
+            const grid = document.getElementById('grid-inicio');
+            grid.innerHTML = '';
+            if (rolActual === 'admin') {
+                grid.innerHTML += `
+                    <div onclick="mostrarVista('vista-admin', document.getElementById('btn-nav-admin'))" class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg cursor-pointer transition border-t-4 border-blue-500">
+                        <div class="text-4xl mb-3">📊</div><h3 class="font-bold text-gray-800 text-lg">Panel de Red</h3><p class="text-sm text-gray-500">Auditoría global de sucursales</p>
+                    </div>
+                    <div onclick="mostrarVista('vista-minas', document.getElementById('btn-nav-minas'))" class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg cursor-pointer transition border-t-4 border-yellow-500">
+                        <div class="text-4xl mb-3">⛏️</div><h3 class="font-bold text-gray-800 text-lg">Módulo MINAS</h3><p class="text-sm text-gray-500">Expedientes integrales especiales</p>
+                    </div>
+                    <div onclick="mostrarVista('vista-analisis-libre', document.getElementById('btn-nav-libre'))" class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg cursor-pointer transition border-t-4 border-gray-800">
+                        <div class="text-4xl mb-3">🧠</div><h3 class="font-bold text-gray-800 text-lg">Laboratorio LAP.IA</h3><p class="text-sm text-gray-500">Auditoría de PDFs en vivo</p>
+                    </div>`;
+            } else {
+                grid.innerHTML += `
+                    <div onclick="mostrarVista('vista-registro', document.getElementById('btn-nav-registro'))" class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg cursor-pointer transition border-t-4 border-blue-500">
+                        <div class="text-4xl mb-3">📝</div><h3 class="font-bold text-gray-800 text-lg">Registro Diario</h3><p class="text-sm text-gray-500">Ingreso de pacientes</p>
+                    </div>
+                    <div onclick="mostrarVista('vista-carga', document.getElementById('btn-nav-carga'))" class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg cursor-pointer transition border-t-4 border-lapiOrange">
+                        <div class="text-4xl mb-3">📁</div><h3 class="font-bold text-gray-800 text-lg">Gestión Documental</h3><p class="text-sm text-gray-500">Carga y revisión inteligente</p>
+                    </div>
+                    <div onclick="mostrarVista('vista-analisis-libre', document.getElementById('btn-nav-libre'))" class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg cursor-pointer transition border-t-4 border-gray-800">
+                        <div class="text-4xl mb-3">🧠</div><h3 class="font-bold text-gray-800 text-lg">Laboratorio LAP.IA</h3><p class="text-sm text-gray-500">Análisis libre de documentos</p>
+                    </div>`;
+            }
+        }
+
         function mostrarVista(idVista, btnElement) {
-            ['vista-admin', 'vista-admin-directorio', 'vista-admin-detalle', 'vista-registro', 'vista-carga', 'vista-analisis-libre'].forEach(id => document.getElementById(id).classList.add('hidden'));
-            document.querySelectorAll('#sidebar nav button').forEach(b => b.classList.remove('bg-gray-800', 'border-l-4', 'border-lapiOrange'));
-            document.getElementById(idVista).classList.remove('hidden');
+            ['vista-inicio', 'vista-admin', 'vista-admin-directorio', 'vista-admin-detalle', 'vista-minas', 'vista-registro', 'vista-carga', 'vista-analisis-libre'].forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.classList.add('hidden');
+            });
+            document.querySelectorAll('#sidebar nav button').forEach(b => {
+                b.classList.remove('bg-gray-800', 'border-l-4', 'border-lapiOrange');
+            });
+            
+            const elementToShow = document.getElementById(idVista);
+            if(elementToShow) elementToShow.classList.remove('hidden');
+            
+            // Flex handling specifically for launchpad
+            if(idVista === 'vista-inicio') elementToShow.classList.add('flex');
+            else document.getElementById('vista-inicio').classList.remove('flex');
+
             if(btnElement) btnElement.classList.add('bg-gray-800', 'border-l-4', 'border-lapiOrange');
-            const titulos = { 'vista-admin': 'Panel de Control de Red LAP.IA', 'vista-admin-directorio': 'Directorio Operativo de Red', 'vista-admin-detalle': 'Auditoría Documental', 'vista-registro': `Registro - ${sucursalActual}`, 'vista-carga': `Análisis LAP.IA - ${sucursalActual}`, 'vista-analisis-libre': 'Laboratorio de Calidad LAP.IA' };
+            
+            const titulos = { 
+                'vista-inicio': 'Página Principal',
+                'vista-admin': 'Panel de Control de Red LAP.IA', 
+                'vista-admin-directorio': 'Directorio Operativo de Red', 
+                'vista-admin-detalle': 'Auditoría Documental', 
+                'vista-minas': 'Gestión de Expedientes MINAS',
+                'vista-registro': `Registro - ${sucursalActual}`, 
+                'vista-carga': `Análisis LAP.IA - ${sucursalActual}`, 
+                'vista-analisis-libre': 'Laboratorio de Calidad LAP.IA' 
+            };
             document.getElementById('titulo-vista').textContent = titulos[idVista];
+            
+            if(idVista === 'vista-inicio') renderizarInicio();
             actualizarUI();
         }
 
         function actualizarUI() {
-            if (!rolActual) return; // Evita que se ejecute antes de iniciar sesión
+            if (!rolActual) return;
             if (rolActual === 'admin') {
-                actualizarDashboardAdmin(); if (!document.getElementById('vista-admin-detalle').classList.contains('hidden')) generarVistaDetalleAdmin();
+                actualizarDashboardAdmin(); 
+                if (!document.getElementById('vista-admin-detalle').classList.contains('hidden')) generarVistaDetalleAdmin();
+                if (!document.getElementById('vista-minas').classList.contains('hidden')) renderizarExpedientesMinas();
             } else {
                 actualizarListaPacientes(); generarCajasDeCarga(); actualizarEstadisticasLocales(sucursalActual, 'sucursal');
             }
         }
+
+        // ==============================================================================
+        // NUEVO: LÓGICA MÓDULO MINAS (ADMINISTRADOR)
+        // ==============================================================================
+        
+        function agregarPacienteMinas() {
+            const input = document.getElementById('nombrePacienteMinas'); 
+            const cbs = document.querySelectorAll('.cb-minas:checked');
+            const nombre = input.value.trim();
+            if (nombre === '' || cbs.length === 0) { alert('Ingresa nombre y selecciona al menos un estudio (HC, Espiro, Audio).'); return; }
+            
+            const estudiosSeleccionados = Array.from(cbs).map(cb => cb.value);
+            
+            let docsDelPaciente = {};
+            estudiosSeleccionados.forEach(est => {
+                if (est === 'Historia Clínica') docsDelPaciente['Historia Clínica'] = { estado: 'pendiente' };
+                if (est === 'Espirometría') docsDelPaciente['Espirometría'] = { estado: 'pendiente' };
+                if (est === 'Audiometría') docsDelPaciente['Audiometría'] = { estado: 'pendiente' };
+            });
+
+            bdMinas[fechaActualStr].pacientes.push({ 
+                id: Date.now(), 
+                nombre: nombre, 
+                estudios: estudiosSeleccionados,
+                docsStatus: docsDelPaciente,
+                statusIntegral: 'pendiente' // pendiente, analizando, completado
+            });
+            
+            input.value = ''; cbs.forEach(cb => cb.checked = false); 
+            renderizarExpedientesMinas();
+        }
+
+        function eliminarPacienteMinas(id) {
+            bdMinas[fechaActualStr].pacientes = bdMinas[fechaActualStr].pacientes.filter(p => p.id !== id);
+            renderizarExpedientesMinas();
+        }
+
+        function renderizarExpedientesMinas() {
+            const contenedor = document.getElementById('contenedorExpedientesMinas');
+            contenedor.innerHTML = '';
+            
+            if(!bdMinas[fechaActualStr]) return;
+            const pacientes = bdMinas[fechaActualStr].pacientes;
+            document.getElementById('contador-minas').textContent = `${pacientes.length} Expedientes`;
+
+            if(pacientes.length === 0) {
+                contenedor.innerHTML = '<p class="text-center text-gray-400 mt-10 italic">Añade pacientes para gestionar sus expedientes integrales.</p>';
+                return;
+            }
+
+            pacientes.forEach(p => {
+                // Calcular si todos sus documentos están subidos
+                const docsKeys = Object.keys(p.docsStatus);
+                const todosSubidos = docsKeys.every(key => p.docsStatus[key].estado !== 'pendiente');
+                
+                let btnAnalisisClass = todosSubidos && p.statusIntegral !== 'completado' ? 'bg-yellow-500 hover:bg-yellow-600 text-white cursor-pointer' : 'bg-gray-200 text-gray-400 cursor-not-allowed';
+                let btnAnalisisTexto = '🧠 Analizar Expediente Integral';
+                
+                if(p.statusIntegral === 'analizando') {
+                    btnAnalisisClass = 'bg-yellow-100 text-yellow-600 cursor-not-allowed';
+                    btnAnalisisTexto = 'Cruzando datos clínicos...';
+                } else if(p.statusIntegral === 'completado') {
+                    btnAnalisisClass = 'bg-green-100 text-green-700 cursor-not-allowed border border-green-300';
+                    btnAnalisisTexto = '✅ Congruencia Validada';
+                }
+
+                const card = document.createElement('div');
+                card.className = "border border-gray-200 rounded-lg p-4 bg-gray-50 shadow-sm fade-in";
+                
+                // Header del Paciente MINAS
+                let html = `
+                    <div class="flex justify-between items-start mb-4 border-b border-gray-200 pb-3">
+                        <div>
+                            <h4 class="text-lg font-bold text-gray-800">👤 ${p.nombre}</h4>
+                            <p class="text-xs font-medium text-gray-500">${p.estudios.join(' • ')}</p>
+                        </div>
+                        <button onclick="eliminarPacienteMinas(${p.id})" class="text-red-400 hover:text-red-600 text-xs font-bold">✕ Eliminar</button>
+                    </div>
+                    <div class="space-y-2 mb-4">
+                `;
+
+                // Cajas de documentos del paciente
+                docsKeys.forEach(docName => {
+                    const estadoDoc = p.docsStatus[docName].estado;
+                    let docBtn = '';
+                    if(estadoDoc === 'pendiente') docBtn = `<button onclick="accionDocMinas(${p.id}, '${docName}')" class="text-xs bg-white border border-gray-300 px-3 py-1 rounded hover:bg-gray-100 font-bold">Subir</button>`;
+                    else docBtn = `<span class="text-xs text-blue-600 font-bold flex items-center">✓ Subido</span>`;
+
+                    html += `
+                        <div class="flex justify-between items-center bg-white p-2 rounded border border-gray-200">
+                            <span class="text-sm text-gray-700 font-medium">${docName}</span>
+                            ${docBtn}
+                        </div>
+                    `;
+                });
+
+                // Botón de análisis integral
+                html += `
+                    </div>
+                    <button onclick="analizarExpedienteMinas(${p.id})" class="w-full py-2 rounded text-sm font-bold transition ${btnAnalisisClass}" ${!todosSubidos || p.statusIntegral !== 'pendiente' ? 'disabled' : ''}>
+                        ${btnAnalisisTexto}
+                    </button>
+                `;
+
+                card.innerHTML = html;
+                contenedor.appendChild(card);
+            });
+        }
+
+        function accionDocMinas(idPaciente, docName) {
+            const paciente = bdMinas[fechaActualStr].pacientes.find(p => p.id === idPaciente);
+            if(paciente) {
+                paciente.docsStatus[docName].estado = 'subido';
+                renderizarExpedientesMinas();
+            }
+        }
+
+        function analizarExpedienteMinas(idPaciente) {
+            const paciente = bdMinas[fechaActualStr].pacientes.find(p => p.id === idPaciente);
+            if(!paciente) return;
+
+            paciente.statusIntegral = 'analizando';
+            renderizarExpedientesMinas();
+
+            // Simular análisis integral cross-document (1.5 segundos)
+            setTimeout(() => {
+                paciente.statusIntegral = 'completado';
+                renderizarExpedientesMinas();
+                
+                // Mostrar alerta simulando el feedback integral
+                alert(`LAP.IA: Expediente Integral de ${paciente.nombre}\n\n✅ Congruencia detectada entre interrogatorio de HC y resultados de Espirometría.\n✅ Identificadores y folios cruzan correctamente en los 3 documentos.\n\nEstatus: Aprobado para entrega a mina.`);
+            }, 1500);
+        }
+
+        // ==============================================================================
+        // RESTO DE FUNCIONES (SUCURSAL Y ADMIN TRADICIONAL)
+        // ==============================================================================
 
         function abrirModalChecklist(docKey, tipoEstudio) {
             const data = bdGlobal[fechaActualStr][obtenerTargetSucursal()].docsStatus[docKey];
