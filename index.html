@@ -621,12 +621,49 @@
             });
         }
 
-        function accionDocMinas(idPaciente, docName) {
+        function accionDocMinasIndividual(idPaciente, docName, accion) {
             const paciente = bdMinas[fechaActualStr].pacientes.find(p => p.id === idPaciente);
-            if(paciente) {
-                paciente.docsStatus[docName].estado = 'subido';
+            if(!paciente) return;
+            
+            const statusObj = paciente.docsStatus[docName];
+            
+            if (accion === 'subir') {
+                statusObj.estado = 'subido';
+                statusObj.checklist = [];
+                paciente.statusIntegral = 'pendiente'; // Si resuben un archivo, se bloquea el análisis integral hasta que se evalúe este
                 renderizarExpedientesMinas();
+            } else if (accion === 'analizar') {
+                statusObj.estado = 'analizando'; 
+                renderizarExpedientesMinas();
+                
+                // Simulación de análisis individual (Pronto conectaremos esto a la API real)
+                setTimeout(() => {
+                    const aprobado = Math.random() > 0.4; // 60% de probabilidad de aprobar
+                    statusObj.checklist = [
+                        { texto: `Revisión de estructura para ${docName}`, pass: true }, 
+                        { texto: `Validación de datos y legibilidad`, pass: aprobado }
+                    ];
+                    statusObj.estado = aprobado ? 'aprobado' : 'rechazado';
+                    renderizarExpedientesMinas();
+                }, 1500);
             }
+        }
+
+        function abrirModalChecklistMinas(idPaciente, docName) {
+            const paciente = bdMinas[fechaActualStr].pacientes.find(p => p.id === idPaciente);
+            if(!paciente || !paciente.docsStatus[docName].checklist) return;
+            
+            const checklist = paciente.docsStatus[docName].checklist;
+            document.getElementById('checklist-subtitulo').textContent = `${docName} - ${paciente.nombre}`;
+            const ul = document.getElementById('lista-checklist'); ul.innerHTML = '';
+            
+            checklist.forEach(item => {
+                const li = document.createElement('li'); li.className = `flex items-start p-2 rounded bg-gray-50 border ${item.pass ? 'border-green-200' : 'border-red-200'}`;
+                const icon = item.pass ? `✅` : `❌`;
+                li.innerHTML = `<span class="mr-2">${icon}</span> <span class="text-sm font-medium ${item.pass ? 'text-gray-700' : 'text-red-700'}">${item.texto}</span>`;
+                ul.appendChild(li);
+            });
+            document.getElementById('modal-checklist').classList.remove('hidden');
         }
 
         function analizarExpedienteMinas(idPaciente) {
