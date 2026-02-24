@@ -1,29 +1,32 @@
-
 ### SECCIÓN DE IDENTIFICACIÓN
 
 1. Folio:
-   - REGLA: Verifica que el folio de la historia clínica coincida EXACTAMENTE con el folio registrado en el expediente.
+   - REGLA: Verifica que el folio de la historia clínica coincida EXACTAMENTE con el folio registrado en el expediente de la plataforma.
    - ACCIÓN: Reporta "Correcto" o señala la discrepancia.
 
 2. Nombre:
-   - REGLA: Verifica que el nombre en la historia clínica coincida EXACTAMENTE con el nombre registrado en el expediente.
+   - REGLA: Verifica que el nombre en la historia clínica coincida EXACTAMENTE con el nombre registrado en el expediente de la plataforma
    - ACCIÓN: Reporta "Correcto" o señala la discrepancia.
 
-3. Datos que NO REQUIEREN VERIFICACIÓN:
+3. Fecha de nacimiento: 
+   - REGLA: Verifica que la fecha de nacimiento en la historia clínica coincida EXACTAMENTE con la fecha de nacimiento registrada en el expediente de la plataforma
+   - ACCIÓN: Reporta "Correcto" o señala la discrepancia.
+
+4. Datos que NO REQUIEREN VERIFICACIÓN:
    - REGLA: La plataforma obliga a llenar esta información, por lo tanto, ASUME QUE SON CORRECTOS Y NO LOS EVALÚES:
      * Nacionalidad
      * Originario de
+     * Estado civil
+     * Religión
      * Empresa
      * Puesto
      * Departamento
-     * Estado civil
-     * Religión
      * Escolaridad y si fue completada o no
      * Grupo sanguíneo y factor RH
      * Acepta o no transfusiones
 
 4. Datos que REQUIEREN VERIFICACIÓN DE LLENADO:
-   - REGLA: Debes verificar que CADA DATO de la siguiente lista SIEMPRE ESTÉ CONTESTADO (no puede estar vacío, nulo o decir "N/A" si no es válido).
+   - REGLA: Debes verificar que CADA DATO de la siguiente lista SIEMPRE ESTÉ CONTESTADO (no puede estar vacío).
      * Grupo étnico
      * Se considera o no con alguna discapacidad
      * Domicilio particular (Verifica que contenga estrictamente: nombre de calle, # ext, # int, colonia, localidad, municipio, estado y C.P. Todos deben estar contestados).
