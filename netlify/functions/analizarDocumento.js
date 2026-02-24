@@ -1,15 +1,20 @@
+// netlify/functions/analizarDocumento.js
+
 exports.handler = async (event, context) => {
     if (event.httpMethod !== 'POST') {
         return { statusCode: 405, body: 'Method Not Allowed' };
     }
 
     try {
-        const { pdfBase64, tipoDocumento } = JSON.parse(event.body);
+        // AHORA EXTRAEMOS "datosPaciente" DEL FRONTEND PARA CRUZARLOS EN LA ESPIROMETRÍA
+        const { pdfBase64, tipoDocumento, datosPaciente } = JSON.parse(event.body);
         const API_KEY = process.env.GEMINI_API_KEY;
 
         if (!API_KEY) {
             return { statusCode: 500, body: JSON.stringify({ error: "Falta configurar GEMINI_API_KEY en Netlify." }) };
         }
+
+        let promptSeleccionado = "";
 
         // ============================================================================
         // PROMPT 1: HISTORIA CLÍNICA (SUCURSALES NORMALES)
@@ -21,7 +26,7 @@ exports.handler = async (event, context) => {
         `;
 
         // ============================================================================
-        // PROMPT 2: HISTORIA CLÍNICA (ESTRICTO MINAS) - TRANSCRIPCIÓN LITERAL DE REGLAS
+        // PROMPT 2: HISTORIA CLÍNICA (ESTRICTO MINAS) - REGLAS LITERALES + EXTRACCIÓN
         // ============================================================================
         const PROMPT_HC_MINAS = `
         Eres el Auditor Médico Supremo de LAP.IA para la división de MINAS.
@@ -74,11 +79,23 @@ exports.handler = async (event, context) => {
 
         --- FIN DE REGLAS MINAS ---
 
-        Con base en el manual literal anterior, genera el reporte en JSON validando cada sección.
+        Además de la auditoría, DEBES EXTRAER los siguientes datos del paciente para guardarlos en la base de datos y usarlos en futuros estudios:
+        1. "estatura": Extraída de la sección 44. SOMATOMETRÍA (Talla).
+        2. "peso": Extraído de la sección 44. SOMATOMETRÍA (Peso).
+        3. "fuma": Valor de la sección "Hábitos y Costumbres" pregunta 17 (SI/NO).
+        4. "fumaDetalles": Si en la 18 dice cuánto fumó o en la sección FUMADOR, extráelo. Si no, déjalo vacío.
+
+        Con base en el manual literal anterior y los datos a extraer, genera el reporte en JSON validando cada sección.
         DEVUELVE ÚNICAMENTE un JSON estricto con esta estructura (sin bloques de markdown \`\`\`json):
         {
           "aprobadoGeneral": true/false,
           "motivoPrincipal": "Resumen de la falla o 'Documento óptimo'",
+          "datosExtraidosHC": {
+              "estatura": "...",
+              "peso": "...",
+              "fuma": "SI/NO",
+              "fumaDetalles": "..."
+          },
           "checklist": [
             { "categoria": "1. Sección Identificación", "pass": true/false, "comentario": "..." },
             { "categoria": "2. Antecedentes Laborales (Preguntas 1 a 3)", "pass": true/false, "comentario": "..." },
@@ -95,13 +112,59 @@ exports.handler = async (event, context) => {
         }
         `;
 
-        // Elegir el prompt adecuado
-        let promptSeleccionado = PROMPT_HC_NORMAL;
+        // ============================================================================
+        // PROMPT 3: ESPIROMETRÍA (CRUCE DE DATOS CON HISTORIA CLÍNICA)
+        // ============================================================================
+        const dp = datosPaciente || {};
+        const hc = dp.datosHC || null; // Datos extraídos previamente de la HC
+
+        const PROMPT_ESPIROMETRIA = `
+        Eres un Auditor Médico evaluando el PDF de una ESPIROMETRÍA.
+        
+        DATOS DE LA PLATAFORMA PARA CRUZAR:
+        - Nombre registrado: ${dp.nombre || 'No proporcionado'}
+        - Fecha de Nacimiento: ${dp.nacimiento || 'No proporcionado'}
+        - Número de Orden: ${dp.orden || 'No proporcionado'}
+        
+        DATOS DE HISTORIA CLÍNICA (HC) PARA CRUZAR:
+        ${hc ? `- Estatura HC: ${hc.estatura} \n- Peso HC: ${hc.peso} \n- Fuma HC: ${hc.fuma} \n- Detalles Tabaco HC: ${hc.fumaDetalles}` : 'NO DISPONIBLES (La Historia Clínica aún no se ha analizado)'}
+
+        REGLAS DE ESPIROMETRÍA:
+        1. "Fecha Nacimiento": Verifica que la fecha en el PDF coincida con la de Plataforma (${dp.nacimiento || 'No proporcionado'}).
+        2. "Nombre y Apellidos": Verifica que coincidan con Plataforma (${dp.nombre || 'No proporcionado'}).
+        3. "Identificación Personal": Verifica que coincida con el Número de Orden de Plataforma (${dp.orden || 'No proporcionado'}).
+        4. "Estatura y Peso": Verifica que la estatura y peso del PDF coincidan con la HC. Si NO HAY DATOS DE HC disponibles, pon pass: false y en comentario: "⚠️ PENDIENTE: Se requiere analizar primero la Historia Clínica para cruzar estos datos".
+        5. "Fumador": Si el PDF marca SI, debe tener detalles de cantidad/tiempo a un lado, y en HC debe decir SI. Si marca NO, no debe haber detalles y en HC debe decir NO. Si marca DEJAR, debe tener detalles y coincidir con la HC. Si NO HAY DATOS DE HC, pon pass: false y en comentario: "⚠️ PENDIENTE: Cruzar con Historia Clínica".
+        (Nota: Edad, Género, BMI, Profesión, Código Paciente y Grupo Étnico NO requieren verificación, ignóralos).
+
+        DEVUELVE ÚNICAMENTE un JSON estricto con esta estructura (sin bloques de markdown \`\`\`json):
+        {
+          "aprobadoGeneral": true/false,
+          "motivoPrincipal": "Resumen de la falla o 'Documento congruente y óptimo'",
+          "checklist": [
+            { "categoria": "1. Fecha de Nacimiento", "pass": true/false, "comentario": "..." },
+            { "categoria": "2. Nombre y Apellidos", "pass": true/false, "comentario": "..." },
+            { "categoria": "3. Identificación (Número de Orden)", "pass": true/false, "comentario": "..." },
+            { "categoria": "4. Cruce de Somatometría (Estatura/Peso)", "pass": true/false, "comentario": "..." },
+            { "categoria": "5. Cruce de Tabaquismo (Fumador)", "pass": true/false, "comentario": "..." }
+          ]
+        }
+        `;
+
+        // ============================================================================
+        // LÓGICA DE SELECCIÓN DE PROMPT
+        // ============================================================================
         if (tipoDocumento === 'Historia Clínica (MINAS)' || tipoDocumento === 'Historia Clínica') {
-            // Por ahora forzamos MINAS para que pruebes las reglas estrictas
             promptSeleccionado = PROMPT_HC_MINAS;
+        } else if (tipoDocumento === 'Espirometría') {
+            promptSeleccionado = PROMPT_ESPIROMETRIA;
+        } else {
+            promptSeleccionado = PROMPT_HC_NORMAL; // Fallback para documentos genéricos
         }
 
+        // ============================================================================
+        // LLAMADA A LA API DE GOOGLE GEMINI
+        // ============================================================================
         const requestBody = {
             contents: [{
                 parts: [
