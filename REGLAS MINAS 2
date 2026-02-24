@@ -1,0 +1,304 @@
+
+### SECCIÓN DE IDENTIFICACIÓN
+
+1. Folio:
+   - REGLA: Verifica que el folio de la historia clínica coincida EXACTAMENTE con el folio registrado en el expediente.
+   - ACCIÓN: Reporta "Correcto" o señala la discrepancia.
+
+2. Nombre:
+   - REGLA: Verifica que el nombre en la historia clínica coincida EXACTAMENTE con el nombre registrado en el expediente.
+   - ACCIÓN: Reporta "Correcto" o señala la discrepancia.
+
+3. Datos que NO REQUIEREN VERIFICACIÓN:
+   - REGLA: La plataforma obliga a llenar esta información, por lo tanto, ASUME QUE SON CORRECTOS Y NO LOS EVALÚES:
+     * Nacionalidad
+     * Originario de
+     * Empresa
+     * Puesto
+     * Departamento
+     * Estado civil
+     * Religión
+     * Escolaridad y si fue completada o no
+     * Grupo sanguíneo y factor RH
+     * Acepta o no transfusiones
+
+4. Datos que REQUIEREN VERIFICACIÓN DE LLENADO:
+   - REGLA: Debes verificar que CADA DATO de la siguiente lista SIEMPRE ESTÉ CONTESTADO (no puede estar vacío, nulo o decir "N/A" si no es válido).
+     * Grupo étnico
+     * Se considera o no con alguna discapacidad
+     * Domicilio particular (Verifica que contenga estrictamente: nombre de calle, # ext, # int, colonia, localidad, municipio, estado y C.P. Todos deben estar contestados).
+     * Teléfono de casa
+     * Teléfono celular
+     * Número de afiliación de IMSS
+     * RFC
+     * CURP
+     * Contacto de emergencia (Verifica que contenga estrictamente: Nombre, dirección, parentesco, teléfono de casa, celular).
+   - ACCIÓN: Haz una lista detallada únicamente con los datos o sub-datos que falten o estén en blanco. Si todo está lleno, reporta "Todos los campos requeridos están completos".
+
+
+### SECCIÓN ANTECEDENTES LABORALES
+
+1. REGLA: Datos no especificados. 
+   - ACCIÓN: NO REQUIERE VERIFICACIÓN. Ignora este punto.
+
+2. Antigüedad:
+   - REGLA: Debe estar registrada obligatoriamente en formato de tiempo (Años o Años con Meses).
+   - ACCIÓN: Reporta "Correcto" si cumple el formato, o señala el error si está en otro formato o vacío.
+
+3. Orden de Registros y Funciones:
+   - REGLA 1 (Cronología): Los registros deben estar ordenados cronológicamente del MÁS RECIENTE al MÁS ANTIGUO basándose en la columna "F. INGRESO".
+   - REGLA 2 (Riesgos): En la columna "FUNCIÓN PRINCIPAL", cada registro debe incluir obligatoriamente al menos UN factor de riesgo explícito (Químicos, Biológicos, Ergonómicos o Psicosocial).
+   - ACCIÓN: Señala si el orden cronológico es incorrecto o si a algún registro le falta su factor de riesgo en la función principal.
+
+A. RIESGOS FÍSICOS:
+   - Si se selecciona "NO": NO REQUIERE VERIFICACIÓN.
+   - Si se selecciona "SÍ": REQUIERE VERIFICACIÓN de cada agente reportado. Verifica que contengan EXACTAMENTE los siguientes detalles:
+     * Ruido: continuo o intermitente, fuente, frecuencia de exposición, espacio abierto o cerrado, con uso o sin uso de barrera acústica, con o sin uso de EPP y tipo utilizado.
+     * Vibración: fuente, región anatómica a la que es transmitida, con o sin uso de EPP y tipo utilizado.
+     * Radiación: tipo ionizante o no ionizante, área donde se expone, frecuencia y período de duración de exposición, con o sin uso de EPP y tipo utilizado.
+     * Iluminación: tipo, fuente, con o sin uso de EPP y tipo utilizado.
+     * Temperaturas elevadas o abatidas: fuente, grados ºC, espacio abierto o cerrado, ventilación natural o mecánica, puesto fijo o rotatorio, con o sin uso de EPP y tipo utilizado.
+     * Trabajos en altura: altura en m, espacio abierto o cerrado, barandales o línea de vida, EPP y tipo utilizado.
+     * Espacios Confinados: tipo, con o sin riesgo atmosférico y tipo de gas/gases, con o sin uso de EPP y tipo utilizado.
+   - ACCIÓN: Enlista qué agente físico tiene información faltante basándote en la lista estricta anterior.
+
+B. RIESGOS QUÍMICOS:
+   - Si se selecciona "NO": REQUIERE VERIFICACIÓN ESTRICTA. Busca en el cuadro de "Observaciones del examinador" (al final de la sección) la leyenda exacta: "Niega exposición a SILICE, MONOXIDO DE CARBONO, CIANURO DE HIDROGENO, PLOMO, ESTIRENO, TOLUENO, ETILO BENCENO, XILENO."
+   - Si se selecciona "SÍ": REQUIERE VERIFICACIÓN de cada agente reportado. Verifica que contengan EXACTAMENTE los siguientes detalles:
+     * Polvo: tipo, vía de exposición, etapa del proceso en la que se expone, espacio abierto o cerrado, ventilación natural o mecánica, con o sin uso de EPP y tipo utilizado. *(Nota: "etapa del proceso" se valida una sola vez por agente)*.
+     * Humo: tipo, vía de exposición, etapa del proceso en la que se expone, espacio abierto o cerrado, ventilación natural o mecánica, con o sin uso de EPP y tipo utilizado.
+     * Gases - Vapores: tipo, vía de exposición, etapa del proceso en la que se expone, espacio abierto o cerrado, ventilación natural o mecánica, con o sin uso de EPP y tipo utilizado.
+     * Plaguicidas: tipo, vía de exposición, etapa del proceso en la que se expone, espacio abierto o cerrado, ventilación natural o mecánica, con o sin uso de EPP y tipo utilizado.
+     * Sustancias químicas: tipo, vía de exposición, etapa del proceso en la que se expone, espacio abierto o cerrado, ventilación natural o mecánica, con o sin uso de EPP y tipo utilizado.
+   - ACCIÓN: Señala si falta la leyenda en caso de "NO", o qué detalles faltan en caso de "SÍ".
+
+C. RIESGOS BIOLÓGICOS:
+   - ACCIÓN: NO REQUIERE DE VERIFICACIÓN. Ignorar.
+
+D. RIESGOS ERGONÓMICOS:
+   - Si se selecciona "NO": NO REQUIERE VERIFICACIÓN.
+   - Si se selecciona "SÍ": REQUIERE VERIFICACIÓN de cada agente reportado. Verifica que contengan EXACTAMENTE los siguientes detalles:
+     * Levantamiento carga: tipo de manejo (traslado, empuje, arrastre o levantamiento), tipo de objeto/s, peso aproximado, con o sin asas/puntos de agarre, distancia de transporte en metros, con o sin uso de EPP y tipo utilizado.
+     * Movimiento de repetición: segmento corporal utilizado, tipo de movimiento, con o sin aplicación de fuerza, con o sin uso de herramientas mecánicas, con o sin descansos durante la jornada laboral (cuántos y de cuánto tiempo).
+     * Sobrecarga postural: tipo de postura, continua o intermitente, rota o no de actividades durante la jornada, puede o no cambiar de postura libremente.
+   - ACCIÓN: Enlista qué agente ergonómico tiene información faltante basándote en la lista estricta anterior.
+
+E. RIESGOS PSICOSOCIALES:
+   - ACCIÓN: NO REQUIERE DE VERIFICACIÓN. Ignorar.
+
+### SECCIÓN DE RIESGOS LABORALES
+
+4. Pregunta 4:
+   - Si se selecciona "NO": NO REQUIERE VERIFICACIÓN. Ignorar.
+   - Si se selecciona "SÍ": REQUIERE VERIFICACIÓN de desglose. Verifica que CADA UNO de los siguientes datos esté contestado (no pueden estar vacíos o nulos):
+     * Empresa
+     * Causa
+     * Días incapacidad
+     * ¿Cuándo?
+     * ¿Qué le pasó?
+     * ¿Secuelas?
+     * ¿Concluyó el proceso?
+   - ACCIÓN: Señala específicamente qué dato falta en caso de haber respondido "SÍ".
+
+5. Pregunta 5:
+   - Si se selecciona "NO": NO REQUIERE VERIFICACIÓN. Ignorar.
+   - Si se selecciona "SÍ": REQUIERE VERIFICACIÓN de desglose. Verifica que CADA UNO de los siguientes datos esté contestado (no pueden estar vacíos o nulos):
+     * Empresa
+     * Causa
+     * Días incapacidad
+     * ¿Cómo se siente actualmente?
+     * ¿Cuándo?
+     * ¿Qué le pasó?
+     * ¿Secuelas?
+     * ¿Concluyó el proceso?
+   - ACCIÓN: Señala específicamente qué dato falta en caso de haber respondido "SÍ".
+
+6 al 11. Preguntas 6, 7, 8, 9, 10 y 11:
+   - REGLA: NO REQUIEREN VERIFICACIÓN.
+   - ACCIÓN: Ignorar estos puntos en la evaluación.
+
+### CAJA DE OBSERVACIONES DEL EXAMINADOR
+
+- REGLA DE DEPENDENCIA: Esta revisión está directamente vinculada a la sección de Antecedentes Laborales, inciso B (Riesgos Químicos).
+- CONDICIÓN: SÓLO CUANDO en Agentes Químicos (B) se seleccionó "NO".
+- VERIFICACIÓN: Busca en la caja de observaciones y verifica que se encuentre EXACTAMENTE la siguiente leyenda: "Niega exposición a SILICE, MONOXIDO DE CARBONO, CIANURO DE HIDROGENO, PLOMO, ESTIRENO, TOLUENO, ETILO BENCENO, XILENO."
+- ACCIÓN: Si la condición aplica y la leyenda no está, o está incompleta, repórtalo como error.
+
+### SECCIÓN ANTECEDENTES HEREDO FAMILIARES
+
+12, 13 y 14. Preguntas 12, 13 y 14:
+   - REGLA: La pregunta 13 NO EXISTE. Las preguntas 12 y 14 NO REQUIEREN VERIFICACIÓN.
+   - ACCIÓN: Ignora por completo esta sección en tu evaluación.
+
+### SECCIÓN ANTECEDENTES HÁBITOS Y COSTUMBRES DE VIDA
+
+15 al 20, y 22. Preguntas 15, 16, 17, 18, 19, 20 y 22:
+   - REGLA: La pregunta 18 NO EXISTE. La 20 es condicional de la 19, pero ninguna de estas, ni la 15, 16, 17 o 22 requieren verificación.
+   - ACCIÓN: Ignora todas estas preguntas en tu evaluación.
+
+21. Pregunta 21 (Mascotas):
+   - Si se selecciona "NO": NO REQUIERE VERIFICACIÓN. Ignorar.
+   - Si se selecciona "SÍ": REQUIERE VERIFICACIÓN del campo "¿Cuáles?". Verifica que la descripción proporcionada incluya OBLIGATORIAMENTE los siguientes 4 datos:
+     * Tipo de mascota.
+     * Cantidad por tipo de mascota.
+     * Si son intra o extradomiciliarias (adentro o afuera de la casa).
+     * Si se encuentran o no vacunados y desparasitados.
+   - ACCIÓN: Si la respuesta es "SÍ", señala específicamente qué dato de los 4 obligatorios falta en la descripción.
+
+
+### SECCIÓN ANTECEDENTES PERSONALES PATOLÓGICOS
+
+23, 24, 25 y 26. Preguntas 23 a 26:
+   - Si se selecciona "NO": NO REQUIERE VERIFICACIÓN. Ignorar.
+   - Si se selecciona "SÍ": REQUIERE VERIFICACIÓN de coherencia. 
+     * En 23: Verifica que el texto en "¿Por qué?" tenga sentido lógico.
+     * En 24 y 26: Verifica que los campos "¿Por qué?" y "¿En qué año?" tengan sentido lógico.
+     * En 25: Verifica que los campos "¿Cuál?" y "¿En qué año?" tengan sentido lógico.
+   - ACCIÓN: Señala si falta información o si las respuestas carecen de coherencia.
+
+27. Pregunta 27 (Enfermedades Exantemáticas):
+   - REGLA: Si es "NO", ignorar. Si es "SÍ", se desglosan opciones pero NO REQUIEREN VERIFICACIÓN en este punto.
+
+28. Pregunta 28 (Fracturas):
+   - Si se selecciona "NO": NO REQUIERE VERIFICACIÓN. Ignorar.
+   - Si se selecciona "SÍ": Verifica la coherencia en "¿Qué parte de su cuerpo?" y "¿Tiene alguna secuela?". 
+   - REGLA ADICIONAL DE OBSERVACIÓN: Además, si respondió "SÍ", verifica que exista una descripción detallada para CADA fractura reportada que incluya estrictamente:
+     1. Región anatómica o hueso fracturado.
+     2. Año.
+     3. Manejo / Tratamiento.
+   - ACCIÓN: Reporta si falta alguno de estos 3 datos por cada fractura.
+
+29. Pregunta 29:
+   - Si se selecciona "NO": NO REQUIERE VERIFICACIÓN. Ignorar.
+   - Si se selecciona "SÍ": Verifica que "¿Cuál?" y "¿Cuál es el tratamiento que está llevando?" estén llenos y sean coherentes.
+
+30. Pregunta 30 (Tatuajes y otros):
+   - Si se selecciona "NO": NO REQUIERE VERIFICACIÓN. Ignorar.
+   - Si se selecciona "SÍ": Verifica los campos "¿Qué?" y "¿En qué parte de su cuerpo?".
+   - REGLA ADICIONAL (TATUAJES): Si en los registros se incluyó explícitamente la palabra "Tatuajes" o un tatuaje, busca en el cuadro de observación asociado y verifica que CADA tatuaje incluya:
+     1. Región anatómica.
+     2. Tipo de tatuaje.
+     3. Monocromático o policromático.
+     4. Dimensiones aproximadas.
+   - ACCIÓN: Reporta si falta información de los tatuajes.
+
+31. Pregunta 31 (Vacunas):
+   - REGLA DE ESTADO: Si selecciona "INCOMPLETO" o "NO SABE", verifica que el campo "¿Qué vacunas le hacen falta?" tenga una respuesta coherente.
+   - REGLA DE TABLA: 
+     * Si en la columna "FECH" dice "No tiene" (o similar), asegúrate de que esa vacuna se mencione en el campo "¿Qué vacunas le hacen falta?".
+     * Si en la columna "FECH" hay una fecha válida, verifica que esa misma fila tenga información en las columnas "NÚMERO DE DOSIS" y "MARCA".
+     * Excepción: La fila "OTRAS" puede estar totalmente en blanco, ignórala si está vacía.
+   - ACCIÓN: Reporta cualquier discrepancia entre las columnas o datos faltantes.
+
+32. Pregunta 32 (Alergias):
+   - Si se selecciona "NO": NO REQUIERE VERIFICACIÓN. Ignorar.
+   - Si se selecciona "SÍ": Verifica que aparezca seleccionado un "Tipo de alergia" y que tenga coherencia con el texto del campo "¿Cuál?".
+
+33. Pregunta 33:
+   - REGLA: NO REQUIERE VERIFICACIÓN. Ignorar.
+
+### OBSERVACIONES DEL EXAMINADOR (ANTECEDENTES PATOLÓGICOS)
+
+- REGLA DE DEPENDENCIA: Para cada pregunta (23, 24, 25, 26, 27 y 32) donde el paciente respondió "SÍ", debe existir un registro detallado en esta caja de observaciones.
+- FORMATO DE BÚSQUEDA: Los registros deben hacer referencia al número de la pregunta. NOTA: Pueden estar agrupados (ejemplo: "23, 24, 25" en un solo texto).
+- VERIFICACIÓN ESTRICTA:
+  * Si 23 = SÍ -> El texto debe incluir: Diagnóstico, Fecha, Días de incapacidad.
+  * Si 24 = SÍ -> El texto debe incluir: Diagnóstico, Días de hospitalización, Fecha, Días de incapacidad.
+  * Si 25 = SÍ -> El texto debe incluir: Tipo de cirugía, Fecha, Días de incapacidad.
+  * Si 26 = SÍ -> El texto debe incluir: Motivo de transfusión y Fecha.
+  * Si 27 = SÍ -> El texto debe incluir: Edad o etapa de la vida de la enfermedad referida, y si tuvo o no complicaciones (para TODAS las seleccionadas en la 27).
+  * Si 32 = SÍ -> El texto debe incluir: Alérgeno y la reacción que provoca (para CADA alérgeno mencionado).
+- ACCIÓN: Revisa metódicamente cada número que tuvo "SÍ". Si falta el número en las observaciones, o si está el número pero le faltan los datos estrictos solicitados, repórtalo claramente.
+
+
+### SECCIÓN INTERROGATORIO POR APARATOS Y SISTEMAS
+
+34. Pregunta 34 (Síntomas, Antecedentes y Padecimientos):
+   - LISTA BASE: Revisa la lista de los 39 padecimientos posibles (Dolor de cabeza, Diarreas frecuentes, Alteración de la visión, etc.).
+   - Si se selecciona "NO": NO REQUIERE VERIFICACIÓN. Ignorar.
+   - Si se selecciona "SÍ": REQUIERE VERIFICACIÓN ESTRICTA. Haz un inventario mental de cada padecimiento afirmado.
+   
+   - REGLA DE MAPEO (AFINIDAD POR SISTEMA): Busca en los siguientes cuadros de observaciones (Respiratorio, Digestivo, Nervioso, Osteomuscular, Cardiovascular, Urinario, Otros). Todo síntoma afirmado DEBE estar descrito en el cuadro que le corresponda lógicamente a su sistema. ¡No puede faltar ninguno!
+   
+   - REGLA DE DETALLE GENERAL: Por cada síntoma afirmado encontrado en los cuadros, verifica que incluya OBLIGATORIAMENTE estos 4 datos:
+     1. Síntoma / Antecedente / Padecimiento.
+     2. Antigüedad.
+     3. Con o sin tratamiento.
+     4. Con o sin seguimiento.
+     
+   - REGLA DE EXCEPCIÓN ("ALTERACIÓN DE LA VISIÓN"): Si se seleccionó "SÍ" en Alteración de la visión, su regla de detalle cambia. Verifica que incluya OBLIGATORIAMENTE estos 4 datos específicos:
+     1. Diagnóstico oftalmológico.
+     2. Uso y tipo de lentes.
+     3. Antigüedad.
+     4. Fecha de último ajuste de graduación.
+
+   - REGLA "USO DE PRÓTESIS": Si no hay selección, NO SE VERIFICA. Si se seleccionó alguna opción, verifica que exista texto en el "CUADRO DE PRÓTESIS" describiendo los detalles y el tipo de prótesis a la que hace referencia.
+   
+   - REGLA "SE CONOCE CON PROBLEMA DE": NO REQUIERE VERIFICACIÓN. Ignorar.
+
+   - ACCIÓN: Genera un reporte únicamente si: a) Un síntoma afirmado no aparece en ningún cuadro de observaciones, b) Aparece pero le faltan detalles obligatorios, o c) Faltan los detalles en el cuadro de prótesis cuando aplica. Especifica exactamente qué falta.
+
+35. Pregunta 35:
+   - REGLA: NO EXISTE.
+   - ACCIÓN: Ignora este número para evitar desajustes en la secuencia.
+
+
+### SECCIÓN DE ANTECEDENTES GINECOOBSTÉTRICOS
+
+- CONDICIÓN DE GÉNERO: Esta sección SÓLO se evalúa en pacientes femeninos. Si los datos de identificación indican que el paciente es masculino, IGNORA toda esta sección automáticamente.
+
+36, 38 al 43. Preguntas 36, 38, 39, 40, 41, 42 y 43:
+   - REGLA: NO REQUIEREN VERIFICACIÓN.
+   - ACCIÓN: Ignora todas estas preguntas en tu evaluación.
+
+37. Pregunta 37 (Embarazos y Gestaciones):
+   - REGLA DE EXCLUSIÓN: Las sub-preguntas "¿Está usted embarazada?", "¿Cuántos meses tiene de embarazo?" y "¿Presentó alteraciones durante su embarazo?" NO REQUIEREN VERIFICACIÓN.
+   - REGLA MATEMÁTICA (Fórmula Obstétrica): Evalúa la pregunta "Embarazos totales". Requiere verificación estricta de coherencia matemática. El número total de Gestaciones (G) debe ser EXACTAMENTE IGUAL a la suma de Partos (P) + Cesáreas (C) + Abortos (A). 
+     * Ecuación: G = P + C + A.
+     * Ejemplo: Si registra 3 Gestaciones (3G), la suma de sus Partos, Cesáreas y Abortos debe dar exactamente 3.
+   - ACCIÓN: Señala como un error de coherencia si la suma matemática de P+C+A no coincide con el total de Gestaciones (G).
+
+
+### SECCIÓN EXPLORACIÓN FÍSICA
+
+44 al 50. Preguntas 44, 45, 46, 47, 48, 49 y 50:
+   - REGLA: NO REQUIEREN VERIFICACIÓN directa (Nota: los datos de 46 y 47 se usarán más adelante como referencia, pero no se auditan aquí).
+
+51. Odontología y Patologías Dentales:
+   - REGLA DE EXCLUSIÓN: La pregunta "¿Con qué frecuencia va al dentista?" NO REQUIERE VERIFICACIÓN.
+   - REGLA DE PATOLOGÍAS: Para los incisos de patologías dentales (X Adoncia, O Caries, = Prótesis, W Gingivitis, !! Amalgamas, F Fracturas), REQUIERE VERIFICACIÓN ESTRICTA.
+   - ACCIÓN: Revisa cada uno. Verifica que su texto haga referencia explícita a "piezas dentales" o "molares", O en su defecto, que contenga EXACTAMENTE la leyenda "SIN DATOS PATOLÓGICOS". Señala si falta esta información.
+
+### SECCIÓN DE EXPLORACIÓN FÍSICA POR APARATOS O SISTEMAS
+
+- REGLA GENERAL DE CONGRUENCIA: Para todos los puntos a evaluar, verifica que el texto escrito sea congruente médicamente y afín a la sección anatómica que se está explorando, O que incluya la leyenda por defecto exigida para ese sistema.
+
+A. Grupo de Leyenda "Sin datos patológicos":
+   - Puntos: 1 (Pares Craneales), 2 (Anexos), 3 (Cabeza), 6 (Nariz), 7 (Boca-Faringe), 8 (Cuello), 9 (Cadena Ganglionar), 10 (Corazón), 11 (Pulmones), 12 (Abdomen), 14 (Columna), 15 (Piernas), 16 (Manos-Brazos) y 18 (Pies).
+   - EXCEPCIONES DE SIGNOS: En los puntos 14, 15 y 16, IGNORA por completo los signos desglosados (Spurling, Neri, Bragard, Lasegue, Adams, Reflejos, Fuerza, Cepillo, Bostezo, Phalen, Filkenstein, Tinel). No requieren verificación.
+   - ACCIÓN: Verifica congruencia O que diga exactamente "Sin datos patológicos".
+
+B. Grupo de Leyendas Especiales:
+   - 5 (Oídos): Verifica congruencia O que diga "CAP y MTL bilateral".
+   - 13 (Abdomen 2): Verifica congruencia O que diga "No palpables".
+   - 17 (Circulación periférica), 20 (Prueba en marcha), 21 (Prueba de índices), 22 (Prueba past-point): Verifica congruencia O que digan "Normal".
+   - ACCIÓN: Reporta si no hay congruencia y falta la leyenda exacta correspondiente.
+
+C. Puntos con Validación Cruzada (Cross-Reference):
+   - 4 (Ojos): Verifica congruencia O la leyenda "Sin datos patológicos". ADEMÁS:
+     * Cruce 1: Si en las preguntas 46 o 47 se identificó ametropía (>=30/20, uni o bilateral), verifica que en este punto (4) se haga referencia a la misma.
+     * Cruce 2: Si en la pregunta 34 ("Alteración de la Visión") se seleccionó "SÍ", verifica que en este punto (4) se haga referencia a la misma patología.
+   - 23 (Tatuajes): Depende estrictamente de la Pregunta 30 (Antecedentes Patológicos).
+     * Si la Q30 NO incluyó tatuajes: Este recuadro (23) DEBE decir exactamente "No presentes".
+     * Si la Q30 SÍ incluyó tatuajes: Este recuadro (23) DEBE contener la misma información exacta (Región anatómica, Tipo de tatuaje, Monocromático/policromático, Dimensiones).
+   - ACCIÓN: Reporta cualquier discrepancia o falta de datos en los cruces de Ojos y Tatuajes.
+
+D. Puntos a Ignorar:
+   - Puntos: 19 (Test Romberg), 24 (Levantamiento de carga), 25 (Perforaciones), 26 (Expansiones), 27 (Higiene), 28 (Mama), 29 (Axilas), 30 (Genitales externos).
+   - Cuadros adicionales: Actitud, Orientación, Atención/Cálculo, Fijación/Memoria, y el recuadro "Observaciones del examinador".
+   - ACCIÓN: NO REQUIEREN VERIFICACIÓN.
+
+### FIRMA DEL PACIENTE
+- REGLA: REQUIERE VERIFICACIÓN VISUAL / DE EXISTENCIA.
+- ACCIÓN: Verifica que el recuadro final contenga la firma del paciente (ya sea trazo digital, imagen, o confirmación de llenado). Si está vacío, repórtalo como "Falta firma del paciente".
+
