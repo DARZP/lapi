@@ -1,96 +1,59 @@
-// netlify/functions/analizarDocumento.js
-
-exports.handler = async (event, context) => {
-    if (event.httpMethod !== 'POST') {
-        return { statusCode: 405, body: 'Method Not Allowed' };
-    }
-
-    try {
-        const { pdfBase64, tipoDocumento } = JSON.parse(event.body);
-        const API_KEY = process.env.GEMINI_API_KEY;
-
-        if (!API_KEY) {
-            return { statusCode: 500, body: JSON.stringify({ error: "Falta configurar GEMINI_API_KEY en Netlify." }) };
-        }
-
-        // ============================================================================
-        // PROMPT 1: HISTORIA CLÍNICA (SUCURSALES NORMALES)
-        // ============================================================================
-        const PROMPT_HC_NORMAL = `
-        Eres un auditor médico experto de LAP.IA. Analiza estrictamente la Historia Clínica Ocupacional adjunta en PDF. 
-        Evalúa las 5 categorías de reglas (Integridad Demográfica, Riesgos Laborales, Patológicos, Congruencia Clínica y Exploración).
-        Devuelve ÚNICAMENTE un JSON con: aprobadoGeneral (boolean), motivoPrincipal (string), y checklist (array de objetos con categoria, pass y comentario).
-        `;
-
-        // ============================================================================
-        // PROMPT 2: HISTORIA CLÍNICA (ESTRICTO MINAS) - BASADO EN TUS REGLAS
+// ============================================================================
+        // PROMPT 2: HISTORIA CLÍNICA (ESTRICTO MINAS) - REGLA POR REGLA
         // ============================================================================
         const PROMPT_HC_MINAS = `
-        Eres el Auditor Médico Supremo de LAP.IA para la división de MINAS. Tu evaluación debe ser implacable, milimétrica y sin margen de error.
-        Analiza la Historia Clínica Ocupacional en PDF adjunta evaluando estas 6 categorías basadas en las reglas oficiales de Minas:
+        Eres el Auditor Médico Supremo de LAP.IA para la división de MINAS. Tu evaluación debe ser implacable, revisando REGLA POR REGLA.
+        Analiza la Historia Clínica Ocupacional en PDF adjunta y evalúa cada uno de los siguientes puntos enumerados exactamente como se te indica.
 
-        REGLAS DE EVALUACIÓN MINAS:
-        1. "Identificación y Demográficos": Domicilio completo (calle, ext, int, colonia, localidad, municipio, edo, CP). Teléfonos llenos. Contacto de emergencia (nombre, dir, parentesco, tel). Afiliaciones (IMSS, RFC, CURP) llenas. Etnia y discapacidad no deben faltar.
-        2. "Antecedentes y Riesgos Laborales": Antigüedad debe decir años/meses. Orden cronológico correcto. Si Físicos/Químicos/Ergonómicos es "Sí", DEBE incluir el desglose estricto (fuente, EPP, horas, etc.). REGLA CRÍTICA: Si Químicos es "NO", las observaciones del examinador DEBEN decir exactamente "Niega exposición a SILICE, MONOXIDO DE CARBONO, CIANURO DE HIDROGENO, PLOMO, ESTIRENO, TOLUENO, ETILO BENCENO, XILENO." Riesgos laborales (4-11) llenos.
-        3. "Patológicos y Hábitos": Mascotas (21) debe detallar tipo, cantidad, ubicación, vacunado. Observaciones 23-27 y 32 deben referenciar el número y dar detalles (diagnóstico, fecha, tx). Fracturas (28) debe detallar hueso, año, tx. Tabla Vacunas (31) debe estar totalmente llena (excepto 'Otras'). CRÍTICO: Tatuajes (30) en observaciones debe indicar región, tipo, colores y dimensiones.
-        4. "Interrogatorio por Aparatos": Si en la preg. 34 se seleccionó "Sí" en cualquier síntoma, ESTRICTAMENTE debe detallarse en el cuadro de observaciones de su sistema correspondiente incluyendo antigüedad, tratamiento y seguimiento. Suma de embarazo (Gestaciones = Partos+Cesáreas+Abortos).
-        5. "Exploración Física y Firmas": Exigencia estricta de redacción. Ojos, Nariz, Boca, Cuello, Ganglios, Corazón, Pulmones, Abdomen, Columna, Piernas, Manos, Pies DEBEN decir "Sin datos patológicos". Oídos debe decir "CAP y MTL bilateral". Hernias "No palpable". Circulación, Marcha, Índices, Past-point debe decir "Normal". Tatuajes (23) debe coincidir con la preg 30 o decir "No presentes". Firma del paciente obligatoria.
-        6. "Cruces Clínicos MINAS": Alteración de visión (34) y Agudeza Visual (46/47) deben ser reportadas obligatoriamente en Exploración de Ojos (4). Adoncia/Caries (51) debe reflejarse en Boca-Faringe (7).
+        REGLAS DE EVALUACIÓN MINAS (Evalúa cada punto individualmente):
+        1. Identificación: Grupo étnico, discapacidad, domicilio completo (calle, ext, int, col, loc, mun, edo, CP), teléfonos (casa/cel), IMSS, RFC, CURP, Contacto de emergencia completo (nombre, dir, parentesco, tel/cel) deben estar contestados.
+        2. Laborales (Pregunta 2): Debe referir una antigüedad (años o meses).
+        3. Laborales (Pregunta 3): Orden cronológico (más reciente arriba) y mencionar al menos un factor de riesgo en la función.
+        4. Riesgos Físicos (A): Si marca 'Sí', cada agente debe tener llenos todos sus detalles específicos (fuente, frec, EPP, etc.).
+        5. Riesgos Químicos (B): Si marca 'No', DEBE tener la leyenda exacta "Niega exposición a SILICE, MONOXIDO DE CARBONO, CIANURO DE HIDROGENO, PLOMO, ESTIRENO, TOLUENO, ETILO BENCENO, XILENO." en observaciones. Si es 'Sí', detallar exhaustivamente.
+        6. Riesgos Ergonómicos (D): Si marca 'Sí', detallar tipo, peso, distancias, EPP, movimientos, pausas.
+        7. Riesgos Laborales (Preguntas 4 y 5): Si marca 'Sí', debe tener llenos todos los desgloses (empresa, causa, días, cuándo, secuelas, proceso).
+        8. Hábitos (Pregunta 21): Si mascotas es 'Sí', detallar tipo, cantidad, intra/extra, vacunados y desparasitados.
+        9. Patológicos (Observaciones 23 al 27, y 32): Si marcó 'Sí' en alguna, DEBE estar detallado en el recuadro final referenciando el número exacto (diagnóstico, fecha, tx).
+        10. Patológicos (Pregunta 28 - Fracturas): Si es 'Sí', detallar hueso, año, tratamiento en observaciones.
+        11. Patológicos (Pregunta 30 - Tatuajes): Si es 'Sí', detallar en observaciones región anatómica, tipo, color (mono/poli) y dimensiones exactas.
+        12. Patológicos (Pregunta 31 - Vacunas): Tabla llena en la primera columna. Si tiene fecha, debe tener dosis y marca. La única fila que puede estar vacía es "Otras".
+        13. Interrogatorio (Pregunta 34): Si CUALQUIER síntoma es 'Sí', DEBE detallarse en el recuadro de observaciones de su sistema afin (antigüedad, tx, seguimiento).
+        14. Congruencia Visual (Pregunta 34 y Exploración 4): Si hay 'Alteración de Visión' (34) o 'Ametropía' (46/47), en observaciones y en Exploración 4 DEBE detallarse diagnóstico, uso de lentes, antigüedad, fecha último ajuste.
+        15. Ginecoobstétricos (Pregunta 37): La suma de Gestaciones debe ser exactamente igual a la suma de Partos + Cesáreas + Abortos.
+        16. Exploración Física (Oídos 5): DEBE decir estrictamente la leyenda "CAP y MTL bilateral".
+        17. Exploración Física General (1, 2, 3, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 18): DEBEN decir estrictamente la leyenda "Sin datos patológicos". Si hubo Adoncia/caries en la 51 debe referenciarse en la 7.
+        18. Exploración Física (13 Hernias): DEBE decir estrictamente "No palpable".
+        19. Exploración Física (17, 20, 21, 22): DEBEN decir estrictamente "Normal".
+        20. Exploración Física (23 Tatuajes): Debe coincidir con la info de la pregunta 30. Si en la 30 es 'No', aquí DEBE decir estrictamente "No presentes".
+        21. Firmas: Firma del paciente obligatoria.
 
-        Devuelve ÚNICAMENTE un objeto JSON estricto con esta estructura (sin formato markdown):
+        DEVUELVE ÚNICAMENTE un JSON estricto con esta estructura (sin formato markdown):
         {
           "aprobadoGeneral": true/false,
-          "motivoPrincipal": "Explicación de la falla más grave o 'Expediente MINAS Óptimo'",
+          "motivoPrincipal": "Resumen de la falla o 'Documento óptimo'",
           "checklist": [
-            { "categoria": "1. Identificación y Demográficos", "pass": true/false, "comentario": "..." },
-            { "categoria": "2. Antecedentes y Riesgos Laborales", "pass": true/false, "comentario": "..." },
-            { "categoria": "3. Patológicos y Hábitos", "pass": true/false, "comentario": "..." },
-            { "categoria": "4. Interrogatorio y Ginecoobstétricos", "pass": true/false, "comentario": "..." },
-            { "categoria": "5. Exploración Física estricta y Firmas", "pass": true/false, "comentario": "..." },
-            { "categoria": "6. Cruces Clínicos MINAS", "pass": true/false, "comentario": "..." }
+            { "categoria": "1. Identificación Completa", "pass": true/false, "comentario": "..." },
+            { "categoria": "2. Laborales (Preg. 2) - Antigüedad", "pass": true/false, "comentario": "..." },
+            { "categoria": "3. Laborales (Preg. 3) - Cronología", "pass": true/false, "comentario": "..." },
+            { "categoria": "4. Laborales (A) - Riesgos Físicos", "pass": true/false, "comentario": "..." },
+            { "categoria": "5. Laborales (B) - Químicos y Leyenda", "pass": true/false, "comentario": "..." },
+            { "categoria": "6. Laborales (D) - Ergonómicos", "pass": true/false, "comentario": "..." },
+            { "categoria": "7. Riesgos (4 y 5) - Accidentes", "pass": true/false, "comentario": "..." },
+            { "categoria": "8. Hábitos (21) - Mascotas", "pass": true/false, "comentario": "..." },
+            { "categoria": "9. Patológicos - Observaciones y Detalles", "pass": true/false, "comentario": "..." },
+            { "categoria": "10. Patológicos (28) - Fracturas", "pass": true/false, "comentario": "..." },
+            { "categoria": "11. Patológicos (30) - Tatuajes", "pass": true/false, "comentario": "..." },
+            { "categoria": "12. Patológicos (31) - Vacunas", "pass": true/false, "comentario": "..." },
+            { "categoria": "13. Interrogatorio (34) - Síntomas", "pass": true/false, "comentario": "..." },
+            { "categoria": "14. Congruencia Visual", "pass": true/false, "comentario": "..." },
+            { "categoria": "15. Ginecoobstétricos (37)", "pass": true/false, "comentario": "..." },
+            { "categoria": "16. Exploración (5) - Oídos", "pass": true/false, "comentario": "..." },
+            { "categoria": "17. Exploración - Sin datos patológicos", "pass": true/false, "comentario": "..." },
+            { "categoria": "18. Exploración (13) - Hernias", "pass": true/false, "comentario": "..." },
+            { "categoria": "19. Exploración - Parámetros Normales", "pass": true/false, "comentario": "..." },
+            { "categoria": "20. Exploración (23) - Tatuajes cruzados", "pass": true/false, "comentario": "..." },
+            { "categoria": "21. Firmas", "pass": true/false, "comentario": "..." }
           ]
         }
         `;
-
-        // Lógica para elegir el prompt adecuado
-        let promptSeleccionado = PROMPT_HC_NORMAL;
-        if (tipoDocumento === 'Historia Clínica (MINAS)') {
-            promptSeleccionado = PROMPT_HC_MINAS;
-        }
-       
-
-        const requestBody = {
-            contents: [{
-                parts: [
-                    { text: promptSeleccionado },
-                    { inline_data: { mime_type: "application/pdf", data: pdfBase64 } }
-                ]
-            }],
-            generationConfig: { response_mime_type: "application/json" }
-        };
-
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody)
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Google API Error: ${response.status} - ${errorText}`);
-        }
-
-        const data = await response.json();
-        let textoJSON = data.candidates[0].content.parts[0].text;
-        textoJSON = textoJSON.replace(/```json/g, '').replace(/```/g, '').trim();
-
-        return {
-            statusCode: 200,
-            headers: { "Content-Type": "application/json" },
-            body: textoJSON
-        };
-
-    } catch (error) {
-        return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
-    }
-};
