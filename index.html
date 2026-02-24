@@ -495,21 +495,39 @@
             const acceso = document.getElementById('selector-acceso').value;
             rolActual = acceso === 'admin' ? 'admin' : 'sucursal'; sucursalActual = acceso === 'admin' ? '' : acceso;
             inicializarDiaYSucursal();
-            document.getElementById('pantalla-login').classList.add('hidden'); document.getElementById('sidebar').classList.remove('hidden'); document.getElementById('sidebar').classList.add('flex'); document.getElementById('contenido-principal').classList.remove('hidden');
+            
+            document.getElementById('pantalla-login').classList.add('hidden'); 
+            document.getElementById('sidebar').classList.remove('hidden'); 
+            document.getElementById('sidebar').classList.add('flex'); 
+            document.getElementById('contenido-principal').classList.remove('hidden');
             document.getElementById('usuario-actual').textContent = rolActual === 'admin' ? 'Administrador LAPI' : `${sucursalActual}`;
             
             if (rolActual === 'admin') { 
-                ['btn-nav-admin', 'btn-nav-directorio'].forEach(id => document.getElementById(id).classList.remove('hidden')); 
-                ['btn-nav-registro', 'btn-nav-carga'].forEach(id => document.getElementById(id).classList.add('hidden')); 
-                mostrarVista('vista-admin', document.getElementById('btn-nav-admin')); 
+                // Aseguramos que el admin vea su panel, directorio y módulo MINAS
+                ['btn-nav-admin', 'btn-nav-directorio', 'btn-nav-minas'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if(el) el.classList.remove('hidden');
+                }); 
+                ['btn-nav-registro', 'btn-nav-carga'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if(el) el.classList.add('hidden');
+                }); 
                 
-                // ¡NUEVO! Descargar los datos al iniciar sesión como Admin
+                // Descargar los datos al iniciar sesión como Admin
                 cargarPacientesMinasDesdeFirebase();
             } else { 
-                ['btn-nav-admin', 'btn-nav-directorio'].forEach(id => document.getElementById(id).classList.add('hidden')); 
-                ['btn-nav-registro', 'btn-nav-carga'].forEach(id => document.getElementById(id).classList.remove('hidden')); 
-                mostrarVista('vista-registro', document.getElementById('btn-nav-registro')); 
+                // La sucursal solo ve sus herramientas de carga
+                ['btn-nav-admin', 'btn-nav-directorio', 'btn-nav-minas'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if(el) el.classList.add('hidden');
+                }); 
+                ['btn-nav-registro', 'btn-nav-carga'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if(el) el.classList.remove('hidden');
+                }); 
             }
+            
+            mostrarVista('vista-inicio', document.getElementById('btn-nav-inicio'));
             actualizarUI();
         }
 
