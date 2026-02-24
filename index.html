@@ -173,6 +173,12 @@
                             <label class="block text-sm font-medium text-gray-700 mb-1">Nombre del Paciente</label>
                             <input type="text" id="nombrePacienteMinas" class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500 outline-none" placeholder="Ej. Juan Pérez">
                         </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de Nacimiento</label>
+                            <input type="date" id="nacimientoPacienteMinas" class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-500 outline-none">
+                        </div>
+                        
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">No. de Orden</label>
@@ -612,16 +618,18 @@
 
         async function agregarPacienteMinas() {
             const inputNombre = document.getElementById('nombrePacienteMinas'); 
+            const inputNacimiento = document.getElementById('nacimientoPacienteMinas'); // NUEVO
             const inputOrden = document.getElementById('ordenPacienteMinas'); 
             const inputFolio = document.getElementById('folioPacienteMinas'); 
             const cbs = document.querySelectorAll('.cb-minas:checked');
             
             const nombre = inputNombre.value.trim();
+            const nacimiento = inputNacimiento.value; // NUEVO
             const orden = inputOrden.value.trim();
             const folio = inputFolio.value.trim();
 
-            if (nombre === '' || orden === '' || folio === '' || cbs.length === 0) { 
-                alert('Faltan datos. Asegúrate de ingresar Nombre, No. de Orden, Folio HC y al menos un estudio.'); 
+            if (nombre === '' || nacimiento === '' || orden === '' || folio === '' || cbs.length === 0) { 
+                alert('Faltan datos. Asegúrate de ingresar Nombre, Fecha de Nacimiento, No. de Orden, Folio y estudios.'); 
                 return; 
             }
             
@@ -822,12 +830,23 @@
                 
                 const tipoBackend = docName === 'Historia Clínica' ? 'Historia Clínica (MINAS)' : docName;
 
+                // ==========================================================
+                // NUEVO: PREPARAMOS LOS DATOS DEL PACIENTE PARA LA IA
+                // ==========================================================
+                const datosParaIA = {
+                    nombre: paciente.nombre,
+                    nacimiento: paciente.fechaNacimiento,
+                    orden: paciente.numeroOrden,
+                    datosHC: paciente.datosExtraidosHC // Null si aún no se ha analizado la HC
+                };
+
                 fetch('/.netlify/functions/analizarDocumento', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         pdfBase64: statusObj.pdfBase64,
-                        tipoDocumento: tipoBackend
+                        tipoDocumento: tipoBackend,
+                        datosPaciente: datosParaIA // ENVIAMOS LOS DATOS AQUI
                     })
                 })
                 .then(response => response.text())
@@ -839,16 +858,29 @@
                         const resultadoIA = JSON.parse(responseText);
                         statusObj.checklist = resultadoIA.checklist;
                         statusObj.estado = resultadoIA.aprobadoGeneral ? 'aprobado' : 'rechazado';
+                        
+                        // ==========================================================
+                        // NUEVO: GUARDAR DATOS EXTRAÍDOS DE LA HC
+                        // ==========================================================
+                        if (tipoBackend === 'Historia Clínica (MINAS)' && resultadoIA.datosExtraidosHC) {
+                            paciente.datosExtraidosHC = resultadoIA.datosExtraidosHC;
+                        }
+
                         renderizarExpedientesMinas();
 
-                        // ¡LA MAGIA! Guardar el dictamen de la IA en la base de datos permanentemente
+                        // ¡LA MAGIA! Guardar el dictamen y datos extraídos en la base de datos permanentemente
                         if (db) {
                             const docsParaGuardar = JSON.parse(JSON.stringify(paciente.docsStatus));
                             Object.keys(docsParaGuardar).forEach(k => delete docsParaGuardar[k].pdfBase64);
 
-                            db.collection("PacientesMinas").doc(paciente.id.toString()).update({
-                                docsStatus: docsParaGuardar
-                            }).catch(e => console.error("Error al guardar Checklist en Firebase:", e));
+                            // Preparamos el paquete de actualización para Firebase
+                            const updateData = { docsStatus: docsParaGuardar };
+                            if (paciente.datosExtraidosHC) {
+                                updateData.datosExtraidosHC = paciente.datosExtraidosHC;
+                            }
+
+                            db.collection("PacientesMinas").doc(paciente.id.toString()).update(updateData)
+                              .catch(e => console.error("Error al guardar Checklist en Firebase:", e));
                         }
 
                     } catch(e) {
