@@ -342,6 +342,30 @@
         } catch(e) {
             console.warn("Aviso: Firebase aún no está configurado con claves reales. El sistema usará la memoria local temporalmente.");
         }
+
+        async function cargarPacientesMinasDesdeFirebase() {
+            if (!db) return;
+            
+            try {
+                // Buscamos los pacientes de la fecha seleccionada
+                const snapshot = await db.collection("PacientesMinas")
+                                         .where("fechaOperativa", "==", fechaActualStr)
+                                         .get();
+                
+                // Limpiamos la memoria local temporal
+                bdMinas[fechaActualStr] = { pacientes: [] };
+                
+                // Llenamos la memoria con los datos reales de la base de datos
+                snapshot.forEach(doc => {
+                    bdMinas[fechaActualStr].pacientes.push(doc.data());
+                });
+                
+                // Le decimos a la pantalla que se dibuje de nuevo
+                renderizarExpedientesMinas();
+            } catch (error) {
+                console.error("Error al descargar desde Firebase:", error);
+            }
+        }
         
         function procesarPDFLocal(event) {
             const file = event.target.files[0];
@@ -456,29 +480,37 @@
         
         function cambiarFecha() { fechaActualStr = document.getElementById('fecha-global').value; inicializarDiaYSucursal(); if (rolActual !== '') actualizarUI(); }
 
-        // ==============================================================================
-        // NAVEGACIÓN Y LAUNCHPAD
-        // ==============================================================================
+        function cambiarFecha() { 
+            fechaActualStr = document.getElementById('fecha-global').value; 
+            inicializarDiaYSucursal(); 
+            
+            if (rolActual !== '') {
+                actualizarUI();
+                // Si es admin, descargar los expedientes MINAS de ese nuevo día
+                if (rolActual === 'admin') cargarPacientesMinasDesdeFirebase();
+            } 
+        }
+
         function iniciarSesion() {
             const acceso = document.getElementById('selector-acceso').value;
             rolActual = acceso === 'admin' ? 'admin' : 'sucursal'; sucursalActual = acceso === 'admin' ? '' : acceso;
             inicializarDiaYSucursal();
-            
-            document.getElementById('pantalla-login').classList.add('hidden'); 
-            document.getElementById('sidebar').classList.remove('hidden'); document.getElementById('sidebar').classList.add('flex'); 
-            document.getElementById('contenido-principal').classList.remove('hidden');
+            document.getElementById('pantalla-login').classList.add('hidden'); document.getElementById('sidebar').classList.remove('hidden'); document.getElementById('sidebar').classList.add('flex'); document.getElementById('contenido-principal').classList.remove('hidden');
             document.getElementById('usuario-actual').textContent = rolActual === 'admin' ? 'Administrador LAPI' : `${sucursalActual}`;
             
             if (rolActual === 'admin') { 
-                ['btn-nav-admin', 'btn-nav-directorio', 'btn-nav-minas'].forEach(id => document.getElementById(id).classList.remove('hidden')); 
+                ['btn-nav-admin', 'btn-nav-directorio'].forEach(id => document.getElementById(id).classList.remove('hidden')); 
                 ['btn-nav-registro', 'btn-nav-carga'].forEach(id => document.getElementById(id).classList.add('hidden')); 
+                mostrarVista('vista-admin', document.getElementById('btn-nav-admin')); 
+                
+                // ¡NUEVO! Descargar los datos al iniciar sesión como Admin
+                cargarPacientesMinasDesdeFirebase();
             } else { 
-                ['btn-nav-admin', 'btn-nav-directorio', 'btn-nav-minas'].forEach(id => document.getElementById(id).classList.add('hidden')); 
+                ['btn-nav-admin', 'btn-nav-directorio'].forEach(id => document.getElementById(id).classList.add('hidden')); 
                 ['btn-nav-registro', 'btn-nav-carga'].forEach(id => document.getElementById(id).classList.remove('hidden')); 
+                mostrarVista('vista-registro', document.getElementById('btn-nav-registro')); 
             }
-            
-            // LAUNCHPAD: En lugar de ir directo a un módulo, vamos al inicio
-            mostrarVista('vista-inicio', document.getElementById('btn-nav-inicio'));
+            actualizarUI();
         }
 
         function cerrarSesion() { rolActual = ''; sucursalActual = ''; document.getElementById('pantalla-login').classList.remove('hidden'); document.getElementById('sidebar').classList.add('hidden'); document.getElementById('contenido-principal').classList.add('hidden'); }
@@ -723,13 +755,12 @@
         }
 
         function accionDocMinasIndividual(idPaciente, docName, accion) {
-            const paciente = bdMinas[fechaActualStr].pacientes.find(p => p.id === idPaciente);
+            const paciente = bdMinas[fechaActualStr].pacientes.find(p => p.id === idPaciente.toString() || p.id === idPaciente);
             if(!paciente) return;
             
             const statusObj = paciente.docsStatus[docName];
             
             if (accion === 'subir') {
-                // Creamos un explorador de archivos "invisible"
                 const input = document.createElement('input');
                 input.type = 'file';
                 input.accept = 'application/pdf';
@@ -739,17 +770,27 @@
                     if (file) {
                         const reader = new FileReader();
                         reader.onload = function(evt) {
-                            // Extraemos el PDF y lo guardamos temporalmente en el objeto del documento
                             statusObj.pdfBase64 = evt.target.result.split(',')[1];
                             statusObj.estado = 'subido';
                             statusObj.checklist = [];
                             paciente.statusIntegral = 'pendiente'; 
                             renderizarExpedientesMinas();
+
+                            // Actualizamos el estado "Subido" en la base de datos
+                            if (db) {
+                                // OJO: No guardamos el pdfBase64 en Firebase para no saturar la base de datos, solo el estatus
+                                const docsParaGuardar = JSON.parse(JSON.stringify(paciente.docsStatus));
+                                Object.keys(docsParaGuardar).forEach(k => delete docsParaGuardar[k].pdfBase64);
+                                
+                                db.collection("PacientesMinas").doc(paciente.id.toString()).update({
+                                    docsStatus: docsParaGuardar,
+                                    statusIntegral: paciente.statusIntegral
+                                }).catch(e => console.error("Error al actualizar Firebase:", e));
+                            }
                         };
                         reader.readAsDataURL(file);
                     }
                 };
-                // Hacemos clic automático para que el usuario elija su PDF
                 input.click();
 
             } else if (accion === 'analizar') {
@@ -761,10 +802,8 @@
                 statusObj.estado = 'analizando'; 
                 renderizarExpedientesMinas();
                 
-                // Para que el backend sepa que reglas aplicar
                 const tipoBackend = docName === 'Historia Clínica' ? 'Historia Clínica (MINAS)' : docName;
 
-                // LLAMADA REAL A LA IA DESDE MINAS
                 fetch('/.netlify/functions/analizarDocumento', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -779,11 +818,21 @@
                         const errorObj = JSON.parse(responseText);
                         if(errorObj.error) throw new Error(errorObj.error);
                         
-                        // Recibimos el checklist detallado de la IA
                         const resultadoIA = JSON.parse(responseText);
                         statusObj.checklist = resultadoIA.checklist;
                         statusObj.estado = resultadoIA.aprobadoGeneral ? 'aprobado' : 'rechazado';
                         renderizarExpedientesMinas();
+
+                        // ¡LA MAGIA! Guardar el dictamen de la IA en la base de datos permanentemente
+                        if (db) {
+                            const docsParaGuardar = JSON.parse(JSON.stringify(paciente.docsStatus));
+                            Object.keys(docsParaGuardar).forEach(k => delete docsParaGuardar[k].pdfBase64);
+
+                            db.collection("PacientesMinas").doc(paciente.id.toString()).update({
+                                docsStatus: docsParaGuardar
+                            }).catch(e => console.error("Error al guardar Checklist en Firebase:", e));
+                        }
+
                     } catch(e) {
                         console.error("Error en la IA:", e);
                         statusObj.estado = 'rechazado';
