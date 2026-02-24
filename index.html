@@ -729,44 +729,106 @@
             const statusObj = paciente.docsStatus[docName];
             
             if (accion === 'subir') {
-                statusObj.estado = 'subido';
-                statusObj.checklist = [];
-                paciente.statusIntegral = 'pendiente'; // Si resuben un archivo, se bloquea el análisis integral hasta que se evalúe este
-                renderizarExpedientesMinas();
+                // Creamos un explorador de archivos "invisible"
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'application/pdf';
+                
+                input.onchange = (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(evt) {
+                            // Extraemos el PDF y lo guardamos temporalmente en el objeto del documento
+                            statusObj.pdfBase64 = evt.target.result.split(',')[1];
+                            statusObj.estado = 'subido';
+                            statusObj.checklist = [];
+                            paciente.statusIntegral = 'pendiente'; 
+                            renderizarExpedientesMinas();
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                };
+                // Hacemos clic automático para que el usuario elija su PDF
+                input.click();
+
             } else if (accion === 'analizar') {
+                if (!statusObj.pdfBase64) {
+                    alert('Error: No se ha cargado el documento PDF correctamente. Intenta resubirlo.');
+                    return;
+                }
+
                 statusObj.estado = 'analizando'; 
                 renderizarExpedientesMinas();
                 
-                // Simulación de análisis individual (Pronto conectaremos esto a la API real)
-                setTimeout(() => {
-                    const aprobado = Math.random() > 0.4; // 60% de probabilidad de aprobar
-                    statusObj.checklist = [
-                        { texto: `Revisión de estructura para ${docName}`, pass: true }, 
-                        { texto: `Validación de datos y legibilidad`, pass: aprobado }
-                    ];
-                    statusObj.estado = aprobado ? 'aprobado' : 'rechazado';
+                // Para que el backend sepa que reglas aplicar
+                const tipoBackend = docName === 'Historia Clínica' ? 'Historia Clínica (MINAS)' : docName;
+
+                // LLAMADA REAL A LA IA DESDE MINAS
+                fetch('/.netlify/functions/analizarDocumento', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        pdfBase64: statusObj.pdfBase64,
+                        tipoDocumento: tipoBackend
+                    })
+                })
+                .then(response => response.text())
+                .then(responseText => {
+                    try {
+                        const errorObj = JSON.parse(responseText);
+                        if(errorObj.error) throw new Error(errorObj.error);
+                        
+                        // Recibimos el checklist detallado de la IA
+                        const resultadoIA = JSON.parse(responseText);
+                        statusObj.checklist = resultadoIA.checklist;
+                        statusObj.estado = resultadoIA.aprobadoGeneral ? 'aprobado' : 'rechazado';
+                        renderizarExpedientesMinas();
+                    } catch(e) {
+                        console.error("Error en la IA:", e);
+                        statusObj.estado = 'rechazado';
+                        statusObj.checklist = [{categoria: "Error Interno", pass: false, comentario: "Falló la lectura del documento. " + e.message}];
+                        renderizarExpedientesMinas();
+                    }
+                })
+                .catch(error => {
+                    console.error("Error de conexión:", error);
+                    statusObj.estado = 'rechazado';
+                    statusObj.checklist = [{categoria: "Error de Red", pass: false, comentario: "No se pudo contactar al servidor: " + error.message}];
                     renderizarExpedientesMinas();
-                }, 1500);
+                });
             }
         }
-
+        
         function abrirModalChecklistMinas(idPaciente, docName) {
             const paciente = bdMinas[fechaActualStr].pacientes.find(p => p.id === idPaciente);
             if(!paciente || !paciente.docsStatus[docName].checklist) return;
             
             const checklist = paciente.docsStatus[docName].checklist;
             document.getElementById('checklist-subtitulo').textContent = `${docName} - ${paciente.nombre}`;
-            const ul = document.getElementById('lista-checklist'); ul.innerHTML = '';
+            const ul = document.getElementById('lista-checklist'); 
+            ul.innerHTML = '';
             
+            // Renderizamos los 11 puntos con un diseño elegante
             checklist.forEach(item => {
-                const li = document.createElement('li'); li.className = `flex items-start p-2 rounded bg-gray-50 border ${item.pass ? 'border-green-200' : 'border-red-200'}`;
-                const icon = item.pass ? `✅` : `❌`;
-                li.innerHTML = `<span class="mr-2">${icon}</span> <span class="text-sm font-medium ${item.pass ? 'text-gray-700' : 'text-red-700'}">${item.texto}</span>`;
+                const bgClass = item.pass ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200';
+                const icon = item.pass ? '✅' : '❌';
+                const titleColor = item.pass ? 'text-green-800' : 'text-red-800';
+                
+                const li = document.createElement('li'); 
+                li.className = `flex items-start p-3 rounded border ${bgClass} mb-2`;
+                li.innerHTML = `
+                    <span class="mr-3 mt-0.5">${icon}</span>
+                    <div>
+                        <span class="text-sm font-bold ${titleColor} block">${item.categoria || 'Evaluación'}</span>
+                        <span class="text-xs text-gray-600 mt-1 block">${item.comentario || ''}</span>
+                    </div>
+                `;
                 ul.appendChild(li);
             });
             document.getElementById('modal-checklist').classList.remove('hidden');
         }
-
+        
         function analizarExpedienteMinas(idPaciente) {
             const paciente = bdMinas[fechaActualStr].pacientes.find(p => p.id === idPaciente);
             if(!paciente) return;
