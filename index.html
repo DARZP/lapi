@@ -788,9 +788,7 @@
             
             if (accion === 'subir') {
                 const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = 'application/pdf';
-                
+                input.type = 'file'; input.accept = 'application/pdf';
                 input.onchange = (e) => {
                     const file = e.target.files[0];
                     if (file) {
@@ -799,12 +797,13 @@
                             statusObj.pdfBase64 = evt.target.result.split(',')[1];
                             statusObj.estado = 'subido';
                             statusObj.checklist = [];
+                            paciente.statusIntegral = 'pendiente'; 
                             renderizarExpedientesMinas();
 
                             if (db) {
                                 const docsParaGuardar = JSON.parse(JSON.stringify(paciente.docsStatus));
                                 Object.keys(docsParaGuardar).forEach(k => delete docsParaGuardar[k].pdfBase64);
-                                db.collection("PacientesMinas").doc(paciente.id.toString()).update({ docsStatus: docsParaGuardar }).catch(e => console.error("Error BD:", e));
+                                db.collection("PacientesMinas").doc(paciente.id.toString()).update({ docsStatus: docsParaGuardar, statusIntegral: paciente.statusIntegral }).catch(e => console.error(e));
                             }
                         };
                         reader.readAsDataURL(file);
@@ -813,32 +812,23 @@
                 input.click();
 
             } else if (accion === 'analizar') {
-                if (!statusObj.pdfBase64) {
-                    alert('⚠️ El PDF original ya no está en la memoria temporal (probablemente recargaste la página).\n\nPor favor, haz clic en "Resubir" para adjuntarlo nuevamente.');
-                    return;
-                }
+                if (!statusObj.pdfBase64) { alert('⚠️ El PDF original ya no está en la memoria temporal (probablemente recargaste la página).\n\nPor favor, haz clic en "Resubir" para adjuntarlo nuevamente.'); return; }
 
-                // =========================================================
-                // ALERTA DE REQUERIMIENTO DE HISTORIA CLÍNICA
-                // =========================================================
-                if (docName === 'Espirometría' || docName === 'Audiometría') {
+                const requiereHC = paciente ? paciente.estudios.includes('Historia Clínica') : false;
+
+                if (requiereHC && (docName === 'Espirometría' || docName === 'Audiometría')) {
                     const hcStatus = paciente.docsStatus['Historia Clínica'];
                     if (!hcStatus || hcStatus.estado !== 'aprobado') {
-                        const proceder = confirm(`⚠️ ALERTA DE SISTEMA ⚠️\n\nEstás a punto de analizar la ${docName}, pero la Historia Clínica aún no ha sido Aprobada.\n\nLa IA requiere extraer datos de la HC para evaluar este estudio correctamente. Si continúas ahora, las reglas de cruce de datos saldrán rechazadas.\n\n¿Deseas analizar de todos modos?`);
+                        const proceder = confirm(`⚠️ ALERTA DE SISTEMA ⚠️\n\nEstás a punto de analizar la ${docName}, pero la Historia Clínica aún no ha sido Aprobada.\n\nLa IA requiere cruzar datos con la HC. Si continúas, las reglas de cruce saldrán rechazadas.\n\n¿Deseas analizar de todos modos?`);
                         if (!proceder) return;
                     }
                 }
 
-                statusObj.estado = 'analizando'; 
-                renderizarExpedientesMinas();
+                statusObj.estado = 'analizando'; renderizarExpedientesMinas();
                 
                 const tipoBackend = docName === 'Historia Clínica' ? 'Historia Clínica (MINAS)' : docName;
                 const datosParaIA = {
-                    nombre: paciente.nombre,
-                    nacimiento: paciente.fechaNacimiento,
-                    orden: paciente.numeroOrden,
-                    folio: paciente.folioHC,
-                    datosHC: paciente.datosExtraidosHC
+                    nombre: paciente.nombre, nacimiento: paciente.fechaNacimiento, orden: paciente.numeroOrden, folio: paciente.folioHC, datosHC: paciente.datosExtraidosHC, requiereHC: requiereHC
                 };
                     
                 fetch('/.netlify/functions/analizarDocumento', {
@@ -857,7 +847,6 @@
                         if (tipoBackend === 'Historia Clínica (MINAS)' && resultadoIA.datosExtraidosHC) {
                             paciente.datosExtraidosHC = resultadoIA.datosExtraidosHC;
                         }
-
                         renderizarExpedientesMinas();
 
                         if (db) {
@@ -867,18 +856,9 @@
                             if (paciente.datosExtraidosHC) updateData.datosExtraidosHC = paciente.datosExtraidosHC;
                             db.collection("PacientesMinas").doc(paciente.id.toString()).update(updateData).catch(e => console.error(e));
                         }
-
-                    } catch(e) {
-                        statusObj.estado = 'rechazado';
-                        statusObj.checklist = [{categoria: "Error Interno", pass: false, comentario: "Falló la lectura. " + e.message}];
-                        renderizarExpedientesMinas();
-                    }
+                    } catch(e) { statusObj.estado = 'rechazado'; statusObj.checklist = [{categoria: "Error Interno", pass: false, comentario: "Falló la lectura del documento. " + e.message}]; renderizarExpedientesMinas(); }
                 })
-                .catch(error => {
-                    statusObj.estado = 'rechazado';
-                    statusObj.checklist = [{categoria: "Error de Red", pass: false, comentario: "Error de servidor: " + error.message}];
-                    renderizarExpedientesMinas();
-                });
+                .catch(error => { statusObj.estado = 'rechazado'; statusObj.checklist = [{categoria: "Error de Red", pass: false, comentario: "Error de servidor: " + error.message}]; renderizarExpedientesMinas(); });
             }
         }
 
@@ -1365,7 +1345,7 @@
         // --- 5. LLAMADA REAL A LA IA PARA SUCURSALES ---
         function accionDocumento(docKey, accion, tipoEstudio) {
             const statusObj = asegurarEstructuraDoc(docKey);
-            const idPaciente = docKey.split('-')[1]; // Extraemos el ID del docKey (ej: doc-12345-Historia)
+            const idPaciente = docKey.split('-')[1]; 
             const paciente = idPaciente && bdGlobal[fechaActualStr][obtenerTargetSucursal()].pacientes ? bdGlobal[fechaActualStr][obtenerTargetSucursal()].pacientes.find(p => p.id === idPaciente) : null;
 
             if (accion === 'subir') { 
@@ -1380,7 +1360,6 @@
                             statusObj.estado = 'subido'; statusObj.horaSubida = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }); 
                             statusObj.notas = []; statusObj.checklist = []; actualizarUI();
                             
-                            // Guardado individual del documento en el paciente de Firebase
                             if (db && paciente) {
                                 db.collection("PacientesRed").doc(paciente.id).update({ [`docsStatus.${docKey}`]: { estado: statusObj.estado, horaSubida: statusObj.horaSubida, checklist: [] } }).catch(e=>console.log(e));
                             }
@@ -1392,9 +1371,25 @@
             } 
             else if (accion === 'analizar') {
                 if (!statusObj.pdfBase64) { alert('⚠️ PDF no encontrado en memoria. Por favor resube el archivo.'); return; }
+                
+                // SABER SI ESTE PACIENTE LLEVA HISTORIA CLÍNICA CONTRATADA
+                const requiereHC = paciente ? paciente.estudios.includes('Historia Clínica') : false;
+
+                // ALERTA INTELIGENTE SÓLO SI REQUIERE HC Y AÚN NO LA HA APROBADO
+                if (paciente && requiereHC && (tipoEstudio === 'Espirometría' || tipoEstudio === 'Audiometría')) {
+                    const hcStatus = paciente.docsStatus[`doc-${paciente.id}-Historia`];
+                    if (!hcStatus || hcStatus.estado !== 'aprobado') {
+                        const proceder = confirm(`⚠️ ALERTA DE SISTEMA ⚠️\n\nEste paciente SÍ tiene contratada una Historia Clínica, pero aún no ha sido aprobada.\n\nLa IA requiere cruzar datos con la HC. Si continúas, las reglas de cruce saldrán rechazadas temporalmente.\n\n¿Deseas analizar de todos modos?`);
+                        if (!proceder) return;
+                    }
+                }
+
                 statusObj.estado = 'analizando'; actualizarUI();
                 
-                const datosParaIA = paciente ? { nombre: paciente.nombre, nacimiento: paciente.fechaNacimiento, orden: paciente.numeroOrden, folio: paciente.folioHC, datosHC: paciente.datosExtraidosHC } : {};
+                const datosParaIA = paciente ? { 
+                    nombre: paciente.nombre, nacimiento: paciente.fechaNacimiento, orden: paciente.numeroOrden, folio: paciente.folioHC, datosHC: paciente.datosExtraidosHC,
+                    requiereHC: requiereHC // <-- Le avisamos a la IA si debe ser estricta o no
+                } : {};
 
                 fetch('/.netlify/functions/analizarDocumento', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' }, 
