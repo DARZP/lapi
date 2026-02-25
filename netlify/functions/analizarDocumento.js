@@ -6,7 +6,7 @@ exports.handler = async (event, context) => {
     }
 
     try {
-        // AHORA EXTRAEMOS "datosPaciente" DEL FRONTEND PARA CRUZARLOS EN LA ESPIROMETRÍA
+        // AHORA EXTRAEMOS "datosPaciente" DEL FRONTEND PARA CRUZARLOS EN LA ESPIROMETRÍA Y AUDIOMETRÍA
         const { pdfBase64, tipoDocumento, datosPaciente } = JSON.parse(event.body);
         const API_KEY = process.env.GEMINI_API_KEY;
 
@@ -79,11 +79,14 @@ exports.handler = async (event, context) => {
 
         --- FIN DE REGLAS MINAS ---
 
-        Además de la auditoría, DEBES EXTRAER los siguientes datos del paciente para guardarlos en la base de datos y usarlos en futuros estudios:
+        Además de la auditoría, DEBES EXTRAER los siguientes datos del paciente para guardarlos en la base de datos y usarlos en futuros estudios (Espirometría y Audiometría):
         1. "estatura": Extraída de la sección 44. SOMATOMETRÍA (Talla).
         2. "peso": Extraído de la sección 44. SOMATOMETRÍA (Peso).
         3. "fuma": Valor de la sección "Hábitos y Costumbres" pregunta 17 (SI/NO).
         4. "fumaDetalles": Si en la 18 dice cuánto fumó o en la sección FUMADOR, extráelo. Si no, déjalo vacío.
+        5. "audio_patologicos": Resumen si reporta padecer: Diabetes, Hipertensión (HAS), Infección de oídos/Otitis, Dislipidemia (Colesterol/Triglicéridos) o Disminución auditiva (En preguntas 29 y 34). Si no tiene, pon "Negados".
+        6. "audio_exantematicas": Resumen de la pregunta 27 (Sarampión, Rubéola, Paperas, Varicela). Si no tiene, pon "Negados".
+        7. "audio_ruido": Resumen de la exposición a Ruido en "Antecedentes Laborales" (Tabla A. Físicos). Incluye empresa, años, EPP. Si marcó NO, pon "Sin exposición".
 
         Con base en el manual literal anterior y los datos a extraer, genera el reporte en JSON validando cada sección.
         DEVUELVE ÚNICAMENTE un JSON estricto con esta estructura (sin bloques de markdown \`\`\`json):
@@ -94,7 +97,10 @@ exports.handler = async (event, context) => {
               "estatura": "...",
               "peso": "...",
               "fuma": "SI/NO",
-              "fumaDetalles": "..."
+              "fumaDetalles": "...",
+              "audio_patologicos": "...",
+              "audio_exantematicas": "...",
+              "audio_ruido": "..."
           },
           "checklist": [
             { "categoria": "1. Sección Identificación", "pass": true/false, "comentario": "..." },
@@ -112,12 +118,13 @@ exports.handler = async (event, context) => {
         }
         `;
 
-        // ============================================================================
-        // PROMPT 3: ESPIROMETRÍA (CRUCE DE DATOS CON HISTORIA CLÍNICA)
-        // ============================================================================
+        // Extraemos los datos cruzados (si existen) para pasárselos a los estudios
         const dp = datosPaciente || {};
         const hc = dp.datosHC || null; // Datos extraídos previamente de la HC
 
+        // ============================================================================
+        // PROMPT 3: ESPIROMETRÍA (CRUCE DE DATOS CON HISTORIA CLÍNICA)
+        // ============================================================================
         const PROMPT_ESPIROMETRIA = `
         Eres un Auditor Médico evaluando el PDF de una ESPIROMETRÍA.
         
@@ -152,12 +159,48 @@ exports.handler = async (event, context) => {
         `;
 
         // ============================================================================
+        // PROMPT 4: AUDIOMETRÍA (CRUCE DE DATOS CON HISTORIA CLÍNICA)
+        // ============================================================================
+        const PROMPT_AUDIOMETRIA = `
+        Eres un Auditor Médico evaluando el PDF de una AUDIOMETRÍA.
+        
+        DATOS DE LA PLATAFORMA PARA CRUZAR:
+        - Nombre registrado: ${dp.nombre || 'No proporcionado'}
+        - Fecha de Nacimiento: ${dp.nacimiento || 'No proporcionado'}
+        - Número de Orden: ${dp.orden || 'No proporcionado'}
+        
+        DATOS DE HISTORIA CLÍNICA (HC) PARA CRUZAR:
+        ${hc ? `- Patológicos: ${hc.audio_patologicos}\n- Exantemáticas: ${hc.audio_exantematicas}\n- Ruido Laboral: ${hc.audio_ruido}` : 'NO DISPONIBLES (La Historia Clínica aún no se ha analizado)'}
+
+        REGLAS ESTRICTAS DE AUDIOMETRÍA:
+        1. "Identificación": El Número de Orden debe coincidir con ${dp.orden || 'No proporcionado'}. El Nombre/Apellidos deben coincidir con ${dp.nombre || 'No proporcionado'}. La Fecha de Nacimiento debe coincidir con ${dp.nacimiento || 'No proporcionado'}. (Ignorar Suc, Modelo, Serie, Sexo, Edad, Empresa).
+        2. "Antecedentes Personales Patológicos": Si el PDF tiene seleccionado "Diabetes Mellitus", "Hipertensión Arterial Sistémica", "Otitis", "Dislipidemia" o "Disminución de agudeza auditiva", SE DEBE VERIFICAR que haya sido referenciado en la HC. Igualmente con Sarampión, Rubéola, Paperas o Varicela. Si NO HAY DATOS DE HC disponibles, pon pass: false y en comentario: "⚠️ PENDIENTE: Se requiere analizar primero la Historia Clínica para cruzar estos datos".
+        3. "Antecedentes Laborales (Ruido)": Si el PDF marca "SI" a exposición a ruido (actual o anterior), las exposiciones descritas (Empresa, Puesto, Antigüedad, Horas, EPP) DEBERÁN estar incluidas en la exposición de RUIDO de la HC. Ten criterio para saber si es la misma exposición aunque falten pequeños detalles. Si marca "NO", no requiere verificación. Si NO HAY DATOS DE HC disponibles, pon pass: false y en comentario: "⚠️ PENDIENTE: Cruzar con Historia Clínica".
+        4. "Tablas de Estudio, Diagnóstico y Recomendación": Verifica que el resultado del estudio (tabla) corresponda con lo redactado en "DIAGNÓSTICO". Verifica que, en caso de tener una audiometría en parámetros normales, se redacte en "RECOMENDACIÓN" exactamente: "Realizar estudio de forma anual e ingresar a programa de conservación auditiva".
+        (Nota: Antecedentes Heredo Familiares, Hábitos y Costumbres, y Exploración Otológica NO requieren verificación).
+
+        DEVUELVE ÚNICAMENTE un JSON estricto con esta estructura (sin bloques de markdown \`\`\`json):
+        {
+          "aprobadoGeneral": true/false,
+          "motivoPrincipal": "Resumen de la falla o 'Documento congruente y óptimo'",
+          "checklist": [
+            { "categoria": "1. Identificación", "pass": true/false, "comentario": "..." },
+            { "categoria": "2. Antecedentes Personales Patológicos", "pass": true/false, "comentario": "..." },
+            { "categoria": "3. Antecedentes Laborales (Ruido)", "pass": true/false, "comentario": "..." },
+            { "categoria": "4. Tablas, Diagnóstico y Recomendación", "pass": true/false, "comentario": "..." }
+          ]
+        }
+        `;
+
+        // ============================================================================
         // LÓGICA DE SELECCIÓN DE PROMPT
         // ============================================================================
         if (tipoDocumento === 'Historia Clínica (MINAS)' || tipoDocumento === 'Historia Clínica') {
             promptSeleccionado = PROMPT_HC_MINAS;
         } else if (tipoDocumento === 'Espirometría') {
             promptSeleccionado = PROMPT_ESPIROMETRIA;
+        } else if (tipoDocumento === 'Audiometría') {
+            promptSeleccionado = PROMPT_AUDIOMETRIA;
         } else {
             promptSeleccionado = PROMPT_HC_NORMAL; // Fallback para documentos genéricos
         }
