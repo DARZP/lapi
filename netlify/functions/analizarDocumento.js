@@ -1,17 +1,24 @@
 // netlify/functions/analizarDocumento.js
 
 exports.handler = async (event, context) => {
-    if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
+    if (event.httpMethod !== 'POST') {
+        return { statusCode: 405, body: 'Method Not Allowed' };
+    }
 
     try {
         const { pdfBase64, tipoDocumento, datosPaciente } = JSON.parse(event.body);
         const API_KEY = process.env.GEMINI_API_KEY;
 
-        if (!API_KEY) return { statusCode: 500, body: JSON.stringify({ error: "Falta configurar GEMINI_API_KEY en Netlify." }) };
+        if (!API_KEY) {
+            return { statusCode: 500, body: JSON.stringify({ error: "Falta configurar GEMINI_API_KEY en Netlify." }) };
+        }
 
         let promptSeleccionado = "";
+        
+        // Extraemos los datos cruzados y verificamos si REQUIERE Historia Clínica
         const dp = datosPaciente || {};
         const hc = dp.datosHC || null; 
+        const requiereHC = dp.requiereHC === true; // Bandera enviada desde el Frontend
 
         // ============================================================================
         // TEXTO BASE: REGLAS HISTORIA CLÍNICA (SUCURSALES NORMALES Y LIBRE)
@@ -19,7 +26,7 @@ exports.handler = async (event, context) => {
         const REGLAS_HC_BASE = `
         ### SECCIÓN DE IDENTIFICACIÓN
         4. Datos que NO REQUIEREN VERIFICACIÓN: Nacionalidad, Originario de, Estado civil, Religión, Empresa, Puesto, Departamento, Escolaridad, Grupo sanguíneo, Acepta transfusiones.
-        5. Datos que REQUIEREN VERIFICACIÓN DE LLENADO (Siempre contestados): Grupo étnico, Discapacidad, Domicilio particular (calle, # ext, # int, colonia, localidad, municipio, estado y C.P.), Teléfono de casa, Teléfono celular, IMSS, RFC, CURP, Contacto de emergencia (Nombre, dirección, parentesco, teléfono, celular).
+        5. Datos que REQUIEREN VERIFICACIÓN DE LLENADO: Grupo étnico, Discapacidad, Domicilio particular (calle, # ext, # int, colonia, localidad, municipio, estado y C.P.), Teléfono de casa, Teléfono celular, IMSS, RFC, CURP, Contacto de emergencia (Nombre, dirección, parentesco, teléfono, celular).
 
         ### SECCIÓN ANTECEDENTES LABORALES
         - 1. NO REQUIERE VERIFICACIÓN.
@@ -31,6 +38,7 @@ exports.handler = async (event, context) => {
         - D. ERGONÓMICOS: Si es SÍ, verificar (Tipo de objeto/peso, EPP para carga. Movimiento y segmento. Tipo de postura).
         - RIESGOS LABORALES (4 y 5): Si es SÍ, verificar que cada dato esté lleno (Empresa, causa, días, cuándo, qué pasó, secuelas, proceso). 6 al 11: NO VERIFICAR.
         - OBSERVACIONES DEL EXAMINADOR: NO REQUIERE VERIFICACIÓN.
+
 
         ### SECCIÓN HÁBITOS Y COSTUMBRES
         - 12 al 20, y 22: NO REQUIEREN VERIFICACIÓN.
@@ -65,7 +73,7 @@ exports.handler = async (event, context) => {
         `;
 
         // ============================================================================
-        // PROMPT 1: HISTORIA CLÍNICA (SUCURSALES)
+        // PROMPT 1: HISTORIA CLÍNICA NORMAL (SUCURSALES)
         // ============================================================================
         const PROMPT_HC_NORMAL = `
         Eres un auditor médico de LAP.IA para sucursales estándar. Evalúa el PDF adjunto.
@@ -103,7 +111,7 @@ exports.handler = async (event, context) => {
         }`;
 
         // ============================================================================
-        // PROMPT 2: HISTORIA CLÍNICA LIBRE (LABORATORIO IA) - SIN CRUCE
+        // PROMPT 2: HISTORIA CLÍNICA LIBRE (LABORATORIO IA)
         // ============================================================================
         const PROMPT_HC_LIBRE = `
         Eres el Laboratorio Autónomo de LAP.IA. Evalúa el PDF de la Historia Clínica adjunto.
@@ -127,7 +135,7 @@ exports.handler = async (event, context) => {
         }`;
 
         // ============================================================================
-        // PROMPT HISTORIA CLÍNICA (MINAS)
+        // PROMPT 3: HISTORIA CLÍNICA (MINAS)
         // ============================================================================
         const PROMPT_HC_MINAS = `
         Eres el Auditor Médico Supremo de LAP.IA para la división de MINAS.
@@ -230,7 +238,7 @@ exports.handler = async (event, context) => {
         `;
 
         // ============================================================================
-        // PROMPT 3: ESPIROMETRÍA (CRUCE DE DATOS CON HISTORIA CLÍNICA)
+        // PROMPT 4: ESPIROMETRÍA (DINÁMICO CON Y SIN HC)
         // ============================================================================
         const PROMPT_ESPIROMETRIA = `
         Eres un Auditor Médico evaluando el PDF de una ESPIROMETRÍA.
@@ -240,21 +248,26 @@ exports.handler = async (event, context) => {
         - Fecha de Nacimiento: ${dp.nacimiento || 'No proporcionado'}
         - Número de Orden: ${dp.orden || 'No proporcionado'}
         
-        DATOS DE HISTORIA CLÍNICA (HC) PARA CRUZAR:
-        ${hc ? `- Estatura HC: ${hc.estatura} \n- Peso HC: ${hc.peso} \n- Fuma HC: ${hc.fuma} \n- Detalles Tabaco HC: ${hc.fumaDetalles}` : 'NO DISPONIBLES (La Historia Clínica aún no se ha analizado)'}
+        CONDICIÓN DE HISTORIA CLÍNICA:
+        - ¿El paciente requiere Historia Clínica?: ${requiereHC ? 'SÍ' : 'NO'}
+        - DATOS EXTRAÍDOS DE HC: ${hc ? `Estatura: ${hc.estatura}, Peso: ${hc.peso}, Fuma: ${hc.fuma}, Detalles Tabaco: ${hc.fumaDetalles}` : (requiereHC ? 'NO DISPONIBLES AÚN' : 'NO APLICA')}
 
         REGLAS DE ESPIROMETRÍA:
-        1. "Fecha Nacimiento": Verifica que la fecha en el PDF coincida con la de Plataforma (${dp.nacimiento || 'No proporcionado'}).
+        1. "Fecha Nacimiento": Verifica que coincida con la de Plataforma (${dp.nacimiento || 'No proporcionado'}).
         2. "Nombre y Apellidos": Verifica que coincidan con Plataforma (${dp.nombre || 'No proporcionado'}).
         3. "Identificación Personal": Verifica que coincida con el Número de Orden de Plataforma (${dp.orden || 'No proporcionado'}).
-        4. "Estatura y Peso": Verifica que la estatura y peso del PDF coincidan con la HC. Si NO HAY DATOS DE HC disponibles, pon pass: false y en comentario: "⚠️ PENDIENTE: Se requiere analizar primero la Historia Clínica para cruzar estos datos".
-        5. "Fumador": Si el PDF marca SI, debe tener detalles de cantidad/tiempo a un lado, y en HC debe decir SI. Si marca NO, no debe haber detalles y en HC debe decir NO. Si marca DEJAR, debe tener detalles y coincidir con la HC. Si NO HAY DATOS DE HC, pon pass: false y en comentario: "⚠️ PENDIENTE: Cruzar con Historia Clínica".
+        4. "Estatura y Peso": 
+           - Si REQUIERE Historia Clínica (SÍ): Verifica que coincidan con los datos de HC. Si dicen "NO DISPONIBLES AÚN", pon pass: false y comentario "⚠️ PENDIENTE: Se requiere analizar primero la Historia Clínica".
+           - Si NO requiere Historia Clínica (NO): Pon pass: true y comentario "Validado - No requiere cruce con HC".
+        5. "Fumador": 
+           - REGLA BASE (Siempre aplica): Si el PDF marca "SI" o "DEJAR", DEBE tener detalles de cantidad, frecuencia y tiempo anotados a un lado. Si marca "NO", no debe haber detalles.
+           - CRUCE (Solo si Requiere HC es SÍ): La respuesta debe coincidir con la HC. Si los datos de HC dicen "NO DISPONIBLES AÚN", pon pass: false y comentario "⚠️ PENDIENTE: Cruzar con Historia Clínica". Si la HC no existe porque no la requiere (NO), solo aplica la regla base y pon pass: true.
         (Nota: Edad, Género, BMI, Profesión, Código Paciente y Grupo Étnico NO requieren verificación, ignóralos).
 
         DEVUELVE ÚNICAMENTE un JSON estricto con esta estructura (sin markdown):
         {
           "aprobadoGeneral": true/false,
-          "motivoPrincipal": "...",
+          "motivoPrincipal": "Resumen de la falla o 'Documento congruente y óptimo'",
           "checklist": [
             { "categoria": "1. Fecha de Nacimiento", "pass": true/false, "comentario": "..." },
             { "categoria": "2. Nombre y Apellidos", "pass": true/false, "comentario": "..." },
@@ -266,7 +279,7 @@ exports.handler = async (event, context) => {
         `;
 
         // ============================================================================
-        // PROMPT 4: AUDIOMETRÍA (CRUCE DE DATOS CON HISTORIA CLÍNICA)
+        // PROMPT 5: AUDIOMETRÍA (DINÁMICO CON Y SIN HC)
         // ============================================================================
         const PROMPT_AUDIOMETRIA = `
         Eres un Auditor Médico evaluando el PDF de una AUDIOMETRÍA.
@@ -276,19 +289,24 @@ exports.handler = async (event, context) => {
         - Fecha de Nacimiento: ${dp.nacimiento || 'No proporcionado'}
         - Número de Orden: ${dp.orden || 'No proporcionado'}
         
-        DATOS DE HISTORIA CLÍNICA (HC) PARA CRUZAR:
-        ${hc ? `- Patológicos: ${hc.audio_patologicos}\n- Exantemáticas: ${hc.audio_exantematicas}\n- Ruido Laboral: ${hc.audio_ruido}` : 'NO DISPONIBLES (La Historia Clínica aún no se ha analizado)'}
+        CONDICIÓN DE HISTORIA CLÍNICA:
+        - ¿El paciente requiere Historia Clínica?: ${requiereHC ? 'SÍ' : 'NO'}
+        - DATOS EXTRAÍDOS DE HC: ${hc ? `Patológicos: ${hc.audio_patologicos}\nExantemáticas: ${hc.audio_exantematicas}\nRuido Laboral: ${hc.audio_ruido}` : (requiereHC ? 'NO DISPONIBLES AÚN' : 'NO APLICA')}
 
         REGLAS ESTRICTAS DE AUDIOMETRÍA:
         1. "Identificación": El Número de Orden debe coincidir con ${dp.orden || 'No proporcionado'}. El Nombre/Apellidos deben coincidir con ${dp.nombre || 'No proporcionado'}. La Fecha de Nacimiento debe coincidir con ${dp.nacimiento || 'No proporcionado'}. (Ignorar Suc, Modelo, Serie, Sexo, Edad, Empresa).
-        2. "Antecedentes Personales Patológicos": Si el PDF tiene seleccionado "Diabetes Mellitus", "Hipertensión Arterial Sistémica", "Otitis", "Dislipidemia" o "Disminución de agudeza auditiva", SE DEBE VERIFICAR que haya sido referenciado en la HC. Igualmente con Sarampión, Rubéola, Paperas o Varicela. Si NO HAY DATOS DE HC disponibles, pon pass: false y en comentario: "⚠️ PENDIENTE: Se requiere analizar primero la Historia Clínica para cruzar estos datos".
-        3. "Antecedentes Laborales (Ruido)": Si el PDF marca "SI" a exposición a ruido, las exposiciones (Empresa, Puesto, Antigüedad, Horas, EPP) DEBERÁN ser congruentes con la exposición de RUIDO de la HC. Si marca "NO", no requiere verificación. Si NO HAY DATOS DE HC disponibles, pon pass: false y en comentario: "⚠️ PENDIENTE: Cruzar con Historia Clínica".
+        2. "Antecedentes Personales Patológicos": 
+           - Si REQUIERE Historia Clínica (SÍ): Si el PDF marca Diabetes, Hipertensión, Otitis, Dislipidemia, Disminución auditiva o Exantemáticas, SE DEBE VERIFICAR que haya sido referenciado en la HC. Si los datos de HC son "NO DISPONIBLES AÚN", pon pass: false y comentario "⚠️ PENDIENTE: Analizar primero la Historia Clínica".
+           - Si NO requiere Historia Clínica (NO): Pon pass: true y comentario "Validado - No requiere cruce con HC".
+        3. "Antecedentes Laborales (Ruido)": 
+           - Si REQUIERE Historia Clínica (SÍ): Si el PDF marca "SI" a exposición a ruido, las exposiciones DEBERÁN ser congruentes con la exposición de RUIDO de la HC. Si marca "NO", no requiere verificación. Si los datos HC dicen "NO DISPONIBLES AÚN", pon pass: false y comentario "⚠️ PENDIENTE: Cruzar con Historia Clínica".
+           - Si NO requiere Historia Clínica (NO): Pon pass: true y comentario "Validado - No requiere cruce con HC".
         4. "Tablas de Estudio, Diagnóstico y Recomendación": Verifica que el resultado del estudio (tabla) corresponda con "DIAGNÓSTICO". Si la audiometría es normal, en "RECOMENDACIÓN" debe decir exactamente: "Realizar estudio de forma anual e ingresar a programa de conservación auditiva".
 
         DEVUELVE ÚNICAMENTE un JSON estricto con esta estructura (sin markdown):
         {
           "aprobadoGeneral": true/false,
-          "motivoPrincipal": "...",
+          "motivoPrincipal": "Resumen de la falla o 'Documento congruente y óptimo'",
           "checklist": [
             { "categoria": "1. Identificación", "pass": true/false, "comentario": "..." },
             { "categoria": "2. Antecedentes Personales Patológicos", "pass": true/false, "comentario": "..." },
@@ -303,14 +321,11 @@ exports.handler = async (event, context) => {
         // ============================================================================
         if (tipoDocumento === 'Historia Clínica (Libre)') { promptSeleccionado = PROMPT_HC_LIBRE; } 
         else if (tipoDocumento === 'Historia Clínica') { promptSeleccionado = PROMPT_HC_NORMAL; }
-        else if (tipoDocumento === 'Historia Clínica (MINAS)') { promptSeleccionado = PROMPT_HC_MINAS; } // El que ya tienes
-        else if (tipoDocumento === 'Espirometría') { promptSeleccionado = PROMPT_ESPIROMETRIA; } // El que ya tienes
-        else if (tipoDocumento === 'Audiometría') { promptSeleccionado = PROMPT_AUDIOMETRIA; } // El que ya tienes
+        else if (tipoDocumento === 'Historia Clínica (MINAS)') { promptSeleccionado = PROMPT_HC_MINAS; } 
+        else if (tipoDocumento === 'Espirometría') { promptSeleccionado = PROMPT_ESPIROMETRIA; } 
+        else if (tipoDocumento === 'Audiometría') { promptSeleccionado = PROMPT_AUDIOMETRIA; } 
         else { promptSeleccionado = PROMPT_HC_NORMAL; }
 
-        // ============================================================================
-        // LLAMADA A LA API DE GOOGLE GEMINI
-        // ============================================================================
         const requestBody = { contents: [{ parts: [{ text: promptSeleccionado }, { inline_data: { mime_type: "application/pdf", data: pdfBase64 } }] }], generationConfig: { response_mime_type: "application/json" } };
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestBody) });
         if (!response.ok) throw new Error(`Google API Error: ${response.status}`);
@@ -319,3 +334,7 @@ exports.handler = async (event, context) => {
 
     } catch (error) { return { statusCode: 500, body: JSON.stringify({ error: error.message }) }; }
 };
+
+
+
+       
