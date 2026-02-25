@@ -84,7 +84,7 @@
             <button onclick="mostrarVista('vista-admin-directorio', this)" id="btn-nav-directorio" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium flex justify-between items-center">Directorio ➔</button>
             <button onclick="mostrarVista('vista-minas', this)" id="btn-nav-minas" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium text-yellow-500">Módulo MINAS ⛏️</button>
             
-            <button onclick="mostrarVista('vista-registro', this)" id="btn-nav-registro" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium">Registro de Estudios</button>
+            <button onclick="mostrarVista('vista-registro', this)" id="btn-nav-registro" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium">Registro de Pacientes</button>
             <button onclick="mostrarVista('vista-carga', this)" id="btn-nav-carga" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium">Módulo Documental</button>
             
             <div class="pt-4 mt-2 border-t border-gray-800">
@@ -146,7 +146,6 @@
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-4 rounded-lg shadow-sm border-l-4 border-blue-600 gap-4">
                     <div><h3 class="font-bold text-gray-800 text-xl" id="detalle-titulo">Sucursal</h3><p class="text-sm text-gray-500">Auditoría LAP.IA</p></div>
                     <div class="flex flex-wrap gap-2">
-                        <button onclick="simularDescarga('subidos')" class="bg-blue-100 hover:bg-blue-200 text-blue-700 border border-blue-300 text-xs font-bold py-2 px-4 rounded transition flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> Descargar Subidos</button>
                         <button onclick="simularDescarga('revisados')" class="bg-green-100 hover:bg-green-200 text-green-700 border border-green-300 text-xs font-bold py-2 px-4 rounded transition flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> Descargar Revisados IA</button>
                     </div>
                 </div>
@@ -156,9 +155,14 @@
                     <div class="bg-white p-3 rounded-lg shadow-sm border-l-4 border-green-400"><p class="text-xs text-gray-500 font-medium">Aprobación LAP.IA</p><p id="audit-ia" class="text-2xl font-bold text-gray-800">0%</p></div>
                 </div>
                 <div class="bg-white p-6 rounded-lg shadow-sm flex-1 flex flex-col border-t border-gray-100">
-                    <div class="flex justify-between items-center mb-4 pb-2 border-b border-gray-100">
+                    <div class="flex justify-between items-center mb-4 pb-2 border-b border-gray-100 flex-wrap gap-2">
                         <h3 class="font-bold text-gray-700">Archivos del Día</h3>
-                        <select id="filtro-admin" onchange="generarVistaDetalleAdmin()" class="border border-gray-300 text-sm rounded p-1 text-gray-600 focus:ring-lapiOrange outline-none"><option value="registro">Ordenar por: Registro</option><option value="paciente">Ordenar por: Paciente</option><option value="estudio">Ordenar por: Tipo de Estudio</option></select>
+                        <div class="flex space-x-2 w-full md:w-auto">
+                            <div class="bg-gray-50 flex items-center px-3 rounded border border-gray-300">
+                                <span>🔍</span><input type="text" id="buscadorRed" onkeyup="generarVistaDetalleAdmin()" class="p-1 bg-transparent outline-none text-sm w-full" placeholder="Buscar nombre o folio...">
+                            </div>
+                            <select id="filtro-admin" onchange="generarVistaDetalleAdmin()" class="border border-gray-300 text-sm rounded p-1 text-gray-600 focus:ring-lapiOrange outline-none"><option value="registro">Ordenar por: Registro</option><option value="paciente">Ordenar por: Paciente</option><option value="estudio">Ordenar por: Tipo de Estudio</option></select>
+                        </div>
                     </div>
                     <div id="contenedorDetalleAdmin" class="flex-1 overflow-y-auto space-y-3 pr-2"></div>
                 </div>
@@ -259,9 +263,14 @@
             
             <section id="vista-registro" class="hidden h-full flex flex-col lg:flex-row gap-6">
                 <div class="bg-white p-6 rounded-lg shadow-sm w-full lg:w-1/2 border-t-4 border-lapiOrange flex flex-col">
-                    <h3 class="font-bold text-gray-700 mb-4 text-lg">Nuevo Registro de Estudio</h3>
-                    <div class="space-y-4 flex-1 overflow-y-auto">
-                        <div><label class="block text-sm font-medium text-gray-600 mb-1">Nombre del Paciente</label><input type="text" id="nombrePaciente" class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-lapiOrange outline-none"></div>
+                    <h3 class="font-bold text-gray-700 mb-4 text-lg">Nuevo Registro de Paciente</h3>
+                    <div class="space-y-4 flex-1 overflow-y-auto pr-2">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
+                            <div><label class="block text-sm font-medium text-gray-600 mb-1">Nombre Completo</label><input type="text" id="nombrePaciente" class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-lapiOrange outline-none"></div>
+                            <div><label class="block text-sm font-medium text-gray-600 mb-1">Fecha de Nacimiento</label><input type="date" id="nacimientoPaciente" class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-lapiOrange outline-none"></div>
+                            <div><label class="block text-sm font-medium text-gray-600 mb-1">No. de Orden</label><input type="text" id="ordenPaciente" class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-lapiOrange outline-none"></div>
+                            <div><label class="block text-sm font-medium text-gray-600 mb-1">Folio HC</label><input type="text" id="folioPaciente" class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-lapiOrange outline-none"></div>
+                        </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-600 mb-2">Estudios Realizados:</label>
                             <div class="grid grid-cols-2 gap-2">
@@ -275,7 +284,7 @@
                             </div>
                         </div>
                     </div>
-                    <button onclick="agregarPaciente()" class="w-full bg-lapiOrange text-white font-bold py-3 mt-4 rounded shadow-md">+ Guardar Registro</button>
+                    <button onclick="agregarPaciente()" class="w-full bg-lapiOrange text-white font-bold py-3 mt-4 rounded shadow-md hover:bg-lapiDark">+ Guardar Registro</button>
                 </div>
                 <div class="bg-white p-6 rounded-lg shadow-sm w-full lg:w-1/2 flex flex-col">
                     <div class="flex justify-between items-center mb-4 border-b pb-2"><h3 class="font-bold text-gray-700 text-lg">Pacientes de Hoy</h3><span id="contador-pacientes" class="bg-gray-200 text-xs font-bold px-2 py-1 rounded-full">0</span></div>
@@ -1243,9 +1252,7 @@
 
         function generarDirectorioUI() { const grid = document.getElementById('grid-directorio'); grid.innerHTML = ''; SUCURSALES.forEach(sucursal => { const card = document.createElement('button'); card.onclick = () => { sucursalAuditada = sucursal; mostrarVista('vista-admin-detalle'); }; card.className = "bg-gray-50 hover:bg-lapiLight border border-gray-200 p-4 rounded-lg text-left transition flex items-center shadow-sm"; card.innerHTML = `<div class="bg-gray-200 text-gray-500 rounded-full w-8 h-8 flex items-center justify-center font-bold mr-3 text-sm">${sucursal.charAt(0)}</div> <span class="font-bold text-gray-700">${sucursal}</span>`; grid.appendChild(card); }); }
         function actualizarDashboardAdmin() { const tbody = document.getElementById('tabla-admin-body'); tbody.innerHTML = ''; let granTotal = 0; let granReq = 0; let granSub = 0; let granAprob = 0; SUCURSALES.forEach(suc => { const stats = calcularEstadisticasSucursal(bdGlobal[fechaActualStr]?.[suc]); if (stats.estudios > 0) { granTotal += stats.estudios; granReq += stats.req; granSub += stats.subidos; granAprob += stats.aprobados; const tr = document.createElement('tr'); tr.className = 'border-b hover:bg-gray-50 transition'; tr.innerHTML = `<td class="p-4 font-bold text-gray-700">${suc}</td><td class="p-4 text-center font-medium">${stats.estudios}</td><td class="p-4"><div class="flex items-center space-x-2"><div class="bg-gray-200 rounded-full h-2 w-full"><div class="bg-gray-600 h-2 rounded-full" style="width: ${stats.req > 0 ? Math.round((stats.subidos/stats.req)*100) : 0}%"></div></div><span class="text-xs font-bold w-8">${stats.req > 0 ? Math.round((stats.subidos/stats.req)*100) : 0}%</span></div></td><td class="p-4"><div class="flex items-center space-x-2"><div class="bg-orange-100 rounded-full h-2 w-full"><div class="bg-lapiOrange h-2 rounded-full" style="width: ${stats.req > 0 ? Math.round((stats.aprobados/stats.req)*100) : 0}%"></div></div><span class="text-xs font-bold text-lapiOrange w-8">${stats.req > 0 ? Math.round((stats.aprobados/stats.req)*100) : 0}%</span></div></td><td class="p-4 text-center"><button onclick="sucursalAuditada='${suc}'; mostrarVista('vista-admin-detalle')" class="text-blue-600 hover:text-blue-800 underline font-bold text-sm bg-blue-50 px-3 py-1 rounded">Auditar ➔</button></td>`; tbody.appendChild(tr); } }); if(granTotal === 0) tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-gray-500 italic">No hay registros hoy.</td></tr>'; document.getElementById('admin-totales').textContent = granTotal; document.getElementById('admin-carga').textContent = `${granReq>0?Math.round((granSub/granReq)*100):0}%`; document.getElementById('admin-ia').textContent = `${granReq>0?Math.round((granAprob/granReq)*100):0}%`; }
-        function generarVistaDetalleAdmin() { document.getElementById('detalle-titulo').innerHTML = `<span class="text-lapiOrange">Auditoría:</span> ${sucursalAuditada}`; actualizarEstadisticasLocales(sucursalAuditada, 'audit'); const contenedor = document.getElementById('contenedorDetalleAdmin'); contenedor.innerHTML = ''; const stats = calcularEstadisticasSucursal(bdGlobal[fechaActualStr]?.[sucursalAuditada]); if (stats.req === 0) { contenedor.innerHTML = `<div class="text-center text-gray-400 p-10 border-2 border-dashed rounded">Sin registros.</div>`; return; } const documentosOrdenados = ordenarDocumentos(stats.docKeysRequeridos, document.getElementById('filtro-admin').value); documentosOrdenados.forEach(item => { renderizarCajaDocumento(item, contenedor, false); }); }
-        
-        function agregarPaciente() { const input = document.getElementById('nombrePaciente'); const cbs = document.querySelectorAll('.estudio-cb:checked'); if (input.value.trim() === '' || cbs.length === 0) { alert('Ingresa nombre y selecciona al menos un estudio.'); return; } bdGlobal[fechaActualStr][sucursalActual].pacientes.push({ id: Date.now(), nombre: input.value.trim(), estudios: Array.from(cbs).map(cb => cb.value) }); input.value = ''; cbs.forEach(cb => cb.checked = false); actualizarUI(); }
+         
         function eliminarPaciente(id) { bdGlobal[fechaActualStr][sucursalActual].pacientes = bdGlobal[fechaActualStr][sucursalActual].pacientes.filter(p => p.id !== id); actualizarUI(); }
         function actualizarListaPacientes() { 
             const ul = document.getElementById('listaPacientes'); ul.innerHTML = ''; 
@@ -1278,19 +1285,144 @@
             box.innerHTML = `<div class="flex-1 w-full"><div class="flex items-center justify-between w-full"><div><h4 class="text-sm font-bold">${item.tipo} <span class="text-lapiOrange ml-1">${item.nombre}</span></h4><p class="text-xs text-gray-400 mt-0.5">${item.desc} ${infoExtra}</p></div><div class="ml-4 flex items-center">${btnUI} ${btnChat}</div></div></div>`; contenedor.appendChild(box);
         }
 
+        
+        // --- 1. CARGAR DATOS DE SUCURSALES DESDE FIREBASE ---
+        async function cargarPacientesRedDesdeFirebase() {
+            if (!db) return;
+            try {
+                const snapshot = await db.collection("PacientesRed").where("fechaOperativa", "==", fechaActualStr).get();
+                // Limpiamos memoria del día
+                if (!bdGlobal[fechaActualStr]) bdGlobal[fechaActualStr] = {};
+                SUCURSALES.forEach(suc => bdGlobal[fechaActualStr][suc] = { pacientes: [], docsStatus: {} });
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if(bdGlobal[fechaActualStr][data.sucursal]) {
+                        bdGlobal[fechaActualStr][data.sucursal].pacientes.push(data);
+                        if (data.docsStatus) Object.assign(bdGlobal[fechaActualStr][data.sucursal].docsStatus, data.docsStatus);
+                    }
+                });
+                actualizarUI();
+            } catch (error) { console.error("Error BD Red:", error); }
+        }
+
+        // --- 2. MODIFICAR INICIAR SESION PARA QUE CARGUE LA RED ---
+        // (Agrega la llamada cargarPacientesRedDesdeFirebase() dentro de la condición if (rolActual === 'admin') de la función iniciarSesion, igual que con MINAS). Y para la sucursal también.
+
+        // --- 3. NUEVO REGISTRO DE PACIENTE ESTÁNDAR ---
+        function agregarPaciente() { 
+            const nombre = document.getElementById('nombrePaciente').value.trim();
+            const nacimiento = document.getElementById('nacimientoPaciente').value;
+            const orden = document.getElementById('ordenPaciente').value.trim();
+            const folio = document.getElementById('folioPaciente').value.trim();
+            const cbs = document.querySelectorAll('.estudio-cb:checked'); 
+            
+            if (!nombre || !nacimiento || !orden || !folio || cbs.length === 0) { alert('Faltan datos. Llena Nombre, Fecha, Orden y Folio.'); return; } 
+            
+            const duplicado = bdGlobal[fechaActualStr][sucursalActual].pacientes.some(p => p.numeroOrden === orden || p.folioHC === folio);
+            if (duplicado) { alert('⚠️ ERROR: Ya existe un paciente con este Orden o Folio hoy.'); return; }
+
+            const nuevoPaciente = {
+                id: Date.now().toString(), sucursal: sucursalActual, fechaOperativa: fechaActualStr,
+                nombre, fechaNacimiento: nacimiento, numeroOrden: orden, folioHC: folio,
+                estudios: Array.from(cbs).map(cb => cb.value), datosExtraidosHC: null, docsStatus: {}
+            };
+
+            bdGlobal[fechaActualStr][sucursalActual].pacientes.push(nuevoPaciente);
+            if (db) db.collection("PacientesRed").doc(nuevoPaciente.id).set(nuevoPaciente).catch(e => console.error(e));
+
+            document.getElementById('nombrePaciente').value = ''; document.getElementById('nacimientoPaciente').value = '';
+            document.getElementById('ordenPaciente').value = ''; document.getElementById('folioPaciente').value = '';
+            cbs.forEach(cb => cb.checked = false); actualizarUI(); 
+        }
+
+        // --- 4. BÚSQUEDA EN PANEL DE RED ---
+        function generarVistaDetalleAdmin() { 
+            document.getElementById('detalle-titulo').innerHTML = `<span class="text-lapiOrange">Auditoría:</span> ${sucursalAuditada}`; 
+            actualizarEstadisticasLocales(sucursalAuditada, 'audit'); 
+            const contenedor = document.getElementById('contenedorDetalleAdmin'); contenedor.innerHTML = ''; 
+            const stats = calcularEstadisticasSucursal(bdGlobal[fechaActualStr]?.[sucursalAuditada]); 
+            if (stats.req === 0) { contenedor.innerHTML = `<div class="text-center text-gray-400 p-10 border-2 border-dashed rounded">Sin registros.</div>`; return; } 
+            
+            let documentosOrdenados = ordenarDocumentos(stats.docKeysRequeridos, document.getElementById('filtro-admin').value); 
+            
+            // Aplicar Búsqueda por Nombre, Folio u Orden
+            const termino = (document.getElementById('buscadorRed')?.value || '').toLowerCase();
+            if (termino !== '') {
+                const pacientes = bdGlobal[fechaActualStr]?.[sucursalAuditada]?.pacientes || [];
+                // Encontramos IDs de pacientes que coinciden con la búsqueda
+                const idsCoincidentes = pacientes.filter(p => p.nombre.toLowerCase().includes(termino) || p.numeroOrden.toLowerCase().includes(termino) || p.folioHC.toLowerCase().includes(termino)).map(p => p.id);
+                // Filtramos los documentos para que solo salgan los de esos pacientes (y ocultamos los acumulados si se busca alguien específico)
+                documentosOrdenados = documentosOrdenados.filter(doc => idsCoincidentes.some(id => doc.key.includes(`-${id}-`)));
+            }
+
+            if(documentosOrdenados.length === 0) { contenedor.innerHTML = '<p class="text-center text-gray-400 mt-10 italic">No se encontraron estudios con ese criterio.</p>'; return; }
+            documentosOrdenados.forEach(item => { renderizarCajaDocumento(item, contenedor, false); }); 
+        }
+
+        // --- 5. LLAMADA REAL A LA IA PARA SUCURSALES ---
         function accionDocumento(docKey, accion, tipoEstudio) {
             const statusObj = asegurarEstructuraDoc(docKey);
-            if (accion === 'subir') { statusObj.estado = 'subido'; statusObj.horaSubida = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }); statusObj.notas = []; statusObj.vistosAdmin = 0; statusObj.vistosSucursal = 0; statusObj.checklist = []; actualizarUI(); } 
+            const idPaciente = docKey.split('-')[1]; // Extraemos el ID del docKey (ej: doc-12345-Historia)
+            const paciente = idPaciente && bdGlobal[fechaActualStr][obtenerTargetSucursal()].pacientes ? bdGlobal[fechaActualStr][obtenerTargetSucursal()].pacientes.find(p => p.id === idPaciente) : null;
+
+            if (accion === 'subir') { 
+                const input = document.createElement('input');
+                input.type = 'file'; input.accept = 'application/pdf';
+                input.onchange = (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(evt) {
+                            statusObj.pdfBase64 = evt.target.result.split(',')[1];
+                            statusObj.estado = 'subido'; statusObj.horaSubida = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }); 
+                            statusObj.notas = []; statusObj.checklist = []; actualizarUI();
+                            
+                            // Guardado individual del documento en el paciente de Firebase
+                            if (db && paciente) {
+                                db.collection("PacientesRed").doc(paciente.id).update({ [`docsStatus.${docKey}`]: { estado: statusObj.estado, horaSubida: statusObj.horaSubida, checklist: [] } }).catch(e=>console.log(e));
+                            }
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                };
+                input.click();
+            } 
             else if (accion === 'analizar') {
+                if (!statusObj.pdfBase64) { alert('⚠️ PDF no encontrado en memoria. Por favor resube el archivo.'); return; }
                 statusObj.estado = 'analizando'; actualizarUI();
-                setTimeout(() => {
-                    const aprobado = Math.random() > 0.6; 
-                    statusObj.checklist = [{ texto: 'Simulación base completada', pass: aprobado }];
-                    if (aprobado) statusObj.estado = 'aprobado'; else { statusObj.estado = 'rechazado'; statusObj.notas.push({ autor: 'LAP.IA', texto: `Rechazo de simulación. Consulta los detalles.` }); }
-                    actualizarUI();
-                }, 1500);
+                
+                const datosParaIA = paciente ? { nombre: paciente.nombre, nacimiento: paciente.fechaNacimiento, orden: paciente.numeroOrden, folio: paciente.folioHC, datosHC: paciente.datosExtraidosHC } : {};
+
+                fetch('/.netlify/functions/analizarDocumento', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ pdfBase64: statusObj.pdfBase64, tipoDocumento: tipoEstudio, datosPaciente: datosParaIA })
+                })
+                .then(res => res.text())
+                .then(txt => {
+                    try {
+                        const result = JSON.parse(txt);
+                        statusObj.checklist = result.checklist;
+                        statusObj.estado = result.aprobadoGeneral ? 'aprobado' : 'rechazado';
+                        if (!result.aprobadoGeneral) statusObj.notas.push({ autor: 'LAP.IA', texto: `Falla crítica: ${result.motivoPrincipal || 'Revisar checklist'}` });
+                        
+                        if (tipoEstudio === 'Historia Clínica' && result.datosExtraidosHC && paciente) { paciente.datosExtraidosHC = result.datosExtraidosHC; }
+                        actualizarUI();
+
+                        if (db && paciente) {
+                            const updateData = { [`docsStatus.${docKey}`]: { estado: statusObj.estado, horaSubida: statusObj.horaSubida, checklist: statusObj.checklist, notas: statusObj.notas } };
+                            if (paciente.datosExtraidosHC) updateData.datosExtraidosHC = paciente.datosExtraidosHC;
+                            db.collection("PacientesRed").doc(paciente.id).update(updateData);
+                        }
+                    } catch(e) { statusObj.estado = 'rechazado'; statusObj.checklist = [{categoria: "Error Interno", pass: false, comentario: "Falló la lectura."}]; actualizarUI(); }
+                })
+                .catch(err => { statusObj.estado = 'rechazado'; statusObj.checklist = [{categoria: "Error de Red", pass: false, comentario: err.message}]; actualizarUI(); });
             }
         }
+        
+        // --- 6. CAMBIO EN LABORATORIO LIBRE ---
+        // (Asegúrate de que en la función llamarAGeminiAPI() cambias el string a 'Historia Clínica (Libre)' en lugar de solo 'Historia Clínica' para que evite validar identidad).
+            
     </script>
 </body>
 </html>
