@@ -13,6 +13,9 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         .chat-scroll::-webkit-scrollbar { width: 6px; }
         .chat-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        
+        @keyframes sweep { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+        .animate-sweep { animation: sweep 2s infinite linear; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
@@ -679,21 +682,14 @@
             if(!bdMinas[fechaActualStr]) return;
             
             let pacientes = bdMinas[fechaActualStr].pacientes;
-            
-            // ==========================================
-            // NUEVO: CÁLCULO DE ESTADÍSTICAS GLOBALES
-            // ==========================================
             document.getElementById('stat-minas-hoy').textContent = pacientes.length;
             
-            let pacCompletados = 0;
-            let reqHC = 0, reqEs = 0, reqAu = 0;
-            let apHC = 0, apEs = 0, apAu = 0;
+            let pacCompletados = 0; let reqHC = 0, reqEs = 0, reqAu = 0; let apHC = 0, apEs = 0, apAu = 0;
 
             pacientes.forEach(p => {
                 const keys = Object.keys(p.docsStatus);
                 const todosAprobados = keys.every(k => p.docsStatus[k].estado === 'aprobado');
                 if (todosAprobados && keys.length > 0) pacCompletados++;
-
                 if(p.docsStatus['Historia Clínica']) { reqHC++; if(p.docsStatus['Historia Clínica'].estado === 'aprobado') apHC++; }
                 if(p.docsStatus['Espirometría']) { reqEs++; if(p.docsStatus['Espirometría'].estado === 'aprobado') apEs++; }
                 if(p.docsStatus['Audiometría']) { reqAu++; if(p.docsStatus['Audiometría'].estado === 'aprobado') apAu++; }
@@ -704,16 +700,9 @@
             document.getElementById('stat-progreso-espiro').textContent = reqEs > 0 ? Math.round((apEs/reqEs)*100) + '%' : '-';
             document.getElementById('stat-progreso-audio').textContent = reqAu > 0 ? Math.round((apAu/reqAu)*100) + '%' : '-';
 
-            // ==========================================
-            // NUEVO: FILTRO DE BÚSQUEDA
-            // ==========================================
             const terminoBusqueda = (document.getElementById('buscadorMinas')?.value || '').toLowerCase();
             if (terminoBusqueda !== '') {
-                pacientes = pacientes.filter(p => 
-                    p.nombre.toLowerCase().includes(terminoBusqueda) || 
-                    p.numeroOrden.toLowerCase().includes(terminoBusqueda) || 
-                    p.folioHC.toLowerCase().includes(terminoBusqueda)
-                );
+                pacientes = pacientes.filter(p => p.nombre.toLowerCase().includes(terminoBusqueda) || p.numeroOrden.toLowerCase().includes(terminoBusqueda) || p.folioHC.toLowerCase().includes(terminoBusqueda));
             }
 
             if(pacientes.length === 0) {
@@ -721,15 +710,10 @@
                 return;
             }
 
-            // Renderizado de tarjetas (Igual que antes)
             pacientes.forEach(p => {
                 const docsKeys = Object.keys(p.docsStatus);
-                const todosAnalizados = docsKeys.every(key => p.docsStatus[key].estado === 'aprobado' || p.docsStatus[key].estado === 'rechazado');
-                let btnAnalisisClass = todosAnalizados && p.statusIntegral !== 'completado' ? 'bg-yellow-500 hover:bg-yellow-600 text-white cursor-pointer' : 'bg-gray-200 text-gray-400 cursor-not-allowed';
-                let btnAnalisisTexto = p.statusIntegral === 'completado' ? '✅ Congruencia Validada' : (p.statusIntegral === 'analizando' ? 'Cruzando datos clínicos...' : '🧠 Analizar Expediente Integral');
-                
                 const card = document.createElement('div');
-                card.className = "border border-gray-200 rounded-lg p-4 bg-gray-50 shadow-sm fade-in";
+                card.className = "border border-gray-200 rounded-lg p-4 bg-gray-50 shadow-sm fade-in mb-4";
                 
                 let html = `
                     <div class="flex justify-between items-start mb-4 border-b border-gray-200 pb-3">
@@ -743,7 +727,7 @@
                         </div>
                         <button onclick="eliminarPacienteMinas('${p.id}')" class="text-red-400 hover:text-red-600 text-[10px] font-bold px-2 py-1 border border-red-200 bg-white rounded">✕ Eliminar</button>
                     </div>
-                    <div class="space-y-2 mb-4">
+                    <div class="space-y-2">
                 `;
 
                 docsKeys.forEach(docName => {
@@ -751,19 +735,131 @@
                     let docBtn = '';
                     let btnChecklist = (statusObj.estado === 'aprobado' || statusObj.estado === 'rechazado') ? `<button onclick="abrirModalChecklistMinas('${p.id}', '${docName}')" class="text-[10px] text-blue-500 hover:underline font-bold ml-2">📋 Detalles</button>` : '';
 
-                    if (statusObj.estado === 'pendiente') docBtn = `<button onclick="accionDocMinasIndividual('${p.id}', '${docName}', 'subir')" class="text-xs bg-white border border-gray-300 px-3 py-1 rounded hover:bg-gray-100 font-bold">Subir</button>`; 
-                    else if (statusObj.estado === 'subido') docBtn = `<div class="flex items-center"><span class="text-xs text-gray-500 mr-2 font-bold">✓ Subido</span> <button onclick="accionDocMinasIndividual('${p.id}', '${docName}', 'analizar')" class="text-[10px] bg-gray-800 text-white px-2 py-1 rounded shadow-md font-bold">✨ Analizar</button></div>`; 
-                    else if (statusObj.estado === 'analizando') docBtn = `<span class="text-lapiOrange text-xs font-bold animate-pulse">🧠 Analizando...</span>`; 
-                    else if (statusObj.estado === 'aprobado') docBtn = `<div class="flex items-center"><span class="bg-green-100 text-green-700 border border-green-300 px-2 py-0.5 rounded text-[10px] font-bold flex items-center">✅ Aprobado ${btnChecklist}</span> <button onclick="accionDocMinasIndividual('${p.id}', '${docName}', 'subir')" class="text-[10px] text-gray-400 hover:text-gray-600 ml-2 underline">Resubir</button></div>`; 
-                    else if (statusObj.estado === 'rechazado') docBtn = `<div class="flex items-center"><span class="bg-red-100 text-red-700 border border-red-300 px-2 py-0.5 rounded text-[10px] font-bold flex items-center">❌ Rechazado ${btnChecklist}</span> <button onclick="accionDocMinasIndividual('${p.id}', '${docName}', 'subir')" class="text-[10px] text-gray-400 hover:text-gray-600 ml-2 underline">Resubir</button></div>`;
+                    if (statusObj.estado === 'pendiente') {
+                        docBtn = `<button onclick="accionDocMinasIndividual('${p.id}', '${docName}', 'subir')" class="text-xs bg-white border border-gray-300 px-3 py-1 rounded hover:bg-gray-100 font-bold">Subir Archivo</button>`; 
+                    } else if (statusObj.estado === 'subido') {
+                        docBtn = `<div class="flex items-center"><span class="text-xs text-gray-500 mr-2 font-bold">✓ Subido</span> <button onclick="accionDocMinasIndividual('${p.id}', '${docName}', 'analizar')" class="text-[10px] bg-gray-800 text-white hover:bg-gray-900 px-2 py-1 rounded shadow-md font-bold transition">✨ Analizar</button></div>`; 
+                    } else if (statusObj.estado === 'analizando') {
+                        docBtn = `<span class="text-lapiOrange text-xs font-bold animate-pulse">🧠 IA Analizando...</span>`; 
+                    } else if (statusObj.estado === 'aprobado') {
+                        docBtn = `<div class="flex items-center space-x-2"><span class="bg-green-100 text-green-700 border border-green-300 px-2 py-0.5 rounded text-[10px] font-bold flex items-center">✅ Aprobado ${btnChecklist}</span> <button onclick="accionDocMinasIndividual('${p.id}', '${docName}', 'analizar')" class="text-[10px] text-blue-600 hover:text-blue-800 font-bold transition" title="Volver a auditar este documento">↻ Repetir</button> <button onclick="accionDocMinasIndividual('${p.id}', '${docName}', 'subir')" class="text-[10px] text-gray-400 hover:text-gray-600 underline">Resubir</button></div>`; 
+                    } else if (statusObj.estado === 'rechazado') {
+                        docBtn = `<div class="flex items-center space-x-2"><span class="bg-red-100 text-red-700 border border-red-300 px-2 py-0.5 rounded text-[10px] font-bold flex items-center">❌ Rechazado ${btnChecklist}</span> <button onclick="accionDocMinasIndividual('${p.id}', '${docName}', 'analizar')" class="text-[10px] text-blue-600 hover:text-blue-800 font-bold transition" title="Volver a auditar este documento">↻ Repetir</button> <button onclick="accionDocMinasIndividual('${p.id}', '${docName}', 'subir')" class="text-[10px] text-gray-400 hover:text-gray-600 underline">Resubir</button></div>`;
+                    }
 
-                    html += `<div class="flex justify-between items-center bg-white p-2 rounded border border-gray-200"><span class="text-sm text-gray-700 font-medium">${docName}</span>${docBtn}</div>`;
+                    // Magia visual del Escáner y contenedores
+                    let divClasses = "relative overflow-hidden flex justify-between items-center p-2 rounded border ";
+                    let animHTML = "";
+                    if (statusObj.estado === 'analizando') {
+                        divClasses += "bg-orange-50 border-orange-300 shadow-sm";
+                        animHTML = `<div class="absolute inset-0 bg-gradient-to-r from-transparent via-orange-200 to-transparent opacity-50 animate-sweep"></div>`;
+                    } else if (statusObj.estado === 'aprobado') { divClasses += "bg-green-50/50 border-green-200"; } 
+                    else if (statusObj.estado === 'rechazado') { divClasses += "bg-red-50/50 border-red-200"; } 
+                    else { divClasses += "bg-white border-gray-200"; }
+
+                    html += `<div class="${divClasses}">${animHTML}<span class="relative z-10 text-sm text-gray-700 font-medium">${docName}</span><div class="relative z-10">${docBtn}</div></div>`;
                 });
 
-                html += `</div><button onclick="analizarExpedienteMinas('${p.id}')" class="w-full py-2 rounded text-sm font-bold transition ${btnAnalisisClass}" ${!todosAnalizados || p.statusIntegral !== 'pendiente' ? 'disabled' : ''}>${btnAnalisisTexto}</button>`;
+                html += `</div>`; // Eliminado el botón general de "Analizar Integral"
                 card.innerHTML = html;
                 contenedor.appendChild(card);
             });
+        }
+
+        function accionDocMinasIndividual(idPaciente, docName, accion) {
+            const paciente = bdMinas[fechaActualStr].pacientes.find(p => p.id === idPaciente.toString() || p.id === idPaciente);
+            if(!paciente) return;
+            
+            const statusObj = paciente.docsStatus[docName];
+            
+            if (accion === 'subir') {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'application/pdf';
+                
+                input.onchange = (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(evt) {
+                            statusObj.pdfBase64 = evt.target.result.split(',')[1];
+                            statusObj.estado = 'subido';
+                            statusObj.checklist = [];
+                            renderizarExpedientesMinas();
+
+                            if (db) {
+                                const docsParaGuardar = JSON.parse(JSON.stringify(paciente.docsStatus));
+                                Object.keys(docsParaGuardar).forEach(k => delete docsParaGuardar[k].pdfBase64);
+                                db.collection("PacientesMinas").doc(paciente.id.toString()).update({ docsStatus: docsParaGuardar }).catch(e => console.error("Error BD:", e));
+                            }
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                };
+                input.click();
+
+            } else if (accion === 'analizar') {
+                if (!statusObj.pdfBase64) {
+                    alert('⚠️ El PDF original ya no está en la memoria temporal (probablemente recargaste la página).\n\nPor favor, haz clic en "Resubir" para adjuntarlo nuevamente.');
+                    return;
+                }
+
+                // =========================================================
+                // ALERTA DE REQUERIMIENTO DE HISTORIA CLÍNICA
+                // =========================================================
+                if (docName === 'Espirometría' || docName === 'Audiometría') {
+                    const hcStatus = paciente.docsStatus['Historia Clínica'];
+                    if (!hcStatus || hcStatus.estado !== 'aprobado') {
+                        const proceder = confirm(`⚠️ ALERTA DE SISTEMA ⚠️\n\nEstás a punto de analizar la ${docName}, pero la Historia Clínica aún no ha sido Aprobada.\n\nLa IA requiere extraer datos de la HC para evaluar este estudio correctamente. Si continúas ahora, las reglas de cruce de datos saldrán rechazadas.\n\n¿Deseas analizar de todos modos?`);
+                        if (!proceder) return;
+                    }
+                }
+
+                statusObj.estado = 'analizando'; 
+                renderizarExpedientesMinas();
+                
+                const tipoBackend = docName === 'Historia Clínica' ? 'Historia Clínica (MINAS)' : docName;
+                const datosParaIA = { nombre: paciente.nombre, nacimiento: paciente.fechaNacimiento, orden: paciente.numeroOrden, datosHC: paciente.datosExtraidosHC };
+
+                fetch('/.netlify/functions/analizarDocumento', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pdfBase64: statusObj.pdfBase64, tipoDocumento: tipoBackend, datosPaciente: datosParaIA })
+                })
+                .then(response => response.text())
+                .then(responseText => {
+                    try {
+                        const errorObj = JSON.parse(responseText);
+                        if(errorObj.error) throw new Error(errorObj.error);
+                        
+                        const resultadoIA = JSON.parse(responseText);
+                        statusObj.checklist = resultadoIA.checklist;
+                        statusObj.estado = resultadoIA.aprobadoGeneral ? 'aprobado' : 'rechazado';
+                        
+                        if (tipoBackend === 'Historia Clínica (MINAS)' && resultadoIA.datosExtraidosHC) {
+                            paciente.datosExtraidosHC = resultadoIA.datosExtraidosHC;
+                        }
+
+                        renderizarExpedientesMinas();
+
+                        if (db) {
+                            const docsParaGuardar = JSON.parse(JSON.stringify(paciente.docsStatus));
+                            Object.keys(docsParaGuardar).forEach(k => delete docsParaGuardar[k].pdfBase64);
+                            const updateData = { docsStatus: docsParaGuardar };
+                            if (paciente.datosExtraidosHC) updateData.datosExtraidosHC = paciente.datosExtraidosHC;
+                            db.collection("PacientesMinas").doc(paciente.id.toString()).update(updateData).catch(e => console.error(e));
+                        }
+
+                    } catch(e) {
+                        statusObj.estado = 'rechazado';
+                        statusObj.checklist = [{categoria: "Error Interno", pass: false, comentario: "Falló la lectura. " + e.message}];
+                        renderizarExpedientesMinas();
+                    }
+                })
+                .catch(error => {
+                    statusObj.estado = 'rechazado';
+                    statusObj.checklist = [{categoria: "Error de Red", pass: false, comentario: "Error de servidor: " + error.message}];
+                    renderizarExpedientesMinas();
+                });
+            }
         }
 
         function abrirModalChecklistMinas(idPaciente, docName) {
@@ -776,21 +872,23 @@
             
             checklist.forEach((item, index) => {
                 const bgClass = item.pass ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200';
-                
-                // ==========================================
-                // NUEVO: BOTÓN DE SOBRESCRITURA MANUAL (OVERRIDE)
-                // ==========================================
-                const iconHTML = item.pass 
-                    ? `<span class="mr-3 mt-0.5 cursor-default text-lg" title="Aprobado por IA">✅</span>` 
-                    : `<button onclick="aprobarReglaManual('${p.id}', '${docName}', ${index})" class="mr-3 mt-0.5 hover:scale-125 transition transform text-lg" title="Haz clic para aprobar manualmente esta regla">❌</button>`;
-                
                 const titleColor = item.pass ? 'text-green-800' : 'text-red-800';
+                
+                // Lógica Visual del Botón Toggle (Activar/Desactivar Manual)
+                let iconHTML = '';
+                if (item.manualOverride) {
+                    iconHTML = `<div class="flex flex-col items-center mr-3 mt-0.5"><button onclick="aprobarReglaManual('${paciente.id}', '${docName}', ${index})" class="hover:scale-110 transition" title="Deshacer aprobación manual">✅</button><span class="text-[8px] text-blue-600 font-extrabold uppercase mt-1">Manual</span></div>`;
+                } else if (item.pass) {
+                    iconHTML = `<span class="mr-3 mt-0.5 cursor-default text-lg" title="Aprobado por IA">✅</span>`;
+                } else {
+                    iconHTML = `<button onclick="aprobarReglaManual('${paciente.id}', '${docName}', ${index})" class="mr-3 mt-0.5 hover:scale-125 transition transform text-lg" title="Haz clic para aprobar manualmente">❌</button>`;
+                }
                 
                 const li = document.createElement('li'); 
                 li.className = `flex items-start p-3 rounded border ${bgClass} mb-2 transition-all`;
                 li.innerHTML = `
                     ${iconHTML}
-                    <div>
+                    <div class="flex-1">
                         <span class="text-sm font-bold ${titleColor} block">${item.categoria || 'Evaluación'}</span>
                         <span class="text-xs text-gray-600 mt-1 block">${item.comentario || ''}</span>
                     </div>
@@ -800,27 +898,38 @@
             document.getElementById('modal-checklist').classList.remove('hidden');
         }
 
-        // ==========================================
-        // NUEVA FUNCIÓN: APROBAR MANUALMENTE (OVERRIDE)
-        // ==========================================
         function aprobarReglaManual(idPaciente, docName, indexRegla) {
-            if(!confirm("¿Estás seguro que deseas aprobar este criterio manualmente? Quedará registrado en la auditoría.")) return;
-            
             const paciente = bdMinas[fechaActualStr].pacientes.find(p => p.id === idPaciente.toString());
             const statusObj = paciente.docsStatus[docName];
+            const item = statusObj.checklist[indexRegla];
             
-            // Forzamos la regla a "aprobada" y añadimos la nota
-            statusObj.checklist[indexRegla].pass = true;
-            statusObj.checklist[indexRegla].comentario += " [✔️ APROBADO MANUALMENTE POR SUPERVISOR]";
+            if (!item.manualOverride) {
+                if(!confirm("¿Estás seguro que deseas aprobar este criterio manualmente? Quedará registrado en la auditoría.")) return;
+                
+                // Guardamos el estado original para poder revertirlo
+                item.originalPass = item.pass;
+                item.originalComentario = item.comentario;
+                
+                item.pass = true;
+                item.manualOverride = true;
+                item.comentario += " [✔️ APROBADO MANUALMENTE POR SUPERVISOR]";
+            } else {
+                if(!confirm("¿Deseas deshacer la aprobación manual y volver al dictamen original de la IA?")) return;
+                
+                item.pass = item.originalPass;
+                item.comentario = item.originalComentario;
+                item.manualOverride = false;
+            }
             
-            // Verificamos si con este cambio manual TODO el documento ya está aprobado
-            const todosAprobados = statusObj.checklist.every(item => item.pass);
-            if (todosAprobados) {
-                statusObj.estado = 'aprobado';
-                alert("¡Excelente! Todos los criterios de este documento han sido solventados.");
+            // Re-evaluar el estado general del documento
+            const todosAprobados = statusObj.checklist.every(i => i.pass);
+            statusObj.estado = todosAprobados ? 'aprobado' : 'rechazado';
+            
+            if (todosAprobados && item.manualOverride) {
+                setTimeout(() => alert("¡Excelente! Al aprobar este criterio, todo el documento ha pasado a estado APROBADO."), 100);
             }
 
-            // Guardamos en Firebase y actualizamos la vista
+            // Guardamos en Firebase el nuevo estado
             if (db) {
                 const docsParaGuardar = JSON.parse(JSON.stringify(paciente.docsStatus));
                 Object.keys(docsParaGuardar).forEach(k => delete docsParaGuardar[k].pdfBase64);
@@ -828,14 +937,13 @@
                   .catch(e => console.error("Error al actualizar Override en Firebase:", e));
             }
 
-            // Refrescamos la pantalla por detrás y recargamos el modal
             renderizarExpedientesMinas();
             abrirModalChecklistMinas(idPaciente, docName);
         }
 
         
 
-        // --- FUNCIÓN MÁGICA: DESCARGAR EXCEL ---
+        // --- FUNCIÓN: DESCARGAR EXCEL ---
         function exportarExcelMinas() {
             if(!bdMinas[fechaActualStr] || bdMinas[fechaActualStr].pacientes.length === 0) {
                 alert("No hay pacientes registrados hoy para exportar.");
