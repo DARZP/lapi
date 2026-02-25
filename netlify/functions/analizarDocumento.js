@@ -69,7 +69,7 @@ exports.handler = async (event, context) => {
           Grupo C: 4 (Ojos) cruce con Ametropía y Alteración Visión. 23 (Tatuajes) cruce con 30.
         
         ### FIRMA DEL PACIENTE
-        - REQUIERE VERIFICACIÓN VISUAL.
+        - REQUIERE VERIFICACIÓN VISUAL. DE LA FIRMA DEL PACIENTE, MISMA QUE DEBE ESTAR EN EL RECUADRO INFERIOR IZQUIERDO, YA QUE EL DERECHO CORRESPONDE A LA FIRMA DEL MÉDICO Y ESA NUNCA FALTARÁ
         `;
 
         // ============================================================================
@@ -201,7 +201,7 @@ exports.handler = async (event, context) => {
           Grupo D (19, 24-30, Actitud, Observaciones): NO REQUIEREN VERIFICACIÓN.
 
         ### FIRMA DEL PACIENTE
-        - REQUIERE VERIFICACIÓN VISUAL.
+        - REQUIERE VERIFICACIÓN VISUAL. DE LA FIRMA DEL PACIENTE, MISMA QUE DEBE ESTAR EN EL RECUADRO INFERIOR IZQUIERDO, YA QUE EL DERECHO CORRESPONDE A LA FIRMA DEL MÉDICO Y ESA NUNCA FALTARÁ
         --- FIN DE REGLAS MINAS ---
 
         Además de la auditoría, DEBES EXTRAER los siguientes datos del paciente para guardarlos en la base de datos y usarlos en futuros estudios:
