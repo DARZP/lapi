@@ -24,6 +24,11 @@ exports.handler = async (event, context) => {
         // TEXTO BASE: REGLAS HISTORIA CLÍNICA (SUCURSALES NORMALES Y LIBRE)
         // ============================================================================
         const REGLAS_HC_BASE = `
+        ### REGLA GLOBAL DE FORMATO DE REDACCIÓN (APLICA A TODO EL DOCUMENTO)
+        - TIPO ORACIÓN: Absolutamente todos los apartados de redacción libre (cuadros de observaciones, descripciones, detalles de riesgos, etc.) DEBEN estar escritos en formato "Tipo Oración" (Solo la primera letra inicial en mayúscula y el resto en minúsculas). 
+        - EXCEPCIONES: Solo se permiten mayúsculas sostenidas para siglas médicas o corporativas (ej. IMSS, HAS, EPP, DM2).
+        - ACCIÓN: Si detectas campos de texto libre escritos TODO EN MAYÚSCULAS SOSTENIDAS (que no sean siglas), marca la sección correspondiente como fallida (pass: false) y especifica en el comentario: "Error de formato: El texto libre debe escribirse en tipo oración, no todo en mayúsculas."
+        
         ### SECCIÓN DE IDENTIFICACIÓN
         4. Datos que NO REQUIEREN VERIFICACIÓN: Nacionalidad, Originario de, Estado civil, Religión, Empresa, Puesto, Departamento, Escolaridad, Grupo sanguíneo, Acepta transfusiones.
         5. Datos que REQUIEREN VERIFICACIÓN DE LLENADO: Grupo étnico, Discapacidad, Domicilio particular (calle, # ext, # int, colonia, localidad, municipio, estado y C.P.), Teléfono de casa, Teléfono celular, IMSS, RFC, CURP, Contacto de emergencia (Nombre, dirección, parentesco, teléfono, celular).
@@ -148,6 +153,12 @@ exports.handler = async (event, context) => {
         - Fecha de Nacimiento de Plataforma: ${dp.nacimiento || 'No proporcionado'}
 
         --- INICIO DEL MANUAL DE REGLAS MINAS ---
+        --- INICIO DEL MANUAL DE REGLAS MINAS ---
+        ### REGLA GLOBAL DE FORMATO DE REDACCIÓN (APLICA A TODO EL DOCUMENTO)
+        - TIPO ORACIÓN: Absolutamente todos los apartados de redacción libre (cuadros de observaciones, descripciones, detalles de riesgos, etc.) DEBEN estar escritos en formato "Tipo Oración" (Solo la primera letra inicial en mayúscula y el resto en minúsculas). 
+        - EXCEPCIONES: Solo se permiten mayúsculas sostenidas para siglas médicas o corporativas (ej. IMSS, HAS, EPP, DM2).
+        - ACCIÓN: Si detectas campos de texto libre escritos TODO EN MAYÚSCULAS SOSTENIDAS (que no sean siglas), marca la sección correspondiente como fallida (pass: false) y especifica en el comentario: "Error de formato: El texto libre debe escribirse en tipo oración, no todo en mayúsculas."
+        
         ### SECCIÓN DE IDENTIFICACIÓN
         1. Folio: Verifica que el folio de la historia clínica coincida EXACTAMENTE con el folio registrado en el expediente de la plataforma.
         2. Nombre: Verifica que el nombre en la historia clínica coincida EXACTAMENTE con el nombre registrado en la plataforma.
