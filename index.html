@@ -922,47 +922,32 @@
             const item = statusObj.checklist[indexRegla];
             
             if (!item.manualOverride) {
-                if(!confirm("¿Estás seguro que deseas aprobar este criterio manualmente? El sistema marcará visualmente que fue decisión del supervisor.")) return;
+                if(!confirm("¿Estás seguro de marcar este criterio como 'revisado' manualmente?")) return;
                 
-                // Guardamos el estado original para poder revertirlo si se equivoca
                 item.originalPass = item.pass;
                 item.originalComentario = item.comentario;
                 
-                // Aplicamos el dictamen manual
                 item.pass = true;
                 item.manualOverride = true;
-                item.comentario += " [✔️ APROBADO MANUALMENTE POR SUPERVISOR]";
+                item.comentario += " [✔️ Aprobado por administrador]";
             } else {
-                if(!confirm("¿Deseas deshacer tu aprobación manual y regresar al dictamen original marcado por la IA?")) return;
+                if(!confirm("¿Deseas deshacer la revisión manual?")) return;
                 
-                // Revertimos a lo que dijo la IA
                 item.pass = item.originalPass;
                 item.comentario = item.originalComentario;
                 item.manualOverride = false;
             }
             
-            // Re-evaluar si ahora TODO el documento ya está aprobado
             const todosAprobados = statusObj.checklist.every(i => i.pass);
             statusObj.estado = todosAprobados ? 'aprobado' : 'rechazado';
             
-           
-            if (todosAprobados && item.manualOverride) {
-                setTimeout(() => alert("¡Excelente! Has resuelto el último criterio. Todo el documento está APROBADO ahora."), 300);
-            }
-
-
             if (typeof db !== 'undefined' && db !== null) {
-                try {
-                    const docsParaGuardar = JSON.parse(JSON.stringify(paciente.docsStatus));
-                    Object.keys(docsParaGuardar).forEach(k => delete docsParaGuardar[k].pdfBase64);
-                    db.collection("PacientesMinas").doc(paciente.id.toString()).update({ docsStatus: docsParaGuardar })
-                      .catch(e => console.error("Error al actualizar Firebase:", e));
-                } catch(e) {
-                    console.error("Error procesando Firebase:", e);
-                }
+                const docsParaGuardar = JSON.parse(JSON.stringify(paciente.docsStatus));
+                Object.keys(docsParaGuardar).forEach(k => delete docsParaGuardar[k].pdfBase64);
+                db.collection("PacientesMinas").doc(paciente.id.toString()).update({ docsStatus: docsParaGuardar })
+                  .catch(e => console.error("Error BD:", e));
             }
 
-            // Refrescamos la vista por detrás y recargamos el modal
             renderizarExpedientesMinas();
             abrirModalChecklistMinas(idPaciente, docName);
         };
@@ -995,8 +980,18 @@
         }
         
         function eliminarPacienteMinas(id) {
-            bdMinas[fechaActualStr].pacientes = bdMinas[fechaActualStr].pacientes.filter(p => p.id !== id);
+            if(!confirm("¿Estás seguro de eliminar este paciente y todos sus documentos? Esta acción no se puede deshacer.")) return;
+            
+            // 1. Eliminar de la vista actual
+            bdMinas[fechaActualStr].pacientes = bdMinas[fechaActualStr].pacientes.filter(p => p.id !== id.toString());
             renderizarExpedientesMinas();
+            
+            // 2. Eliminar permanentemente de la Base de Datos (Firebase)
+            if (typeof db !== 'undefined' && db !== null) {
+                db.collection("PacientesMinas").doc(id.toString()).delete()
+                  .then(() => console.log("Paciente eliminado permanentemente."))
+                  .catch(e => console.error("Error al eliminar de Firebase:", e));
+            }
         }
 
         function accionDocMinasIndividual(idPaciente, docName, accion) {
@@ -1119,7 +1114,7 @@
         }
         
         function abrirModalChecklistMinas(idPaciente, docName) {
-            const paciente = bdMinas[fechaActualStr].pacientes.find(p => p.id === idPaciente);
+            const paciente = bdMinas[fechaActualStr].pacientes.find(p => p.id === idPaciente.toString() || p.id === idPaciente);
             if(!paciente || !paciente.docsStatus[docName].checklist) return;
             
             const checklist = paciente.docsStatus[docName].checklist;
@@ -1127,19 +1122,44 @@
             const ul = document.getElementById('lista-checklist'); 
             ul.innerHTML = '';
             
-            // Renderizamos los 11 puntos con un diseño elegante
-            checklist.forEach(item => {
-                const bgClass = item.pass ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200';
-                const icon = item.pass ? '✅' : '❌';
-                const titleColor = item.pass ? 'text-green-800' : 'text-red-800';
+            checklist.forEach((item, index) => {
+                let bgClass = item.pass ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200';
+                let titleColor = item.pass ? 'text-green-800' : 'text-red-800';
                 
+                // Si fue aprobado manualmente, cambiamos a diseño Azul
+                if (item.manualOverride) {
+                    bgClass = 'bg-blue-50 border-blue-300';
+                    titleColor = 'text-blue-800';
+                }
+
                 const li = document.createElement('li'); 
-                li.className = `flex items-start p-3 rounded border ${bgClass} mb-2`;
+                li.className = `flex items-start p-3 rounded border ${bgClass} mb-2 transition-all`;
+                
+                let icon = item.pass ? '✅' : '❌';
+                
+                // Generar los botones de acción dependiendo del estado
+                let extraHTML = '';
+                if (item.manualOverride) {
+                    extraHTML = `
+                        <div class="mt-2 text-left flex items-center">
+                            <span class="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded border border-blue-300 font-bold uppercase tracking-wider">✔️ Cambio Manual</span> 
+                            <button onclick="aprobarReglaManual('${paciente.id}', '${docName}', ${index})" class="text-[10px] text-gray-500 underline ml-3 hover:text-gray-800 font-medium">Deshacer</button>
+                        </div>`;
+                } else if (!item.pass) {
+                    extraHTML = `
+                        <div class="mt-3 text-right">
+                            <button onclick="aprobarReglaManual('${paciente.id}', '${docName}', ${index})" class="bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 px-3 py-1 rounded text-xs font-bold shadow-sm transition">
+                                ✏️ Marcar como revisado manualmente
+                            </button>
+                        </div>`;
+                }
+
                 li.innerHTML = `
-                    <span class="mr-3 mt-0.5">${icon}</span>
-                    <div>
+                    <span class="mr-3 mt-0.5 text-lg cursor-default">${icon}</span>
+                    <div class="flex-1">
                         <span class="text-sm font-bold ${titleColor} block">${item.categoria || 'Evaluación'}</span>
-                        <span class="text-xs text-gray-600 mt-1 block">${item.comentario || ''}</span>
+                        <span class="text-xs text-gray-700 mt-1 block">${item.comentario || ''}</span>
+                        ${extraHTML}
                     </div>
                 `;
                 ul.appendChild(li);
