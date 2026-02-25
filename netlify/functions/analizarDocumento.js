@@ -1,35 +1,133 @@
 // netlify/functions/analizarDocumento.js
 
 exports.handler = async (event, context) => {
-    if (event.httpMethod !== 'POST') {
-        return { statusCode: 405, body: 'Method Not Allowed' };
-    }
+    if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
 
     try {
         const { pdfBase64, tipoDocumento, datosPaciente } = JSON.parse(event.body);
         const API_KEY = process.env.GEMINI_API_KEY;
 
-        if (!API_KEY) {
-            return { statusCode: 500, body: JSON.stringify({ error: "Falta configurar GEMINI_API_KEY en Netlify." }) };
-        }
+        if (!API_KEY) return { statusCode: 500, body: JSON.stringify({ error: "Falta configurar GEMINI_API_KEY en Netlify." }) };
 
         let promptSeleccionado = "";
-        
-        // Extraemos los datos cruzados
         const dp = datosPaciente || {};
         const hc = dp.datosHC || null; 
 
         // ============================================================================
-        // PROMPT 1: HISTORIA CLÍNICA (SUCURSALES NORMALES)
+        // TEXTO BASE: REGLAS HISTORIA CLÍNICA (SUCURSALES NORMALES Y LIBRE)
         // ============================================================================
-        const PROMPT_HC_NORMAL = `
-        Eres un auditor médico experto de LAP.IA. Analiza estrictamente la Historia Clínica Ocupacional adjunta en PDF. 
-        Evalúa las 5 categorías de reglas (Integridad Demográfica, Riesgos Laborales, Patológicos, Congruencia Clínica y Exploración).
-        Devuelve ÚNICAMENTE un JSON con: aprobadoGeneral (boolean), motivoPrincipal (string), y checklist (array de objetos con categoria, pass y comentario).
+        const REGLAS_HC_BASE = `
+        ### SECCIÓN DE IDENTIFICACIÓN
+        4. Datos que NO REQUIEREN VERIFICACIÓN: Nacionalidad, Originario de, Estado civil, Religión, Empresa, Puesto, Departamento, Escolaridad, Grupo sanguíneo, Acepta transfusiones.
+        5. Datos que REQUIEREN VERIFICACIÓN DE LLENADO (Siempre contestados): Grupo étnico, Discapacidad, Domicilio particular (calle, # ext, # int, colonia, localidad, municipio, estado y C.P.), Teléfono de casa, Teléfono celular, IMSS, RFC, CURP, Contacto de emergencia (Nombre, dirección, parentesco, teléfono, celular).
+
+        ### SECCIÓN ANTECEDENTES LABORALES
+        - 1. NO REQUIERE VERIFICACIÓN.
+        - 2. Antigüedad: Formato de tiempo (Años o Años con Meses).
+        - 3. Orden de Registros: Cronológicos (Más reciente a más antiguo). La columna "FUNCIÓN PRINCIPAL" debe incluir al menos UN factor de riesgo.
+        - A. RIESGOS FÍSICOS: Si es SÍ, verificar: Ruido (Fuente, EPP), Vibración (Fuente, EPP), Radiación (Tipo, área, frecuencia, EPP), Iluminación (Fuente, EPP), Temperaturas (Fuente, grados, EPP), Altura (Metros, EPP), Confinados (Tipo, EPP).
+        - B. RIESGOS QUÍMICOS: Si es NO, NO REQUIERE VERIFICACIÓN. Si es SÍ, verificar (Tipo, EPP).
+        - C. BIOLÓGICOS y E. PSICOSOCIALES: NO REQUIEREN VERIFICACIÓN.
+        - D. ERGONÓMICOS: Si es SÍ, verificar (Tipo de objeto/peso, EPP para carga. Movimiento y segmento. Tipo de postura).
+        - RIESGOS LABORALES (4 y 5): Si es SÍ, verificar que cada dato esté lleno (Empresa, causa, días, cuándo, qué pasó, secuelas, proceso). 6 al 11: NO VERIFICAR.
+        - OBSERVACIONES DEL EXAMINADOR: NO REQUIERE VERIFICACIÓN.
+
+        ### SECCIÓN HÁBITOS Y COSTUMBRES
+        - 12 al 20, y 22: NO REQUIEREN VERIFICACIÓN.
+        - 21 (Mascotas): Si es SÍ, requiere 4 datos: Tipo, Cantidad, Intra/extradomiciliarias, Vacunados/Desparasitados.
+
+        ### SECCIÓN PERSONALES PATOLÓGICOS
+        - 23 al 26: Si es SÍ, verificar coherencia.
+        - 28 (Fracturas): Si es SÍ, verificar coherencia y que en Observaciones incluya (Hueso, Año, Tratamiento).
+        - 29: Verificar coherencia.
+        - 30 (Tatuajes): Si es SÍ, en observaciones debe incluir (Región, Tipo, Monocromático/policromático, Dimensiones).
+        - 31 (Vacunas): Si es Incompleto, verificar qué faltan. Columna FECHA con fecha válida debe tener Dosis y Marca. "OTRAS" puede ir vacía.
+        - 32 (Alergias): Si es SÍ, verificar coherencia.
+        - OBSERVACIONES: Para cada SÍ (23,24,25,26,27,32) debe existir registro detallado haciendo referencia al número.
+
+        ### SECCIÓN INTERROGATORIO POR APARATOS Y SISTEMAS
+        - 34: Todo síntoma en "SÍ" DEBE estar en el cuadro de observaciones de su sistema afín incluyendo 4 datos (Síntoma, Antigüedad, Tratamiento, Seguimiento).
+        - Alteración de la visión: Debe incluir Diagnóstico, Lentes, Antigüedad, Último ajuste.
+        - Uso de prótesis: Si se selecciona, detallar en cuadro de Prótesis.
+
+        ### SECCIÓN GINECOOBSTÉTRICOS
+        - 37: La suma de Partos+Cesáreas+Abortos debe dar igual al total de Gestaciones (G = P + C + A).
+
+        ### SECCIÓN EXPLORACIÓN FÍSICA
+        - 51: X, O, =, W, !!, F deben hacer referencia a piezas O decir "SIN DATOS PATOLÓGICOS".
+        - POR APARATOS:
+          Grupo A (1,2,3,6,7,8,9,10,11,12,14,15,16,18): Congruencia O "Sin datos patológicos". Ignorar signos.
+          Grupo B: 5 (CAP y MTL bilateral), 13 (No palpables), 17, 20, 21, 22 (Normal).
+          Grupo C: 4 (Ojos) cruce con Ametropía y Alteración Visión. 23 (Tatuajes) cruce con 30.
+        
+        ### FIRMA DEL PACIENTE
+        - REQUIERE VERIFICACIÓN VISUAL.
         `;
 
         // ============================================================================
-        // PROMPT 2: HISTORIA CLÍNICA (ESTRICTO MINAS) - NUEVAS REGLAS REESTRUCTURADAS
+        // PROMPT 1: HISTORIA CLÍNICA (SUCURSALES)
+        // ============================================================================
+        const PROMPT_HC_NORMAL = `
+        Eres un auditor médico de LAP.IA para sucursales estándar. Evalúa el PDF adjunto.
+        
+        DATOS DE LA PLATAFORMA PARA CRUCE DE IDENTIDAD:
+        - Folio: ${dp.folio || 'No proporcionado'}
+        - Nombre: ${dp.nombre || 'No proporcionado'}
+        - Fecha de Nacimiento: ${dp.nacimiento || 'No proporcionado'}
+
+        REGLAS DE IDENTIFICACIÓN INICIAL:
+        1. Folio: Verifica que coincida EXACTAMENTE con ${dp.folio || 'No proporcionado'}.
+        2. Nombre: Verifica que coincida EXACTAMENTE con ${dp.nombre || 'No proporcionado'}.
+        3. Fecha de nacimiento: Verifica que coincida EXACTAMENTE con ${dp.nacimiento || 'No proporcionado'}.
+
+        ${REGLAS_HC_BASE}
+
+        Además, DEBES EXTRAER para estudios futuros:
+        1. "estatura" (44. Talla). 2. "peso" (44. Peso). 3. "fuma" (17 SÍ/NO). 4. "fumaDetalles" (18). 5. "audio_patologicos" (29 y 34). 6. "audio_exantematicas" (27). 7. "audio_ruido" (Tabla A. Físicos).
+
+        DEVUELVE ÚNICAMENTE un JSON estricto con esta estructura (sin markdown):
+        {
+          "aprobadoGeneral": true/false, "motivoPrincipal": "...",
+          "datosExtraidosHC": { "estatura": "...", "peso": "...", "fuma": "...", "fumaDetalles": "...", "audio_patologicos": "...", "audio_exantematicas": "...", "audio_ruido": "..." },
+          "checklist": [
+            { "categoria": "1. Identidad (Folio, Nombre, Nacimiento)", "pass": true/false, "comentario": "..." },
+            { "categoria": "2. Integridad Demográfica", "pass": true/false, "comentario": "..." },
+            { "categoria": "3. Antecedentes Laborales", "pass": true/false, "comentario": "..." },
+            { "categoria": "4. Hábitos (Mascotas)", "pass": true/false, "comentario": "..." },
+            { "categoria": "5. Personales Patológicos", "pass": true/false, "comentario": "..." },
+            { "categoria": "6. Aparatos y Sistemas (Observaciones)", "pass": true/false, "comentario": "..." },
+            { "categoria": "7. Ginecoobstétricos y Odontología", "pass": true/false, "comentario": "..." },
+            { "categoria": "8. Exploración Física (Leyendas y Cruces)", "pass": true/false, "comentario": "..." },
+            { "categoria": "9. Firma del Paciente", "pass": true/false, "comentario": "..." }
+          ]
+        }`;
+
+        // ============================================================================
+        // PROMPT 2: HISTORIA CLÍNICA LIBRE (LABORATORIO IA) - SIN CRUCE
+        // ============================================================================
+        const PROMPT_HC_LIBRE = `
+        Eres el Laboratorio Autónomo de LAP.IA. Evalúa el PDF de la Historia Clínica adjunto.
+        IMPORTANTE: Dado que es un análisis libre y no hay paciente registrado, ASUME QUE EL NOMBRE, FOLIO Y FECHA DE NACIMIENTO EN EL DOCUMENTO ESTÁN CORRECTOS. No los califiques como error.
+
+        ${REGLAS_HC_BASE}
+
+        DEVUELVE ÚNICAMENTE un JSON estricto con esta estructura (sin markdown):
+        {
+          "aprobadoGeneral": true/false, "motivoPrincipal": "...",
+          "checklist": [
+            { "categoria": "1. Integridad Demográfica", "pass": true/false, "comentario": "..." },
+            { "categoria": "2. Antecedentes Laborales", "pass": true/false, "comentario": "..." },
+            { "categoria": "3. Hábitos (Mascotas)", "pass": true/false, "comentario": "..." },
+            { "categoria": "4. Personales Patológicos", "pass": true/false, "comentario": "..." },
+            { "categoria": "5. Aparatos y Sistemas (Observaciones)", "pass": true/false, "comentario": "..." },
+            { "categoria": "6. Ginecoobstétricos y Odontología", "pass": true/false, "comentario": "..." },
+            { "categoria": "7. Exploración Física (Leyendas y Cruces)", "pass": true/false, "comentario": "..." },
+            { "categoria": "8. Firma del Paciente", "pass": true/false, "comentario": "..." }
+          ]
+        }`;
+
+        // ============================================================================
+        // PROMPT HISTORIA CLÍNICA (MINAS)
         // ============================================================================
         const PROMPT_HC_MINAS = `
         Eres el Auditor Médico Supremo de LAP.IA para la división de MINAS.
@@ -203,51 +301,21 @@ exports.handler = async (event, context) => {
         // ============================================================================
         // LÓGICA DE SELECCIÓN DE PROMPT
         // ============================================================================
-        if (tipoDocumento === 'Historia Clínica (MINAS)' || tipoDocumento === 'Historia Clínica') {
-            promptSeleccionado = PROMPT_HC_MINAS;
-        } else if (tipoDocumento === 'Espirometría') {
-            promptSeleccionado = PROMPT_ESPIROMETRIA;
-        } else if (tipoDocumento === 'Audiometría') {
-            promptSeleccionado = PROMPT_AUDIOMETRIA;
-        } else {
-            promptSeleccionado = PROMPT_HC_NORMAL;
-        }
+        if (tipoDocumento === 'Historia Clínica (Libre)') { promptSeleccionado = PROMPT_HC_LIBRE; } 
+        else if (tipoDocumento === 'Historia Clínica') { promptSeleccionado = PROMPT_HC_NORMAL; }
+        else if (tipoDocumento === 'Historia Clínica (MINAS)') { promptSeleccionado = PROMPT_HC_MINAS; } // El que ya tienes
+        else if (tipoDocumento === 'Espirometría') { promptSeleccionado = PROMPT_ESPIROMETRIA; } // El que ya tienes
+        else if (tipoDocumento === 'Audiometría') { promptSeleccionado = PROMPT_AUDIOMETRIA; } // El que ya tienes
+        else { promptSeleccionado = PROMPT_HC_NORMAL; }
 
         // ============================================================================
         // LLAMADA A LA API DE GOOGLE GEMINI
         // ============================================================================
-        const requestBody = {
-            contents: [{
-                parts: [
-                    { text: promptSeleccionado },
-                    { inline_data: { mime_type: "application/pdf", data: pdfBase64 } }
-                ]
-            }],
-            generationConfig: { response_mime_type: "application/json" }
-        };
-
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${API_KEY}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody)
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Google API Error: ${response.status} - ${errorText}`);
-        }
-
+        const requestBody = { contents: [{ parts: [{ text: promptSeleccionado }, { inline_data: { mime_type: "application/pdf", data: pdfBase64 } }] }], generationConfig: { response_mime_type: "application/json" } };
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestBody) });
+        if (!response.ok) throw new Error(`Google API Error: ${response.status}`);
         const data = await response.json();
-        let textoJSON = data.candidates[0].content.parts[0].text;
-        textoJSON = textoJSON.replace(/```json/g, '').replace(/```/g, '').trim();
+        return { statusCode: 200, headers: { "Content-Type": "application/json" }, body: data.candidates[0].content.parts[0].text.replace(/```json/g, '').replace(/```/g, '').trim() };
 
-        return {
-            statusCode: 200,
-            headers: { "Content-Type": "application/json" },
-            body: textoJSON
-        };
-
-    } catch (error) {
-        return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
-    }
+    } catch (error) { return { statusCode: 500, body: JSON.stringify({ error: error.message }) }; }
 };
