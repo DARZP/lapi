@@ -213,20 +213,34 @@
                 </div>
                 
                 <div class="w-full lg:w-2/3 flex flex-col space-y-4">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="bg-white p-4 rounded-lg shadow-sm border-l-4 border-yellow-500 flex justify-between items-center">
-                            <div>
-                                <p class="text-xs text-gray-500 font-medium">Pacientes MINAS de Hoy</p>
-                                <p id="stat-minas-hoy" class="text-3xl font-bold text-gray-800">0</p>
+                    
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div class="bg-white p-3 rounded-lg shadow-sm border-l-4 border-yellow-500">
+                            <p class="text-[10px] text-gray-500 font-bold uppercase">Pacientes Hoy</p>
+                            <p id="stat-minas-hoy" class="text-2xl font-black text-gray-800">0</p>
+                        </div>
+                        <div class="bg-white p-3 rounded-lg shadow-sm border-l-4 border-green-500">
+                            <p class="text-[10px] text-gray-500 font-bold uppercase">Completados 100%</p>
+                            <p id="stat-minas-completados" class="text-2xl font-black text-green-600">0%</p>
+                        </div>
+                        <div class="bg-white p-3 rounded-lg shadow-sm border-l-4 border-blue-500 col-span-2 flex flex-col justify-center">
+                            <p class="text-[10px] text-gray-500 font-bold uppercase mb-1">Avance de Aprobación por Estudio</p>
+                            <div class="flex justify-between text-xs font-bold">
+                                <span class="text-blue-700">HC: <span id="stat-progreso-hc">0%</span></span>
+                                <span class="text-indigo-700">Espiro: <span id="stat-progreso-espiro">0%</span></span>
+                                <span class="text-purple-700">Audio: <span id="stat-progreso-audio">0%</span></span>
                             </div>
-                            <span class="text-3xl">👷🏼‍♂️</span>
                         </div>
-                        <div class="bg-white p-4 rounded-lg shadow-sm flex items-center justify-center border border-gray-200">
-                            <button onclick="exportarExcelMinas()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded shadow transition flex items-center w-full justify-center">
-                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                                Descargar Reporte en Excel
-                            </button>
+                    </div>
+
+                    <div class="flex space-x-3">
+                        <div class="flex-1 bg-white flex items-center px-4 rounded-lg shadow-sm border border-gray-200">
+                            <span>🔍</span>
+                            <input type="text" id="buscadorMinas" onkeyup="renderizarExpedientesMinas()" class="w-full p-3 bg-transparent outline-none text-sm font-medium text-gray-700" placeholder="Buscar por Nombre, No. Orden o Folio HC...">
                         </div>
+                        <button onclick="exportarExcelMinas()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg shadow-sm transition flex items-center whitespace-nowrap">
+                            📊 Descargar Excel
+                        </button>
                     </div>
 
                     <div class="bg-white p-6 rounded-lg shadow-sm flex-1 flex flex-col border-t border-gray-200">
@@ -612,19 +626,15 @@
             }
         }
 
-        // ==============================================================================
-        // NUEVO: LÓGICA MÓDULO MINAS (ADMINISTRADOR)
-        // ==============================================================================
-
         async function agregarPacienteMinas() {
             const inputNombre = document.getElementById('nombrePacienteMinas'); 
-            const inputNacimiento = document.getElementById('nacimientoPacienteMinas'); // NUEVO
+            const inputNacimiento = document.getElementById('nacimientoPacienteMinas'); 
             const inputOrden = document.getElementById('ordenPacienteMinas'); 
             const inputFolio = document.getElementById('folioPacienteMinas'); 
             const cbs = document.querySelectorAll('.cb-minas:checked');
             
             const nombre = inputNombre.value.trim();
-            const nacimiento = inputNacimiento.value; // NUEVO
+            const nacimiento = inputNacimiento.value;
             const orden = inputOrden.value.trim();
             const folio = inputFolio.value.trim();
 
@@ -632,9 +642,17 @@
                 alert('Faltan datos. Asegúrate de ingresar Nombre, Fecha de Nacimiento, No. de Orden, Folio y estudios.'); 
                 return; 
             }
+
+            // ==========================================
+            // NUEVO: VALIDACIÓN DE DUPLICADOS
+            // ==========================================
+            const duplicado = bdMinas[fechaActualStr].pacientes.some(p => p.numeroOrden === orden || p.folioHC === folio);
+            if (duplicado) {
+                alert('⚠️ ERROR: Ya existe un paciente registrado HOY con ese Número de Orden o Folio HC. Por favor verifica.');
+                return;
+            }
             
             const estudiosSeleccionados = Array.from(cbs).map(cb => cb.value);
-            
             let docsDelPaciente = {};
             estudiosSeleccionados.forEach(est => {
                 if (est === 'Historia Clínica') docsDelPaciente['Historia Clínica'] = { estado: 'pendiente' };
@@ -643,28 +661,13 @@
             });
 
             const nuevoPaciente = { 
-                id: Date.now().toString(), 
-                fechaOperativa: fechaActualStr,
-                nombre: nombre, 
-                numeroOrden: orden,
-                folioHC: folio,
-                estudios: estudiosSeleccionados,
-                docsStatus: docsDelPaciente,
-                statusIntegral: 'pendiente' 
+                id: Date.now().toString(), fechaOperativa: fechaActualStr, nombre: nombre, 
+                fechaNacimiento: nacimiento, numeroOrden: orden, folioHC: folio,
+                estudios: estudiosSeleccionados, docsStatus: docsDelPaciente, statusIntegral: 'pendiente', datosExtraidosHC: null
             };
 
-            // Guardado en Memoria Local de la sesión
             bdMinas[fechaActualStr].pacientes.push(nuevoPaciente);
-
-            // Guardado Permanente en la Nube (Firebase)
-            if(db) {
-                try {
-                    await db.collection("PacientesMinas").doc(nuevoPaciente.id).set(nuevoPaciente);
-                    console.log("Expediente MINAS guardado en la nube exitosamente.");
-                } catch(e) {
-                    console.error("No se pudo guardar en Firebase:", e);
-                }
-            }
+            if(db) db.collection("PacientesMinas").doc(nuevoPaciente.id).set(nuevoPaciente).catch(e=>console.error(e));
             
             inputNombre.value = ''; inputOrden.value = ''; inputFolio.value = ''; cbs.forEach(cb => cb.checked = false); 
             renderizarExpedientesMinas();
@@ -673,33 +676,58 @@
         function renderizarExpedientesMinas() {
             const contenedor = document.getElementById('contenedorExpedientesMinas');
             contenedor.innerHTML = '';
-            
             if(!bdMinas[fechaActualStr]) return;
-            const pacientes = bdMinas[fechaActualStr].pacientes;
             
-            // Actualizar la Tarjeta de Estadísticas Superior
+            let pacientes = bdMinas[fechaActualStr].pacientes;
+            
+            // ==========================================
+            // NUEVO: CÁLCULO DE ESTADÍSTICAS GLOBALES
+            // ==========================================
             document.getElementById('stat-minas-hoy').textContent = pacientes.length;
+            
+            let pacCompletados = 0;
+            let reqHC = 0, reqEs = 0, reqAu = 0;
+            let apHC = 0, apEs = 0, apAu = 0;
+
+            pacientes.forEach(p => {
+                const keys = Object.keys(p.docsStatus);
+                const todosAprobados = keys.every(k => p.docsStatus[k].estado === 'aprobado');
+                if (todosAprobados && keys.length > 0) pacCompletados++;
+
+                if(p.docsStatus['Historia Clínica']) { reqHC++; if(p.docsStatus['Historia Clínica'].estado === 'aprobado') apHC++; }
+                if(p.docsStatus['Espirometría']) { reqEs++; if(p.docsStatus['Espirometría'].estado === 'aprobado') apEs++; }
+                if(p.docsStatus['Audiometría']) { reqAu++; if(p.docsStatus['Audiometría'].estado === 'aprobado') apAu++; }
+            });
+
+            document.getElementById('stat-minas-completados').textContent = pacientes.length > 0 ? Math.round((pacCompletados/pacientes.length)*100) + '%' : '0%';
+            document.getElementById('stat-progreso-hc').textContent = reqHC > 0 ? Math.round((apHC/reqHC)*100) + '%' : '-';
+            document.getElementById('stat-progreso-espiro').textContent = reqEs > 0 ? Math.round((apEs/reqEs)*100) + '%' : '-';
+            document.getElementById('stat-progreso-audio').textContent = reqAu > 0 ? Math.round((apAu/reqAu)*100) + '%' : '-';
+
+            // ==========================================
+            // NUEVO: FILTRO DE BÚSQUEDA
+            // ==========================================
+            const terminoBusqueda = (document.getElementById('buscadorMinas')?.value || '').toLowerCase();
+            if (terminoBusqueda !== '') {
+                pacientes = pacientes.filter(p => 
+                    p.nombre.toLowerCase().includes(terminoBusqueda) || 
+                    p.numeroOrden.toLowerCase().includes(terminoBusqueda) || 
+                    p.folioHC.toLowerCase().includes(terminoBusqueda)
+                );
+            }
 
             if(pacientes.length === 0) {
-                contenedor.innerHTML = '<p class="text-center text-gray-400 mt-10 italic">Añade pacientes para gestionar sus expedientes integrales.</p>';
+                contenedor.innerHTML = '<p class="text-center text-gray-400 mt-10 italic">No se encontraron expedientes.</p>';
                 return;
             }
 
+            // Renderizado de tarjetas (Igual que antes)
             pacientes.forEach(p => {
                 const docsKeys = Object.keys(p.docsStatus);
                 const todosAnalizados = docsKeys.every(key => p.docsStatus[key].estado === 'aprobado' || p.docsStatus[key].estado === 'rechazado');
-                
                 let btnAnalisisClass = todosAnalizados && p.statusIntegral !== 'completado' ? 'bg-yellow-500 hover:bg-yellow-600 text-white cursor-pointer' : 'bg-gray-200 text-gray-400 cursor-not-allowed';
-                let btnAnalisisTexto = '🧠 Analizar Expediente Integral';
+                let btnAnalisisTexto = p.statusIntegral === 'completado' ? '✅ Congruencia Validada' : (p.statusIntegral === 'analizando' ? 'Cruzando datos clínicos...' : '🧠 Analizar Expediente Integral');
                 
-                if(p.statusIntegral === 'analizando') {
-                    btnAnalisisClass = 'bg-yellow-100 text-yellow-600 cursor-not-allowed';
-                    btnAnalisisTexto = 'Cruzando datos clínicos...';
-                } else if(p.statusIntegral === 'completado') {
-                    btnAnalisisClass = 'bg-green-100 text-green-700 cursor-not-allowed border border-green-300';
-                    btnAnalisisTexto = '✅ Congruencia Validada';
-                }
-
                 const card = document.createElement('div');
                 card.className = "border border-gray-200 rounded-lg p-4 bg-gray-50 shadow-sm fade-in";
                 
@@ -713,7 +741,7 @@
                             </div>
                             <p class="text-xs font-medium text-gray-500 mt-2">${p.estudios.join(' • ')}</p>
                         </div>
-                        <button onclick="eliminarPacienteMinas('${p.id}')" class="text-red-400 hover:text-red-600 text-xs font-bold">✕ Eliminar Paciente</button>
+                        <button onclick="eliminarPacienteMinas('${p.id}')" class="text-red-400 hover:text-red-600 text-[10px] font-bold px-2 py-1 border border-red-200 bg-white rounded">✕ Eliminar</button>
                     </div>
                     <div class="space-y-2 mb-4">
                 `;
@@ -723,31 +751,89 @@
                     let docBtn = '';
                     let btnChecklist = (statusObj.estado === 'aprobado' || statusObj.estado === 'rechazado') ? `<button onclick="abrirModalChecklistMinas('${p.id}', '${docName}')" class="text-[10px] text-blue-500 hover:underline font-bold ml-2">📋 Detalles</button>` : '';
 
-                    if (statusObj.estado === 'pendiente') { docBtn = `<button onclick="accionDocMinasIndividual('${p.id}', '${docName}', 'subir')" class="text-xs bg-white border border-gray-300 px-3 py-1 rounded hover:bg-gray-100 font-bold">Subir Archivo</button>`; } 
-                    else if (statusObj.estado === 'subido') { docBtn = `<div class="flex items-center"><span class="text-xs text-gray-500 mr-2 font-bold">✓ Subido</span> <button onclick="accionDocMinasIndividual('${p.id}', '${docName}', 'analizar')" class="text-xs bg-gray-800 text-white hover:bg-gray-900 px-2 py-1 rounded shadow-md transition font-bold">✨ Analizar</button></div>`; } 
-                    else if (statusObj.estado === 'analizando') { docBtn = `<span class="text-lapiOrange text-xs font-bold animate-pulse">🧠 Analizando...</span>`; } 
-                    else if (statusObj.estado === 'aprobado') { docBtn = `<div class="flex items-center"><span class="bg-green-100 text-green-700 border border-green-300 px-2 py-1 rounded text-xs font-bold flex items-center">✅ Aprobado ${btnChecklist}</span> <button onclick="accionDocMinasIndividual('${p.id}', '${docName}', 'subir')" class="text-[10px] text-gray-400 hover:text-gray-600 ml-2 underline">Resubir</button></div>`; } 
-                    else if (statusObj.estado === 'rechazado') { docBtn = `<div class="flex items-center"><span class="bg-red-100 text-red-700 border border-red-300 px-2 py-1 rounded text-xs font-bold flex items-center">❌ Rechazado ${btnChecklist}</span> <button onclick="accionDocMinasIndividual('${p.id}', '${docName}', 'subir')" class="text-[10px] text-gray-400 hover:text-gray-600 ml-2 underline">Resubir</button></div>`; }
+                    if (statusObj.estado === 'pendiente') docBtn = `<button onclick="accionDocMinasIndividual('${p.id}', '${docName}', 'subir')" class="text-xs bg-white border border-gray-300 px-3 py-1 rounded hover:bg-gray-100 font-bold">Subir</button>`; 
+                    else if (statusObj.estado === 'subido') docBtn = `<div class="flex items-center"><span class="text-xs text-gray-500 mr-2 font-bold">✓ Subido</span> <button onclick="accionDocMinasIndividual('${p.id}', '${docName}', 'analizar')" class="text-[10px] bg-gray-800 text-white px-2 py-1 rounded shadow-md font-bold">✨ Analizar</button></div>`; 
+                    else if (statusObj.estado === 'analizando') docBtn = `<span class="text-lapiOrange text-xs font-bold animate-pulse">🧠 Analizando...</span>`; 
+                    else if (statusObj.estado === 'aprobado') docBtn = `<div class="flex items-center"><span class="bg-green-100 text-green-700 border border-green-300 px-2 py-0.5 rounded text-[10px] font-bold flex items-center">✅ Aprobado ${btnChecklist}</span> <button onclick="accionDocMinasIndividual('${p.id}', '${docName}', 'subir')" class="text-[10px] text-gray-400 hover:text-gray-600 ml-2 underline">Resubir</button></div>`; 
+                    else if (statusObj.estado === 'rechazado') docBtn = `<div class="flex items-center"><span class="bg-red-100 text-red-700 border border-red-300 px-2 py-0.5 rounded text-[10px] font-bold flex items-center">❌ Rechazado ${btnChecklist}</span> <button onclick="accionDocMinasIndividual('${p.id}', '${docName}', 'subir')" class="text-[10px] text-gray-400 hover:text-gray-600 ml-2 underline">Resubir</button></div>`;
 
-                    html += `
-                        <div class="flex justify-between items-center bg-white p-2 rounded border border-gray-200">
-                            <span class="text-sm text-gray-700 font-medium">${docName}</span>
-                            ${docBtn}
-                        </div>
-                    `;
+                    html += `<div class="flex justify-between items-center bg-white p-2 rounded border border-gray-200"><span class="text-sm text-gray-700 font-medium">${docName}</span>${docBtn}</div>`;
                 });
 
-                html += `
-                    </div>
-                    <button onclick="analizarExpedienteMinas('${p.id}')" class="w-full py-2 rounded text-sm font-bold transition ${btnAnalisisClass}" ${!todosAnalizados || p.statusIntegral !== 'pendiente' ? 'disabled' : ''}>
-                        ${btnAnalisisTexto}
-                    </button>
-                `;
-
+                html += `</div><button onclick="analizarExpedienteMinas('${p.id}')" class="w-full py-2 rounded text-sm font-bold transition ${btnAnalisisClass}" ${!todosAnalizados || p.statusIntegral !== 'pendiente' ? 'disabled' : ''}>${btnAnalisisTexto}</button>`;
                 card.innerHTML = html;
                 contenedor.appendChild(card);
             });
         }
+
+        function abrirModalChecklistMinas(idPaciente, docName) {
+            const paciente = bdMinas[fechaActualStr].pacientes.find(p => p.id === idPaciente.toString());
+            if(!paciente || !paciente.docsStatus[docName].checklist) return;
+            
+            const checklist = paciente.docsStatus[docName].checklist;
+            document.getElementById('checklist-subtitulo').textContent = `${docName} - ${paciente.nombre}`;
+            const ul = document.getElementById('lista-checklist'); ul.innerHTML = '';
+            
+            checklist.forEach((item, index) => {
+                const bgClass = item.pass ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200';
+                
+                // ==========================================
+                // NUEVO: BOTÓN DE SOBRESCRITURA MANUAL (OVERRIDE)
+                // ==========================================
+                const iconHTML = item.pass 
+                    ? `<span class="mr-3 mt-0.5 cursor-default text-lg" title="Aprobado por IA">✅</span>` 
+                    : `<button onclick="aprobarReglaManual('${p.id}', '${docName}', ${index})" class="mr-3 mt-0.5 hover:scale-125 transition transform text-lg" title="Haz clic para aprobar manualmente esta regla">❌</button>`;
+                
+                const titleColor = item.pass ? 'text-green-800' : 'text-red-800';
+                
+                const li = document.createElement('li'); 
+                li.className = `flex items-start p-3 rounded border ${bgClass} mb-2 transition-all`;
+                li.innerHTML = `
+                    ${iconHTML}
+                    <div>
+                        <span class="text-sm font-bold ${titleColor} block">${item.categoria || 'Evaluación'}</span>
+                        <span class="text-xs text-gray-600 mt-1 block">${item.comentario || ''}</span>
+                    </div>
+                `;
+                ul.appendChild(li);
+            });
+            document.getElementById('modal-checklist').classList.remove('hidden');
+        }
+
+        // ==========================================
+        // NUEVA FUNCIÓN: APROBAR MANUALMENTE (OVERRIDE)
+        // ==========================================
+        function aprobarReglaManual(idPaciente, docName, indexRegla) {
+            if(!confirm("¿Estás seguro que deseas aprobar este criterio manualmente? Quedará registrado en la auditoría.")) return;
+            
+            const paciente = bdMinas[fechaActualStr].pacientes.find(p => p.id === idPaciente.toString());
+            const statusObj = paciente.docsStatus[docName];
+            
+            // Forzamos la regla a "aprobada" y añadimos la nota
+            statusObj.checklist[indexRegla].pass = true;
+            statusObj.checklist[indexRegla].comentario += " [✔️ APROBADO MANUALMENTE POR SUPERVISOR]";
+            
+            // Verificamos si con este cambio manual TODO el documento ya está aprobado
+            const todosAprobados = statusObj.checklist.every(item => item.pass);
+            if (todosAprobados) {
+                statusObj.estado = 'aprobado';
+                alert("¡Excelente! Todos los criterios de este documento han sido solventados.");
+            }
+
+            // Guardamos en Firebase y actualizamos la vista
+            if (db) {
+                const docsParaGuardar = JSON.parse(JSON.stringify(paciente.docsStatus));
+                Object.keys(docsParaGuardar).forEach(k => delete docsParaGuardar[k].pdfBase64);
+                db.collection("PacientesMinas").doc(paciente.id.toString()).update({ docsStatus: docsParaGuardar })
+                  .catch(e => console.error("Error al actualizar Override en Firebase:", e));
+            }
+
+            // Refrescamos la pantalla por detrás y recargamos el modal
+            renderizarExpedientesMinas();
+            abrirModalChecklistMinas(idPaciente, docName);
+        }
+
+        
 
         // --- FUNCIÓN MÁGICA: DESCARGAR EXCEL ---
         function exportarExcelMinas() {
