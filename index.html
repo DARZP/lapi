@@ -317,7 +317,7 @@
                             <label class="block text-sm font-medium text-gray-700 mb-1">1. Selecciona el tipo de documento:</label>
                             <select id="libre-tipo" class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-lapiOrange outline-none">
                                 <option value="Historia Clínica (Libre)">Historia Clínica (Integrado a IA)</option>
-                                <option value="Electrocardiograma">Electrocardiograma (Próximamente)</option>
+                                <option value="Electrocardiograma">Electrocardiograma (Integrado a IA)</option>
                                 <option value="Espirometría">Espirometría (Próximamente)</option>
                                 <option value="Audiometría">Audiometría (Próximamente)</option>
                             </select>
@@ -1462,7 +1462,7 @@
                 const requiereHC = paciente ? paciente.estudios.includes('Historia Clínica') : false;
 
                 // ALERTA INTELIGENTE SÓLO SI REQUIERE HC Y AÚN NO LA HA APROBADO
-                if (paciente && requiereHC && (tipoEstudio === 'Espirometría' || tipoEstudio === 'Audiometría')) {
+                if (paciente && requiereHC && (tipoEstudio === 'Espirometría' || tipoEstudio === 'Audiometría' || tipoEstudio === 'Electrocardiograma')) {
                     const hcStatus = paciente.docsStatus[`doc-${paciente.id}-Historia`];
                     if (!hcStatus || hcStatus.estado !== 'aprobado') {
                         const proceder = confirm(`⚠️ ALERTA DE SISTEMA ⚠️\n\nEste paciente SÍ tiene contratada una Historia Clínica, pero aún no ha sido aprobada.\n\nLa IA requiere cruzar datos con la HC. Si continúas, las reglas de cruce saldrán rechazadas temporalmente.\n\n¿Deseas analizar de todos modos?`);
