@@ -6,7 +6,6 @@ exports.handler = async (event, context) => {
     }
 
     try {
-        // AHORA EXTRAEMOS "datosPaciente" DEL FRONTEND PARA CRUZARLOS EN LA ESPIROMETRÍA Y AUDIOMETRÍA
         const { pdfBase64, tipoDocumento, datosPaciente } = JSON.parse(event.body);
         const API_KEY = process.env.GEMINI_API_KEY;
 
@@ -15,6 +14,10 @@ exports.handler = async (event, context) => {
         }
 
         let promptSeleccionado = "";
+        
+        // Extraemos los datos cruzados
+        const dp = datosPaciente || {};
+        const hc = dp.datosHC || null; 
 
         // ============================================================================
         // PROMPT 1: HISTORIA CLÍNICA (SUCURSALES NORMALES)
@@ -26,101 +29,107 @@ exports.handler = async (event, context) => {
         `;
 
         // ============================================================================
-        // PROMPT 2: HISTORIA CLÍNICA (ESTRICTO MINAS) - REGLAS LITERALES + EXTRACCIÓN
+        // PROMPT 2: HISTORIA CLÍNICA (ESTRICTO MINAS) - NUEVAS REGLAS REESTRUCTURADAS
         // ============================================================================
         const PROMPT_HC_MINAS = `
         Eres el Auditor Médico Supremo de LAP.IA para la división de MINAS.
         A continuación se te entregan las REGLAS EXACTAS Y LITERALES redactadas por la dirección médica.
-        Tu trabajo es evaluar el PDF adjunto estrictamente con este manual. NO simplifiques, NO asumas. Si la regla dice "VERIFICAR CONGRUENCIA O SE ANOTE LA LEYENDA", significa que si hay texto abierto coherente con la anatomía, es VÁLIDO, y si dice la leyenda, también es VÁLIDO.
+        Tu trabajo es evaluar el PDF adjunto estrictamente con este manual. NO simplifiques, NO asumas.
+
+        DATOS DE LA PLATAFORMA PARA CRUCE DE IDENTIDAD:
+        - Folio de Plataforma: ${dp.folio || 'No proporcionado'}
+        - Nombre de Plataforma: ${dp.nombre || 'No proporcionado'}
+        - Fecha de Nacimiento de Plataforma: ${dp.nacimiento || 'No proporcionado'}
 
         --- INICIO DEL MANUAL DE REGLAS MINAS ---
+        ### SECCIÓN DE IDENTIFICACIÓN
+        1. Folio: Verifica que el folio de la historia clínica coincida EXACTAMENTE con el folio registrado en el expediente de la plataforma.
+        2. Nombre: Verifica que el nombre en la historia clínica coincida EXACTAMENTE con el nombre registrado en la plataforma.
+        3. Fecha de nacimiento: Verifica que la fecha coincida EXACTAMENTE con la registrada en la plataforma.
+        4. Datos que NO REQUIEREN VERIFICACIÓN: Nacionalidad, Originario de, Estado civil, Religión, Empresa, Puesto, Departamento, Escolaridad, Grupo sanguíneo, Acepta transfusiones.
+        5. Datos que REQUIEREN VERIFICACIÓN DE LLENADO: Debes verificar que CADA DATO de la siguiente lista SIEMPRE ESTÉ CONTESTADO: Grupo étnico, Discapacidad, Domicilio particular (calle, #ext, #int, colonia, localidad, municipio, estado y C.P.), Teléfono de casa, Teléfono celular, IMSS, RFC, CURP, Contacto de emergencia (Nombre, dirección, parentesco, teléfono, celular).
 
-        SECCIÓN DE IDENTIFICACIÓN
-        - REQUIERE VERIFICACIÓN. SE DEBE VERIFICAR QUE CADA DATO SIEMPRE ESTÉ CONTESTADO: Grupo étnico, Se considera o no con alguna discapacidad, Domicilio particular (nombre de calle, # ext, # int, colonia, localidad, municipio, estado, C.P TODO siempre contestado), Telefono de casa, Telefono celular, Número de afiliación de IMSS, RFC, CURP, Contacto de emergencia (Nombre, dirección, parentesco, telefono de casa, celular).
+        ### SECCIÓN ANTECEDENTES LABORALES
+        - 1. NO REQUIERE VERIFICACIÓN.
+        - 2. Antigüedad: Debe estar registrada obligatoriamente en formato de tiempo (Años o Años con Meses).
+        - 3. Orden de Registros: Ordenados cronológicamente (más reciente a más antiguo). En "FUNCIÓN PRINCIPAL", cada registro debe incluir obligatoriamente al menos UN factor de riesgo explícito.
+        - A. RIESGOS FÍSICOS: Si es SÍ, verifica detalles estrictos (Ruido, Vibración, Radiación, Iluminación, Temperaturas, Altura, Confinados).
+        - B. RIESGOS QUÍMICOS: Si es NO, requiere la leyenda exacta "Niega exposición a SILICE, MONOXIDO DE CARBONO, CIANURO DE HIDROGENO, PLOMO, ESTIRENO, TOLUENO, ETILO BENCENO, XILENO." en Observaciones. Si es SÍ, verifica detalles.
+        - C y E. BIOLÓGICOS Y PSICOSOCIALES: NO REQUIEREN VERIFICACIÓN.
+        - D. ERGONÓMICOS: Si es SÍ, verifica detalles estrictos.
 
-        SECCIÓN ANTECEDENTES LABORALES
-        - 2. REQUIERE VERIFICACIÓN: DEBE SER UNA ANTIGÜEDAD (AÑOS O AÑOS CON MESES).
-        - 3. REQUIERE VERIFICACIÓN: ORDENADOS CRONOLÓGICAMENTE (MÁS RECIENTE ARRIBA), EN "FUNCIÓN PRINCIPAL" INCLUYA AL MENOS UN FACTOR DE RIESGO (QUÍMICOS, BIOLÓGICOS, ERGONÓMICOS, PSICOSOCIAL).
-        - A. FÍSICOS. SE SELECCIONA SI: REQUIERE VERIFICACIÓN DE CADA AGENTE (Ruido, Vibración, Radiación, Iluminación, Temperaturas, Trabajos en altura, Espacios Confinados) con sus detalles (fuente, EPP, horas, etc.).
-        - B. QUÍMICOS. SE SELECCIONA NO: REQUIERE VERIFICACIÓN DE LA LEYENDA EXACTA "Niega exposición a SILICE, MONOXIDO DE CARBONO, CIANURO DE HIDROGENO, PLOMO, ESTIRENO, TOLUENO, ETILO BENCENO, XILENO." EN EL CUADRO DE OBSERVACIONES AL FINAL DE RIESGOS LABORALES.
-        - D. ERGONÓMICOS. SE SELECCIONA SI: REQUIERE VERIFICACIÓN DE CADA AGENTE CON SU INFORMACIÓN (Levantamiento, Repetición, Sobrecarga).
+        ### SECCIÓN DE RIESGOS LABORALES
+        - 4 y 5: Si es SÍ, verifica que CADA dato esté contestado (Empresa, causa, días, cuándo, qué le pasó, secuelas, proceso).
+        - 6 al 11: NO REQUIEREN VERIFICACIÓN.
 
-        SECCIÓN DE RIESGOS LABORALES
-        - 4 y 5. SE SELECCIONA SI: REQUIERE VERIFICACIÓN DE QUE CADA DATO ESTÉ CONTESTADO (Empresa, causa, días, cuándo, qué le pasó, secuelas, concluyó).
+        ### SECCIÓN ANTECEDENTES HÁBITOS Y COSTUMBRES
+        - 15 al 20, y 22: NO REQUIEREN VERIFICACIÓN.
+        - 21 (Mascotas): Si es SÍ, requiere 4 datos obligatorios: Tipo, Cantidad, Intra/extradomiciliarias, y Vacunados/Desparasitados.
 
-        SECCIÓN ANTECEDENTES HÁBITOS Y COSTUMBRES DE VIDA
-        - 21. MASCOTAS. SE SELECCIONA SI: REQUIERE VERIFICACIÓN (Tipo de mascota, cantidad, intra/extradomiciliarias, vacunados y desparasitados).
+        ### SECCIÓN ANTECEDENTES PERSONALES PATOLÓGICOS
+        - 23 al 26: Si es SÍ, verificar coherencia.
+        - 27: Ignorar aquí.
+        - 28 (Fracturas): Si es SÍ, verificar coherencia y en Observaciones debe incluir (Hueso, Año, Tratamiento).
+        - 29: Enfermedades, verificar coherencia.
+        - 30 (Tatuajes): Si hay tatuajes, en observaciones debe incluir (Región, Tipo, Color, Dimensiones).
+        - 31 (Vacunas): Si es Incompleto, verificar qué faltan. Columna FECH debe tener Dosis y Marca. Fila OTRAS puede ir vacía.
+        - 32 (Alergias): Si es SÍ, verificar coherencia.
+        - OBSERVACIONES: Para cada SÍ (23, 24, 25, 26, 27, 32) debe existir un registro detallado que haga referencia al número.
 
-        SECCIÓN ANTECEDENTES PERSONALES PATOLÓGICOS
-        - 23, 24, 25, 26. SE SELECCIONA SI: REQUIERE VERIFICACIÓN DE QUE SEA COHERENTE EL MOTIVO Y AÑO.
-        - 28. FRACTURAS. SE SELECCIONA SI: REQUIERE VERIFICACIÓN DE COHERENCIA EN REGIÓN.
-        - 29. ENFERMEDADES. SE SELECCIONA SI: SE VERIFICA COHERENCIA EN DIAGNÓSTICO Y TRATAMIENTO.
-        - 30. TATUAJES. SE SELECCIONA SI: VERIFICAR QUE SE INCLUYÓ ENTRE LOS REGISTROS.
-        - 31. VACUNAS. SE SELECCIONA INCOMPLETO O NO SABE: VERIFICAR COHERENCIA EN "QUÉ VACUNAS FALTAN". VERIFICAR SE LLENE POR COMPLETO LA PRIMERA COLUMNA (FECHA). EN CASO DE FECHA DEBE INCLUIR NÚMERO DE DOSIS Y MARCA. LA ÚNICA FILA QUE PUEDE ESTAR SIN INFORMACIÓN ES "OTRAS".
-        - 32. ALERGIAS. SE SELECCIONA SI: VERIFICAR APAREZCA SELECCIONADO EL TIPO Y TENGA COHERENCIA.
-        - OBSERVACIONES DEL EXAMINADOR (PATOLÓGICOS): SE VERIFICA QUE EN ESTE CUADRO SE INCLUYAN LOS DETALLES DE LAS PREGUNTAS DONDE SE RESPONDIÓ "SI" HACIENDO REFERENCIA AL NÚMERO. 23 (diagnóstico, fecha, incapacidad), 24 (diagnóstico, días hosp, fecha, incapacidad), 25 (tipo cx, fecha, incapacidad), 26 (motivo, fecha), 27 (edad, complicaciones), 28 (hueso, año, tratamiento), 30 (región, tipo, monocromático/policromático, dimensiones), 32 (alérgeno, reacción).
+        ### SECCIÓN INTERROGATORIO POR APARATOS Y SISTEMAS
+        - 34: Todo síntoma en "SÍ" DEBE estar descrito en el cuadro de observaciones de su sistema afín incluyendo 4 datos (Síntoma, Antigüedad, Tratamiento, Seguimiento).
+        - Alteración de la visión: Debe incluir Diagnóstico, Lentes, Antigüedad y Último ajuste.
+        - Uso de prótesis: Si se selecciona, detallar en cuadro de Prótesis.
 
-        INTERROGATORIO POR APARATOS Y SISTEMAS
-        - 34. SELECCIONA SI: VERIFICAR QUE CADA UNO SE INCLUYA EN EL APARTADO DE OBSERVACIONES DEL SISTEMA CORRESPONDIENTE, INCLUYENDO SÍNTOMA, ANTIGÜEDAD, CON/SIN TRATAMIENTO, CON/SIN SEGUIMIENTO.
-        - SI SE REPORTÓ "ALTERACIÓN DE LA VISIÓN", VERIFICAR SE INCLUYA SIEMPRE: DIAGNÓSTICO OFTALMOLÓGICO, USO Y TIPO DE LENTES, ANTIGÜEDAD, FECHA DE ÚLTIMO AJUSTE.
+        ### SECCIÓN DE ANTECEDENTES GINECOOBSTÉTRICOS
+        - Sólo femeninos. 36, 38 al 43: NO REQUIEREN VERIFICACIÓN.
+        - 37: La suma de Partos+Cesáreas+Abortos debe dar igual al total de Gestaciones (G = P + C + A).
 
-        ANTECEDENTES GINECOOBSTÉTRICOS
-        - 37. SE DEBE VERIFICAR LA COHERENCIA DE LOS EMBARAZOS TOTALES Y LA SUMA DE LOS TIPOS DE GESTACIONES (G = P + C + A).
+        ### SECCIÓN EXPLORACIÓN FÍSICA
+        - 44 al 50: NO REQUIEREN VERIFICACIÓN.
+        - 51: X, O, =, W, !!, F deben hacer referencia a piezas/molares O tener la leyenda "SIN DATOS PATOLÓGICOS".
+        - POR APARATOS: 
+          Grupo A (1,2,3,6,7,8,9,10,11,12,14,15,16,18): Deben tener congruencia O decir "Sin datos patológicos". Ignorar signos de 14, 15, 16.
+          Grupo B: 5 (CAP y MTL bilateral), 13 (No palpables), 17, 20, 21, 22 (Normal).
+          Grupo C: 4 (Ojos) cruce con Ametropía y Alteración de Visión. 23 (Tatuajes) cruce con 30 (Si no hay, decir "No presentes").
+          Grupo D (19, 24-30, Actitud, Observaciones): NO REQUIEREN VERIFICACIÓN.
 
-        SECCIÓN DE EXPLORACIÓN FÍSICA
-        - Ojos (4): VERIFICAR CONGRUENCIA Y AFINIDAD A LA SECCIÓN O SE ANOTE LEYENDA "Sin datos patológicos". SI EN 46/47 HAY AMETROPÍA O EN 34 ALTERACIÓN DE VISIÓN, VERIFICAR QUE SE HAGA REFERENCIA AQUÍ.
-        - Oídos (5): VERIFICAR CONGRUENCIA Y AFINIDAD A LA SECCIÓN O SE ANOTE LEYENDA "CAP y MTL bilateral".
-        - Boca-Faringe (7): VERIFICAR CONGRUENCIA Y AFINIDAD O LEYENDA "Sin datos patológicos".
-        - Hernias (13): VERIFICAR CONGRUENCIA Y AFINIDAD O LEYENDA "No palpables".
-        - Circulación, Marcha, Índices, Past-point (17, 20, 21, 22): VERIFICAR CONGRUENCIA Y AFINIDAD O LEYENDA "Normal".
-        - Tatuajes (23): SI EN LA 30 SE INCLUYÓ TATUAJE, VERIFICAR QUE ESTE RECUADRO TENGA LA MISMA INFO (Región, Tipo, Mono/Poli, Dimensiones). SI NO HAY TATUAJE, DEBE DECIR "No presentes".
-        - RESTO DE APARTADOS (1, 2, 3, 6, 8, 9, 10, 11, 12, 14, 15, 16, 18): VERIFICAR CONGRUENCIA Y AFINIDAD A LA SECCIÓN O SE ANOTE LEYENDA "Sin datos patológicos".
-        - FIRMA DEL PACIENTE: VERIFICAR QUE EL CUADRO TENGA LA FIRMA.
-
+        ### FIRMA DEL PACIENTE
+        - REQUIERE VERIFICACIÓN VISUAL.
         --- FIN DE REGLAS MINAS ---
 
-        Además de la auditoría, DEBES EXTRAER los siguientes datos del paciente para guardarlos en la base de datos y usarlos en futuros estudios (Espirometría y Audiometría):
+        Además de la auditoría, DEBES EXTRAER los siguientes datos del paciente para guardarlos en la base de datos y usarlos en futuros estudios:
         1. "estatura": Extraída de la sección 44. SOMATOMETRÍA (Talla).
         2. "peso": Extraído de la sección 44. SOMATOMETRÍA (Peso).
         3. "fuma": Valor de la sección "Hábitos y Costumbres" pregunta 17 (SI/NO).
         4. "fumaDetalles": Si en la 18 dice cuánto fumó o en la sección FUMADOR, extráelo. Si no, déjalo vacío.
-        5. "audio_patologicos": Resumen si reporta padecer: Diabetes, Hipertensión (HAS), Infección de oídos/Otitis, Dislipidemia (Colesterol/Triglicéridos) o Disminución auditiva (En preguntas 29 y 34). Si no tiene, pon "Negados".
-        6. "audio_exantematicas": Resumen de la pregunta 27 (Sarampión, Rubéola, Paperas, Varicela). Si no tiene, pon "Negados".
-        7. "audio_ruido": Resumen de la exposición a Ruido en "Antecedentes Laborales" (Tabla A. Físicos). Incluye empresa, años, EPP. Si marcó NO, pon "Sin exposición".
+        5. "audio_patologicos": Resumen si reporta padecer: Diabetes, Hipertensión, Otitis, Dislipidemia o Disminución auditiva (En preguntas 29 y 34). Si no, "Negados".
+        6. "audio_exantematicas": Resumen de la pregunta 27. Si no, "Negados".
+        7. "audio_ruido": Resumen exposición a Ruido (Tabla A. Físicos). Si no, "Sin exposición".
 
-        Con base en el manual literal anterior y los datos a extraer, genera el reporte en JSON validando cada sección.
-        DEVUELVE ÚNICAMENTE un JSON estricto con esta estructura (sin bloques de markdown \`\`\`json):
+        Con base en el manual, genera el reporte JSON.
+        DEVUELVE ÚNICAMENTE un JSON estricto con esta estructura (sin markdown):
         {
           "aprobadoGeneral": true/false,
           "motivoPrincipal": "Resumen de la falla o 'Documento óptimo'",
           "datosExtraidosHC": {
-              "estatura": "...",
-              "peso": "...",
-              "fuma": "SI/NO",
-              "fumaDetalles": "...",
-              "audio_patologicos": "...",
-              "audio_exantematicas": "...",
-              "audio_ruido": "..."
+              "estatura": "...", "peso": "...", "fuma": "...", "fumaDetalles": "...", "audio_patologicos": "...", "audio_exantematicas": "...", "audio_ruido": "..."
           },
           "checklist": [
-            { "categoria": "1. Sección Identificación", "pass": true/false, "comentario": "..." },
-            { "categoria": "2. Antecedentes Laborales (Preguntas 1 a 3)", "pass": true/false, "comentario": "..." },
-            { "categoria": "3. Agentes Físicos, Químicos y Ergonómicos", "pass": true/false, "comentario": "..." },
-            { "categoria": "4. Riesgos Laborales (4 a 11) y Observaciones", "pass": true/false, "comentario": "..." },
-            { "categoria": "5. Hábitos y Costumbres (Preguntas 15 a 22)", "pass": true/false, "comentario": "..." },
-            { "categoria": "6. Personales Patológicos (Preguntas 23 a 33)", "pass": true/false, "comentario": "..." },
-            { "categoria": "7. Patológicos (Cruce y Descripciones de Detalles)", "pass": true/false, "comentario": "..." },
-            { "categoria": "8. Aparatos y Sistemas (34 y Observaciones)", "pass": true/false, "comentario": "..." },
-            { "categoria": "9. Ginecoobstétricos (Congruencia de Gestaciones)", "pass": true/false, "comentario": "..." },
-            { "categoria": "10. Exploración Física (Congruencia/Leyendas y Cruces)", "pass": true/false, "comentario": "..." },
+            { "categoria": "1. Identidad y Demográficos", "pass": true/false, "comentario": "..." },
+            { "categoria": "2. Antecedentes Laborales", "pass": true/false, "comentario": "..." },
+            { "categoria": "3. Riesgos Físicos, Químicos y Ergonómicos", "pass": true/false, "comentario": "..." },
+            { "categoria": "4. Hábitos (Mascotas)", "pass": true/false, "comentario": "..." },
+            { "categoria": "5. Personales Patológicos", "pass": true/false, "comentario": "..." },
+            { "categoria": "6. Cruces en Observaciones Patológicas", "pass": true/false, "comentario": "..." },
+            { "categoria": "7. Aparatos y Sistemas (34 y Observaciones)", "pass": true/false, "comentario": "..." },
+            { "categoria": "8. Ginecoobstétricos (Congruencia)", "pass": true/false, "comentario": "..." },
+            { "categoria": "9. Odontología (Pregunta 51)", "pass": true/false, "comentario": "..." },
+            { "categoria": "10. Exploración Física (Leyendas y Cruces)", "pass": true/false, "comentario": "..." },
             { "categoria": "11. Firma del Paciente", "pass": true/false, "comentario": "..." }
           ]
         }
         `;
-
-        // Extraemos los datos cruzados (si existen) para pasárselos a los estudios
-        const dp = datosPaciente || {};
-        const hc = dp.datosHC || null; // Datos extraídos previamente de la HC
 
         // ============================================================================
         // PROMPT 3: ESPIROMETRÍA (CRUCE DE DATOS CON HISTORIA CLÍNICA)
@@ -144,10 +153,10 @@ exports.handler = async (event, context) => {
         5. "Fumador": Si el PDF marca SI, debe tener detalles de cantidad/tiempo a un lado, y en HC debe decir SI. Si marca NO, no debe haber detalles y en HC debe decir NO. Si marca DEJAR, debe tener detalles y coincidir con la HC. Si NO HAY DATOS DE HC, pon pass: false y en comentario: "⚠️ PENDIENTE: Cruzar con Historia Clínica".
         (Nota: Edad, Género, BMI, Profesión, Código Paciente y Grupo Étnico NO requieren verificación, ignóralos).
 
-        DEVUELVE ÚNICAMENTE un JSON estricto con esta estructura (sin bloques de markdown \`\`\`json):
+        DEVUELVE ÚNICAMENTE un JSON estricto con esta estructura (sin markdown):
         {
           "aprobadoGeneral": true/false,
-          "motivoPrincipal": "Resumen de la falla o 'Documento congruente y óptimo'",
+          "motivoPrincipal": "...",
           "checklist": [
             { "categoria": "1. Fecha de Nacimiento", "pass": true/false, "comentario": "..." },
             { "categoria": "2. Nombre y Apellidos", "pass": true/false, "comentario": "..." },
@@ -175,14 +184,13 @@ exports.handler = async (event, context) => {
         REGLAS ESTRICTAS DE AUDIOMETRÍA:
         1. "Identificación": El Número de Orden debe coincidir con ${dp.orden || 'No proporcionado'}. El Nombre/Apellidos deben coincidir con ${dp.nombre || 'No proporcionado'}. La Fecha de Nacimiento debe coincidir con ${dp.nacimiento || 'No proporcionado'}. (Ignorar Suc, Modelo, Serie, Sexo, Edad, Empresa).
         2. "Antecedentes Personales Patológicos": Si el PDF tiene seleccionado "Diabetes Mellitus", "Hipertensión Arterial Sistémica", "Otitis", "Dislipidemia" o "Disminución de agudeza auditiva", SE DEBE VERIFICAR que haya sido referenciado en la HC. Igualmente con Sarampión, Rubéola, Paperas o Varicela. Si NO HAY DATOS DE HC disponibles, pon pass: false y en comentario: "⚠️ PENDIENTE: Se requiere analizar primero la Historia Clínica para cruzar estos datos".
-        3. "Antecedentes Laborales (Ruido)": Si el PDF marca "SI" a exposición a ruido (actual o anterior), las exposiciones descritas (Empresa, Puesto, Antigüedad, Horas, EPP) DEBERÁN estar incluidas en la exposición de RUIDO de la HC. Ten criterio para saber si es la misma exposición aunque falten pequeños detalles. Si marca "NO", no requiere verificación. Si NO HAY DATOS DE HC disponibles, pon pass: false y en comentario: "⚠️ PENDIENTE: Cruzar con Historia Clínica".
-        4. "Tablas de Estudio, Diagnóstico y Recomendación": Verifica que el resultado del estudio (tabla) corresponda con lo redactado en "DIAGNÓSTICO". Verifica que, en caso de tener una audiometría en parámetros normales, se redacte en "RECOMENDACIÓN" exactamente: "Realizar estudio de forma anual e ingresar a programa de conservación auditiva".
-        (Nota: Antecedentes Heredo Familiares, Hábitos y Costumbres, y Exploración Otológica NO requieren verificación).
+        3. "Antecedentes Laborales (Ruido)": Si el PDF marca "SI" a exposición a ruido, las exposiciones (Empresa, Puesto, Antigüedad, Horas, EPP) DEBERÁN ser congruentes con la exposición de RUIDO de la HC. Si marca "NO", no requiere verificación. Si NO HAY DATOS DE HC disponibles, pon pass: false y en comentario: "⚠️ PENDIENTE: Cruzar con Historia Clínica".
+        4. "Tablas de Estudio, Diagnóstico y Recomendación": Verifica que el resultado del estudio (tabla) corresponda con "DIAGNÓSTICO". Si la audiometría es normal, en "RECOMENDACIÓN" debe decir exactamente: "Realizar estudio de forma anual e ingresar a programa de conservación auditiva".
 
-        DEVUELVE ÚNICAMENTE un JSON estricto con esta estructura (sin bloques de markdown \`\`\`json):
+        DEVUELVE ÚNICAMENTE un JSON estricto con esta estructura (sin markdown):
         {
           "aprobadoGeneral": true/false,
-          "motivoPrincipal": "Resumen de la falla o 'Documento congruente y óptimo'",
+          "motivoPrincipal": "...",
           "checklist": [
             { "categoria": "1. Identificación", "pass": true/false, "comentario": "..." },
             { "categoria": "2. Antecedentes Personales Patológicos", "pass": true/false, "comentario": "..." },
@@ -202,7 +210,7 @@ exports.handler = async (event, context) => {
         } else if (tipoDocumento === 'Audiometría') {
             promptSeleccionado = PROMPT_AUDIOMETRIA;
         } else {
-            promptSeleccionado = PROMPT_HC_NORMAL; // Fallback para documentos genéricos
+            promptSeleccionado = PROMPT_HC_NORMAL;
         }
 
         // ============================================================================
