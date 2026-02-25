@@ -316,7 +316,7 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">1. Selecciona el tipo de documento:</label>
                             <select id="libre-tipo" class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-lapiOrange outline-none">
-                                <option value="Historia Clínica">Historia Clínica (Integrado a IA)</option>
+                                <option value="Historia Clínica (Libre)">Historia Clínica (Integrado a IA)</option>
                                 <option value="Electrocardiograma">Electrocardiograma (Próximamente)</option>
                             </select>
                         </div>
@@ -510,16 +510,17 @@
             if (!bdMinas[fechaActualStr]) bdMinas[fechaActualStr] = { pacientes: [] };
         }
         
-        function cambiarFecha() { fechaActualStr = document.getElementById('fecha-global').value; inicializarDiaYSucursal(); if (rolActual !== '') actualizarUI(); }
-
         function cambiarFecha() { 
             fechaActualStr = document.getElementById('fecha-global').value; 
             inicializarDiaYSucursal(); 
             
             if (rolActual !== '') {
                 actualizarUI();
-                // Si es admin, descargar los expedientes MINAS de ese nuevo día
-                if (rolActual === 'admin') cargarPacientesMinasDesdeFirebase();
+                if (rolActual === 'admin') {
+                    cargarPacientesMinasDesdeFirebase();
+                }
+                // CRÍTICO: Descargar también los de la red al cambiar de día
+                cargarPacientesRedDesdeFirebase(); 
             } 
         }
 
@@ -535,7 +536,6 @@
             document.getElementById('usuario-actual').textContent = rolActual === 'admin' ? 'Administrador LAPI' : `${sucursalActual}`;
             
             if (rolActual === 'admin') { 
-                // Aseguramos que el admin vea su panel, directorio y módulo MINAS
                 ['btn-nav-admin', 'btn-nav-directorio', 'btn-nav-minas'].forEach(id => {
                     const el = document.getElementById(id);
                     if(el) el.classList.remove('hidden');
@@ -545,10 +545,10 @@
                     if(el) el.classList.add('hidden');
                 }); 
                 
-                // Descargar los datos al iniciar sesión como Admin
+                // CRÍTICO: Descargar datos de ambos mundos para el Admin
                 cargarPacientesMinasDesdeFirebase();
+                cargarPacientesRedDesdeFirebase(); 
             } else { 
-                // La sucursal solo ve sus herramientas de carga
                 ['btn-nav-admin', 'btn-nav-directorio', 'btn-nav-minas'].forEach(id => {
                     const el = document.getElementById(id);
                     if(el) el.classList.add('hidden');
@@ -557,6 +557,9 @@
                     const el = document.getElementById(id);
                     if(el) el.classList.remove('hidden');
                 }); 
+                
+                // CRÍTICO: Descargar datos de la red para la Sucursal
+                cargarPacientesRedDesdeFirebase(); 
             }
             
             mostrarVista('vista-inicio', document.getElementById('btn-nav-inicio'));
@@ -1306,9 +1309,6 @@
             } catch (error) { console.error("Error BD Red:", error); }
         }
 
-        // --- 2. MODIFICAR INICIAR SESION PARA QUE CARGUE LA RED ---
-        // (Agrega la llamada cargarPacientesRedDesdeFirebase() dentro de la condición if (rolActual === 'admin') de la función iniciarSesion, igual que con MINAS). Y para la sucursal también.
-
         // --- 3. NUEVO REGISTRO DE PACIENTE ESTÁNDAR ---
         function agregarPaciente() { 
             const nombre = document.getElementById('nombrePaciente').value.trim();
@@ -1420,9 +1420,6 @@
             }
         }
         
-        // --- 6. CAMBIO EN LABORATORIO LIBRE ---
-        // (Asegúrate de que en la función llamarAGeminiAPI() cambias el string a 'Historia Clínica (Libre)' en lugar de solo 'Historia Clínica' para que evite validar identidad).
-            
     </script>
 </body>
 </html>
