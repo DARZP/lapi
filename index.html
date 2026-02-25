@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
+        <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portal LAP.IA - Gestión Inteligente</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -863,7 +863,7 @@
         }
 
         function abrirModalChecklistMinas(idPaciente, docName) {
-            const paciente = bdMinas[fechaActualStr].pacientes.find(p => p.id === idPaciente.toString());
+            const paciente = bdMinas[fechaActualStr].pacientes.find(p => p.id === idPaciente.toString() || p.id === idPaciente);
             if(!paciente || !paciente.docsStatus[docName].checklist) return;
             
             const checklist = paciente.docsStatus[docName].checklist;
@@ -871,17 +871,30 @@
             const ul = document.getElementById('lista-checklist'); ul.innerHTML = '';
             
             checklist.forEach((item, index) => {
-                const bgClass = item.pass ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200';
-                const titleColor = item.pass ? 'text-green-800' : 'text-red-800';
-                
-                // Lógica Visual del Botón Toggle (Activar/Desactivar Manual)
+                // Colores por defecto (Verde IA, Rojo Rechazo)
+                let bgClass = item.pass ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200';
+                let titleColor = item.pass ? 'text-green-800' : 'text-red-800';
                 let iconHTML = '';
+                
                 if (item.manualOverride) {
-                    iconHTML = `<div class="flex flex-col items-center mr-3 mt-0.5"><button onclick="aprobarReglaManual('${paciente.id}', '${docName}', ${index})" class="hover:scale-110 transition" title="Deshacer aprobación manual">✅</button><span class="text-[8px] text-blue-600 font-extrabold uppercase mt-1">Manual</span></div>`;
+                    // ESTADO MANUAL: Azul brillante para diferenciarlo de la IA
+                    bgClass = 'bg-blue-50 border-blue-300';
+                    titleColor = 'text-blue-800';
+                    iconHTML = `
+                        <div class="flex flex-col items-center mr-3 mt-0.5">
+                            <button onclick="aprobarReglaManual('${paciente.id}', '${docName}', ${index})" class="hover:scale-110 transition bg-blue-500 text-white rounded-full w-7 h-7 flex items-center justify-center shadow-md cursor-pointer" title="Deshacer aprobación manual">✔️</button>
+                            <span class="text-[9px] text-blue-700 font-extrabold uppercase mt-1 text-center leading-tight">Cambio<br>Manual</span>
+                        </div>`;
                 } else if (item.pass) {
-                    iconHTML = `<span class="mr-3 mt-0.5 cursor-default text-lg" title="Aprobado por IA">✅</span>`;
+                    // ESTADO APROBADO POR IA: Verde Normal
+                    iconHTML = `<span class="mr-3 mt-0.5 cursor-default text-xl" title="Aprobado por IA">✅</span>`;
                 } else {
-                    iconHTML = `<button onclick="aprobarReglaManual('${paciente.id}', '${docName}', ${index})" class="mr-3 mt-0.5 hover:scale-125 transition transform text-lg" title="Haz clic para aprobar manualmente">❌</button>`;
+                    // ESTADO RECHAZADO: Rojo con botón para Forzar Aprobación
+                    iconHTML = `
+                        <div class="flex flex-col items-center mr-3 mt-0.5">
+                            <button onclick="aprobarReglaManual('${paciente.id}', '${docName}', ${index})" class="hover:scale-125 transition transform text-sm bg-red-100 text-red-600 border border-red-300 rounded-full w-7 h-7 flex items-center justify-center shadow-sm cursor-pointer" title="Haz clic para aprobar manualmente">❌</button>
+                            <span class="text-[8px] text-red-500 font-bold uppercase mt-1 text-center">Forzar<br>Aprob.</span>
+                        </div>`;
                 }
                 
                 const li = document.createElement('li'); 
@@ -890,7 +903,7 @@
                     ${iconHTML}
                     <div class="flex-1">
                         <span class="text-sm font-bold ${titleColor} block">${item.categoria || 'Evaluación'}</span>
-                        <span class="text-xs text-gray-600 mt-1 block">${item.comentario || ''}</span>
+                        <span class="text-xs text-gray-700 mt-1 block">${item.comentario || ''}</span>
                     </div>
                 `;
                 ul.appendChild(li);
@@ -898,51 +911,63 @@
             document.getElementById('modal-checklist').classList.remove('hidden');
         }
 
-        function aprobarReglaManual(idPaciente, docName, indexRegla) {
-            const paciente = bdMinas[fechaActualStr].pacientes.find(p => p.id === idPaciente.toString());
+        // ==========================================
+        // LÓGICA DE APROBACIÓN MANUAL 
+        // ==========================================
+        window.aprobarReglaManual = function(idPaciente, docName, indexRegla) {
+            const paciente = bdMinas[fechaActualStr].pacientes.find(p => p.id === idPaciente.toString() || p.id === idPaciente);
+            if(!paciente) return;
+            
             const statusObj = paciente.docsStatus[docName];
             const item = statusObj.checklist[indexRegla];
             
             if (!item.manualOverride) {
-                if(!confirm("¿Estás seguro que deseas aprobar este criterio manualmente? Quedará registrado en la auditoría.")) return;
+                if(!confirm("¿Estás seguro que deseas aprobar este criterio manualmente? El sistema marcará visualmente que fue decisión del supervisor.")) return;
                 
-                // Guardamos el estado original para poder revertirlo
+                // Guardamos el estado original para poder revertirlo si se equivoca
                 item.originalPass = item.pass;
                 item.originalComentario = item.comentario;
                 
+                // Aplicamos el dictamen manual
                 item.pass = true;
                 item.manualOverride = true;
                 item.comentario += " [✔️ APROBADO MANUALMENTE POR SUPERVISOR]";
             } else {
-                if(!confirm("¿Deseas deshacer la aprobación manual y volver al dictamen original de la IA?")) return;
+                if(!confirm("¿Deseas deshacer tu aprobación manual y regresar al dictamen original marcado por la IA?")) return;
                 
+                // Revertimos a lo que dijo la IA
                 item.pass = item.originalPass;
                 item.comentario = item.originalComentario;
                 item.manualOverride = false;
             }
             
-            // Re-evaluar el estado general del documento
+            // Re-evaluar si ahora TODO el documento ya está aprobado
             const todosAprobados = statusObj.checklist.every(i => i.pass);
             statusObj.estado = todosAprobados ? 'aprobado' : 'rechazado';
             
+           
             if (todosAprobados && item.manualOverride) {
-                setTimeout(() => alert("¡Excelente! Al aprobar este criterio, todo el documento ha pasado a estado APROBADO."), 100);
+                setTimeout(() => alert("¡Excelente! Has resuelto el último criterio. Todo el documento está APROBADO ahora."), 300);
             }
 
-            // Guardamos en Firebase el nuevo estado
-            if (db) {
-                const docsParaGuardar = JSON.parse(JSON.stringify(paciente.docsStatus));
-                Object.keys(docsParaGuardar).forEach(k => delete docsParaGuardar[k].pdfBase64);
-                db.collection("PacientesMinas").doc(paciente.id.toString()).update({ docsStatus: docsParaGuardar })
-                  .catch(e => console.error("Error al actualizar Override en Firebase:", e));
+
+            if (typeof db !== 'undefined' && db !== null) {
+                try {
+                    const docsParaGuardar = JSON.parse(JSON.stringify(paciente.docsStatus));
+                    Object.keys(docsParaGuardar).forEach(k => delete docsParaGuardar[k].pdfBase64);
+                    db.collection("PacientesMinas").doc(paciente.id.toString()).update({ docsStatus: docsParaGuardar })
+                      .catch(e => console.error("Error al actualizar Firebase:", e));
+                } catch(e) {
+                    console.error("Error procesando Firebase:", e);
+                }
             }
 
+            // Refrescamos la vista por detrás y recargamos el modal
             renderizarExpedientesMinas();
             abrirModalChecklistMinas(idPaciente, docName);
-        }
+        };
 
         
-
         // --- FUNCIÓN: DESCARGAR EXCEL ---
         function exportarExcelMinas() {
             if(!bdMinas[fechaActualStr] || bdMinas[fechaActualStr].pacientes.length === 0) {
