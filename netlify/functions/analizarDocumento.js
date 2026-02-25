@@ -37,13 +37,12 @@ exports.handler = async (event, context) => {
         - 1. NO REQUIERE VERIFICACIÓN.
         - 2. Antigüedad: Formato de tiempo (Años o Años con Meses).
         - 3. Orden de Registros: Cronológicos (Más reciente a más antiguo).
-        - A. RIESGOS FÍSICOS: Si es SÍ, verificar: Ruido (Fuente, EPP), Vibración (Fuente, EPP), Radiación (Tipo, área, frecuencia, EPP), Iluminación (Fuente, EPP), Temperaturas (Fuente, grados, EPP), Altura (Metros, EPP), Confinados (Tipo, EPP).
+        - A. RIESGOS FÍSICOS: Si es SÍ, verificar: Ruido, Vibración, Radiación, Iluminación, Temperaturas, Altura, Confinados con sus respectivos EPP y detalles.
         - B. RIESGOS QUÍMICOS: Si es NO, NO REQUIERE VERIFICACIÓN. Si es SÍ, verificar (Tipo, EPP).
         - C. BIOLÓGICOS y E. PSICOSOCIALES: NO REQUIEREN VERIFICACIÓN.
-        - D. ERGONÓMICOS: Si es SÍ, verificar (Tipo de objeto/peso, EPP para carga. Movimiento y segmento. Tipo de postura).
-        - RIESGOS LABORALES (4 y 5): Si es SÍ, verificar que cada dato esté lleno (Empresa, causa, días, cuándo, qué pasó, secuelas, proceso). 6 al 11: NO VERIFICAR.
+        - D. ERGONÓMICOS: Si es SÍ, verificar detalles estrictos de Carga, Repetición y Postura.
+        - RIESGOS LABORALES (4 y 5): Si es SÍ, verificar que cada dato esté lleno. 6 al 11: NO VERIFICAR.
         - OBSERVACIONES DEL EXAMINADOR: NO REQUIERE VERIFICACIÓN.
-
 
         ### SECCIÓN HÁBITOS Y COSTUMBRES
         - 12 al 20, y 22: NO REQUIEREN VERIFICACIÓN.
@@ -152,7 +151,6 @@ exports.handler = async (event, context) => {
         - Nombre de Plataforma: ${dp.nombre || 'No proporcionado'}
         - Fecha de Nacimiento de Plataforma: ${dp.nacimiento || 'No proporcionado'}
 
-        --- INICIO DEL MANUAL DE REGLAS MINAS ---
         --- INICIO DEL MANUAL DE REGLAS MINAS ---
         ### REGLA GLOBAL DE FORMATO DE REDACCIÓN (APLICA A TODO EL DOCUMENTO)
         - TIPO ORACIÓN: Absolutamente todos los apartados de redacción libre (cuadros de observaciones, descripciones, detalles de riesgos, etc.) DEBEN estar escritos en formato "Tipo Oración" (Solo la primera letra inicial en mayúscula y el resto en minúsculas). 
@@ -328,6 +326,75 @@ exports.handler = async (event, context) => {
         `;
 
         // ============================================================================
+        // PROMPT 6: ELECTROCARDIOGRAMA (SUCURSALES - DINÁMICO)
+        // ============================================================================
+        const PROMPT_ELECTROCARDIOGRAMA = `
+        Eres un Auditor Médico y Cardiólogo experto evaluando un ELECTROCARDIOGRAMA adjunto en PDF o Imagen.
+        
+        DATOS DE LA PLATAFORMA PARA CRUZAR:
+        - Fecha de Nacimiento: ${dp.nacimiento || 'No proporcionado'}
+        
+        CONDICIÓN DE HISTORIA CLÍNICA:
+        - ¿El paciente requiere Historia Clínica?: ${requiereHC ? 'SÍ' : 'NO'}
+        - DATOS EXTRAÍDOS DE HC: ${hc ? `Estatura: ${hc.estatura}, Peso: ${hc.peso}` : (requiereHC ? 'NO DISPONIBLES AÚN' : 'NO APLICA')}
+
+        REGLAS DE ELECTROCARDIOGRAMA:
+        1. "ID de paciente": Verifica que este número sea estrictamente de 11 dígitos.
+        2. "Fecha de nacimiento": Verifica que sea la misma fecha con la que se registra en la plataforma (${dp.nacimiento || 'No proporcionado'}).
+        3. "Altura y Peso": 
+           - Si REQUIERE Historia Clínica (SÍ): Verifica que coincidan con la Estatura y Peso extraídos de la HC. Si los datos de HC dicen "NO DISPONIBLES AÚN", pon pass: false y en comentario: "⚠️ PENDIENTE: Se requiere analizar primero la Historia Clínica para cruzar peso y talla".
+           - Si NO requiere Historia Clínica (NO): Pon pass: true y en comentario: "Validado - No requiere cruce con HC".
+        4. "Etnia": Verifica que el documento diga exactamente "HISPANO".
+        5. "Configuración del Estudio": Verifica que el estudio esté tomado estrictamente con la configuración: "5mm/s,10mm/mV" (Busca esta información específicamente debajo de la derivación V6).
+        6. "Calidad y Hallazgos": Evalúa visualmente la calidad del trazo. Da un feedback de retroalimentación breve sobre si el estudio está bien tomado y describe los hallazgos o signos clínicos relevantes.
+
+        (Nota: Sexo, Marcapasos, ID de visita, Habitación, Medicación, ID de orden, Prov.ord, Prot.ord NO requieren verificación, ignóralos en la evaluación).
+
+        DEVUELVE ÚNICAMENTE un JSON estricto con esta estructura (sin markdown):
+        {
+          "aprobadoGeneral": true/false,
+          "motivoPrincipal": "Resumen de la falla o 'Estudio de calidad y congruente'",
+          "checklist": [
+            { "categoria": "1. ID de Paciente (11 dígitos)", "pass": true/false, "comentario": "..." },
+            { "categoria": "2. Fecha de Nacimiento", "pass": true/false, "comentario": "..." },
+            { "categoria": "3. Altura y Peso (Cruce HC)", "pass": true/false, "comentario": "..." },
+            { "categoria": "4. Etnia (HISPANO)", "pass": true/false, "comentario": "..." },
+            { "categoria": "5. Configuración (5mm/s, 10mm/mV)", "pass": true/false, "comentario": "..." },
+            { "categoria": "6. Calidad técnica y Hallazgos clínicos", "pass": true/false, "comentario": "..." }
+          ]
+        }
+        `;
+
+        // ============================================================================
+        // PROMPT 7: ELECTROCARDIOGRAMA (LABORATORIO LIBRE)
+        // ============================================================================
+        const PROMPT_ELECTRO_LIBRE = `
+        Eres el Laboratorio Autónomo de LAP.IA y Cardiólogo experto. Evalúa el ELECTROCARDIOGRAMA adjunto en PDF en modo LIBRE.
+        
+        IMPORTANTE: Dado que es un análisis libre y no hay paciente registrado, ASUME QUE LA FECHA DE NACIMIENTO, ALTURA Y PESO EN EL DOCUMENTO ESTÁN CORRECTOS. No los califiques como error.
+
+        REGLAS DE ELECTROCARDIOGRAMA (MODO LIBRE):
+        1. "ID de paciente": Verifica que este número sea estrictamente de 11 dígitos.
+        2. "Etnia": Verifica que el documento diga exactamente "HISPANO".
+        3. "Configuración del Estudio": Verifica que el estudio esté tomado estrictamente con la configuración: "5mm/s,10mm/mV" (Busca esta información específicamente debajo de la derivación V6).
+        4. "Calidad y Hallazgos": Evalúa visualmente la calidad del trazo. Da un feedback de retroalimentación breve sobre si el estudio está bien tomado y describe los hallazgos o signos clínicos relevantes.
+
+        (Nota: Fecha de Nacimiento, Altura, Peso, Sexo, Marcapasos, ID de visita, Habitación, Medicación, ID de orden, Prov.ord, Prot.ord NO requieren verificación en este modo, ignóralos).
+
+        DEVUELVE ÚNICAMENTE un JSON estricto con esta estructura (sin markdown):
+        {
+          "aprobadoGeneral": true/false,
+          "motivoPrincipal": "Resumen de la falla o 'Estudio de calidad'",
+          "checklist": [
+            { "categoria": "1. ID de Paciente (11 dígitos)", "pass": true/false, "comentario": "..." },
+            { "categoria": "2. Etnia (HISPANO)", "pass": true/false, "comentario": "..." },
+            { "categoria": "3. Configuración (5mm/s, 10mm/mV)", "pass": true/false, "comentario": "..." },
+            { "categoria": "4. Calidad técnica y Hallazgos clínicos", "pass": true/false, "comentario": "..." }
+          ]
+        }
+        `;
+
+        // ============================================================================
         // LÓGICA DE SELECCIÓN DE PROMPT
         // ============================================================================
         if (tipoDocumento === 'Historia Clínica (Libre)') { promptSeleccionado = PROMPT_HC_LIBRE; } 
@@ -335,6 +402,8 @@ exports.handler = async (event, context) => {
         else if (tipoDocumento === 'Historia Clínica (MINAS)') { promptSeleccionado = PROMPT_HC_MINAS; } 
         else if (tipoDocumento === 'Espirometría') { promptSeleccionado = PROMPT_ESPIROMETRIA; } 
         else if (tipoDocumento === 'Audiometría') { promptSeleccionado = PROMPT_AUDIOMETRIA; } 
+        else if (tipoDocumento === 'Electrocardiograma') { promptSeleccionado = PROMPT_ELECTROCARDIOGRAMA; }
+        else if (tipoDocumento === 'Electrocardiograma (Libre)') { promptSeleccionado = PROMPT_ELECTRO_LIBRE; }
         else { promptSeleccionado = PROMPT_HC_NORMAL; }
 
         const requestBody = { contents: [{ parts: [{ text: promptSeleccionado }, { inline_data: { mime_type: "application/pdf", data: pdfBase64 } }] }], generationConfig: { response_mime_type: "application/json" } };
@@ -345,7 +414,5 @@ exports.handler = async (event, context) => {
 
     } catch (error) { return { statusCode: 500, body: JSON.stringify({ error: error.message }) }; }
 };
-
-
 
        
