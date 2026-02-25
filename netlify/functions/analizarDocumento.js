@@ -24,7 +24,7 @@ exports.handler = async (event, context) => {
         ### SECCIÓN ANTECEDENTES LABORALES
         - 1. NO REQUIERE VERIFICACIÓN.
         - 2. Antigüedad: Formato de tiempo (Años o Años con Meses).
-        - 3. Orden de Registros: Cronológicos (Más reciente a más antiguo). La columna "FUNCIÓN PRINCIPAL" debe incluir al menos UN factor de riesgo.
+        - 3. Orden de Registros: Cronológicos (Más reciente a más antiguo).
         - A. RIESGOS FÍSICOS: Si es SÍ, verificar: Ruido (Fuente, EPP), Vibración (Fuente, EPP), Radiación (Tipo, área, frecuencia, EPP), Iluminación (Fuente, EPP), Temperaturas (Fuente, grados, EPP), Altura (Metros, EPP), Confinados (Tipo, EPP).
         - B. RIESGOS QUÍMICOS: Si es NO, NO REQUIERE VERIFICACIÓN. Si es SÍ, verificar (Tipo, EPP).
         - C. BIOLÓGICOS y E. PSICOSOCIALES: NO REQUIEREN VERIFICACIÓN.
