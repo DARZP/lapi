@@ -819,8 +819,14 @@
                 renderizarExpedientesMinas();
                 
                 const tipoBackend = docName === 'Historia Clínica' ? 'Historia Clínica (MINAS)' : docName;
-                const datosParaIA = { nombre: paciente.nombre, nacimiento: paciente.fechaNacimiento, orden: paciente.numeroOrden, datosHC: paciente.datosExtraidosHC };
-
+                const datosParaIA = {
+                    nombre: paciente.nombre,
+                    nacimiento: paciente.fechaNacimiento,
+                    orden: paciente.numeroOrden,
+                    folio: paciente.folioHC,
+                    datosHC: paciente.datosExtraidosHC
+                };
+                    
                 fetch('/.netlify/functions/analizarDocumento', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pdfBase64: statusObj.pdfBase64, tipoDocumento: tipoBackend, datosPaciente: datosParaIA })
                 })
