@@ -1189,18 +1189,104 @@
         // ==============================================================================
 
         function abrirModalChecklist(docKey, tipoEstudio) {
-            const data = bdGlobal[fechaActualStr][obtenerTargetSucursal()].docsStatus[docKey];
-            if (!data || !data.checklist) return;
-            document.getElementById('checklist-subtitulo').textContent = `${tipoEstudio} - Simulación Local`;
+            const sucursalTarget = obtenerTargetSucursal();
+            const statusObj = bdGlobal[fechaActualStr][sucursalTarget].docsStatus[docKey];
+            if (!statusObj || !statusObj.checklist) return;
+            
+            // Extraer el nombre del paciente real en lugar de decir "Simulación Local"
+            const idPaciente = docKey.split('-')[1]; 
+            const paciente = bdGlobal[fechaActualStr][sucursalTarget].pacientes.find(p => p.id === idPaciente);
+            const nombrePaciente = paciente ? paciente.nombre : 'Documento';
+
+            document.getElementById('checklist-subtitulo').textContent = `${tipoEstudio} - ${nombrePaciente}`;
             const ul = document.getElementById('lista-checklist'); ul.innerHTML = '';
-            data.checklist.forEach(item => {
-                const li = document.createElement('li'); li.className = `flex items-start p-2 rounded bg-gray-50 border ${item.pass ? 'border-green-200' : 'border-red-200'}`;
-                const icon = item.pass ? `✅` : `❌`;
-                li.innerHTML = `<span class="mr-2">${icon}</span> <span class="text-sm font-medium ${item.pass ? 'text-gray-700' : 'text-red-700'}">${item.texto}</span>`;
+            
+            statusObj.checklist.forEach((item, index) => {
+                let bgClass = item.pass ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200';
+                let titleColor = item.pass ? 'text-green-800' : 'text-red-800';
+                
+                // Si fue aprobado manualmente, cambiamos a diseño Azul
+                if (item.manualOverride) {
+                    bgClass = 'bg-blue-50 border-blue-300';
+                    titleColor = 'text-blue-800';
+                }
+
+                const li = document.createElement('li'); 
+                li.className = `flex items-start p-3 rounded border ${bgClass} mb-2 transition-all`;
+                
+                let icon = item.pass ? '✅' : '❌';
+                
+                // Generar los botones de acción manual igual que en MINAS
+                let extraHTML = '';
+                if (item.manualOverride) {
+                    extraHTML = `
+                        <div class="mt-2 text-left flex items-center">
+                            <span class="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded border border-blue-300 font-bold uppercase tracking-wider">✔️ Cambio Manual</span> 
+                            <button onclick="aprobarReglaManualRed('${docKey}', '${tipoEstudio}', ${index})" class="text-[10px] text-gray-500 underline ml-3 hover:text-gray-800 font-medium">Deshacer</button>
+                        </div>`;
+                } else if (!item.pass) {
+                    extraHTML = `
+                        <div class="mt-3 text-right">
+                            <button onclick="aprobarReglaManualRed('${docKey}', '${tipoEstudio}', ${index})" class="bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 px-3 py-1 rounded text-xs font-bold shadow-sm transition">
+                                ✏️ Marcar como revisado manualmente
+                            </button>
+                        </div>`;
+                }
+
+                li.innerHTML = `
+                    <span class="mr-3 mt-0.5 text-lg cursor-default">${icon}</span>
+                    <div class="flex-1">
+                        <span class="text-sm font-bold ${titleColor} block">${item.categoria || 'Evaluación'}</span>
+                        <span class="text-xs text-gray-700 mt-1 block">${item.comentario || ''}</span>
+                        ${extraHTML}
+                    </div>
+                `;
                 ul.appendChild(li);
             });
             document.getElementById('modal-checklist').classList.remove('hidden');
         }
+
+        // ==========================================
+        // NUEVA LÓGICA DE APROBACIÓN MANUAL PARA LA RED DE SUCURSALES
+        // ==========================================
+        window.aprobarReglaManualRed = function(docKey, tipoEstudio, indexRegla) {
+            const sucursalTarget = obtenerTargetSucursal();
+            const statusObj = bdGlobal[fechaActualStr][sucursalTarget].docsStatus[docKey];
+            const item = statusObj.checklist[indexRegla];
+            
+            if (!item.manualOverride) {
+                if(!confirm("¿Estás seguro de marcar este criterio como 'revisado' manualmente?")) return;
+                
+                item.originalPass = item.pass;
+                item.originalComentario = item.comentario;
+                
+                item.pass = true;
+                item.manualOverride = true;
+                item.comentario += " [✔️ Aprobado por el supervisor]";
+            } else {
+                if(!confirm("¿Deseas deshacer la revisión manual?")) return;
+                
+                item.pass = item.originalPass;
+                item.comentario = item.originalComentario;
+                item.manualOverride = false;
+            }
+            
+            const todosAprobados = statusObj.checklist.every(i => i.pass);
+            statusObj.estado = todosAprobados ? 'aprobado' : 'rechazado';
+            
+            // Actualizar la Base de Datos de Firebase en el paciente correcto
+            const idPaciente = docKey.split('-')[1]; 
+            const paciente = bdGlobal[fechaActualStr][sucursalTarget].pacientes.find(p => p.id === idPaciente);
+
+            if (typeof db !== 'undefined' && db !== null && paciente) {
+                db.collection("PacientesRed").doc(paciente.id).update({ 
+                    [`docsStatus.${docKey}`]: statusObj 
+                }).catch(e => console.error("Error BD:", e));
+            }
+
+            actualizarUI();
+            abrirModalChecklist(docKey, tipoEstudio);
+        };
 
         function cerrarModal(idModal) { document.getElementById(idModal).classList.add('hidden'); docKeyActivo = ''; document.getElementById('input-nota').value = ''; }
 
