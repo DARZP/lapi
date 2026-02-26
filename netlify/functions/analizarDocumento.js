@@ -40,7 +40,7 @@ exports.handler = async (event, context) => {
         - A. RIESGOS FÍSICOS: Si es SÍ, verificar: Ruido, Vibración, Radiación, Iluminación, Temperaturas, Altura, Confinados con sus respectivos EPP y detalles.
         - B. RIESGOS QUÍMICOS: Si es NO, NO REQUIERE VERIFICACIÓN. Si es SÍ, verificar (Tipo, EPP).
         - C. BIOLÓGICOS y E. PSICOSOCIALES: NO REQUIEREN VERIFICACIÓN.
-        - D. ERGONÓMICOS: Si es SÍ, verificar detalles estrictos de Carga, Repetición y Postura.
+        - D. ERGONÓMICOS: Si es SÍ, verificar (Tipo de objeto/peso, EPP para carga. Movimiento y segmento. Tipo de postura).
         - RIESGOS LABORALES (4 y 5): Si es SÍ, verificar que cada dato esté lleno. 6 al 11: NO VERIFICAR.
         - OBSERVACIONES DEL EXAMINADOR: NO REQUIERE VERIFICACIÓN.
 
@@ -58,24 +58,26 @@ exports.handler = async (event, context) => {
         - OBSERVACIONES: Para cada SÍ (23,24,25,26,27,32) debe existir registro detallado haciendo referencia al número.
 
         ### SECCIÓN INTERROGATORIO POR APARATOS Y SISTEMAS
-        - 34: Todo síntoma en "SÍ" DEBE estar en el cuadro de observaciones de su sistema afín incluyendo 4 datos (Síntoma, Antigüedad, Tratamiento, Seguimiento).
+        - 34: Todo síntoma en "SÍ" DEBE estar en el cuadro de observaciones de su sistema afín.
         - Alteración de la visión: Debe incluir Diagnóstico, Lentes, Antigüedad, Último ajuste.
         - Uso de prótesis: Si se selecciona, detallar en cuadro de Prótesis.
 
         ### SECCIÓN GINECOOBSTÉTRICOS
-        - 37: La suma de Partos+Cesáreas+Abortos debe dar igual al total de Gestaciones (G = P + C + A).
+        - 37: La suma de Partos+Cesáreas+Abortos debe dar igual al total de Gestaciones.
 
         ### SECCIÓN EXPLORACIÓN FÍSICA
         - 51: X, O, =, W, !!, F deben hacer referencia a piezas O decir "SIN DATOS PATOLÓGICOS".
         - POR APARATOS:
-          Grupo A (1,2,3,6,7,8,9,10,11,12,14,15,16,18): Congruencia O "Sin datos patológicos". Ignorar signos.
+          Grupo A: Congruencia O "Sin datos patológicos".
           Grupo B: 5 (CAP y MTL bilateral), 13 (No palpables), 17, 20, 21, 22 (Normal).
           Grupo C: 4 (Ojos) cruce con Ametropía y Alteración Visión. 23 (Tatuajes) cruce con 30.
         
         ### FIRMA DEL PACIENTE
-        - REQUIERE VERIFICACIÓN VISUAL. DE LA FIRMA DEL PACIENTE, MISMA QUE DEBE ESTAR EN EL RECUADRO INFERIOR IZQUIERDO, YA QUE EL DERECHO CORRESPONDE A LA FIRMA DEL MÉDICO Y ESA NUNCA FALTARÁ
-        `;
-
+        - REQUIERE VERIFICACIÓN VISUAL DE LA FIRMA DEL PACIENTE, MISMA QUE DEBE ESTAR EN EL RECUADRO INFERIOR IZQUIERDO, YA QUE EL DERECHO CORRESPONDE A LA FIRMA DEL MÉDICO Y ESA NUNCA FALTARÁ.
+        `; 
+        
+        
+        
         // ============================================================================
         // PROMPT 1: HISTORIA CLÍNICA NORMAL (SUCURSALES)
         // ============================================================================
@@ -398,15 +400,15 @@ exports.handler = async (event, context) => {
         // PROMPT 8: EXTRACCIÓN INTELIGENTE POR LOTE (DRAG & DROP)
         // ============================================================================
         const PROMPT_EXTRACCION = `
-        Eres un asistente de extracción de datos médicos. Analiza la primera página del documento adjunto.
-        Extrae y clasifica la información.
-        1. tipoDocumento: Identifica si el documento es una "Historia Clínica", "Espirometría", "Audiometría" o "Electrocardiograma".
-        2. nombre: Nombre completo del paciente.
-        3. fechaNacimiento: Formateada estrictamente como "YYYY-MM-DD" (Año-Mes-Día).
-        4. orden: Número de Orden o ID de paciente. Si no tiene, pon null.
+        Eres un asistente de extracción de datos médicos. Analiza la primera página del documento adjunto de forma rápida.
+        Extrae y clasifica la información básica.
+        1. tipoDocumento: Identifica si el documento es una "Historia Clínica", "Espirometría", "Audiometría" o "Electrocardiograma". (Usa exactamente estas palabras).
+        2. nombre: Nombre completo del paciente (Solo el nombre, sin etiquetas).
+        3. fechaNacimiento: Formateada estrictamente como "YYYY-MM-DD" (Año-Mes-Día). Si no está, pon null.
+        4. orden: Número de Orden, Identificador o ID de paciente. Si no tiene, pon null.
         5. folio: Folio de Historia Clínica (solo aplica si es HC). Si no tiene, pon null.
 
-        DEVUELVE ÚNICAMENTE un JSON estricto con esta estructura (sin markdown):
+        DEVUELVE ÚNICAMENTE un JSON estricto con esta estructura (sin bloques de markdown):
         {
           "tipoDocumento": "...",
           "nombre": "...",
