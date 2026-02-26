@@ -419,16 +419,25 @@ exports.handler = async (event, context) => {
         // ============================================================================
         // LÓGICA DE SELECCIÓN DE PROMPT
         // ============================================================================
-        if (tipoDocumento === 'Extraccion') { promptSeleccionado = PROMPT_EXTRACCION; }
-        if (tipoDocumento === 'Historia Clínica (Libre)') { promptSeleccionado = PROMPT_HC_LIBRE; } 
-        else if (tipoDocumento === 'Historia Clínica') { promptSeleccionado = PROMPT_HC_NORMAL; }
-        else if (tipoDocumento === 'Historia Clínica (MINAS)') { promptSeleccionado = PROMPT_HC_MINAS; } 
-        else if (tipoDocumento === 'Espirometría') { promptSeleccionado = PROMPT_ESPIROMETRIA; } 
-        else if (tipoDocumento === 'Audiometría') { promptSeleccionado = PROMPT_AUDIOMETRIA; } 
-        else if (tipoDocumento === 'Electrocardiograma') { promptSeleccionado = PROMPT_ELECTROCARDIOGRAMA; }
-        else if (tipoDocumento === 'Electrocardiograma (Libre)') { promptSeleccionado = PROMPT_ELECTRO_LIBRE; }
-        else { promptSeleccionado = PROMPT_HC_NORMAL; }
-
+        if (tipoDocumento === 'Extraccion') { 
+            promptSeleccionado = PROMPT_EXTRACCION; 
+        } else if (tipoDocumento === 'Historia Clínica (Libre)') { 
+            promptSeleccionado = PROMPT_HC_LIBRE; 
+        } else if (tipoDocumento === 'Historia Clínica') { 
+            promptSeleccionado = PROMPT_HC_NORMAL; 
+        } else if (tipoDocumento === 'Historia Clínica (MINAS)') { 
+            promptSeleccionado = PROMPT_HC_MINAS; 
+        } else if (tipoDocumento === 'Espirometría') { 
+            promptSeleccionado = PROMPT_ESPIROMETRIA; 
+        } else if (tipoDocumento === 'Audiometría') { 
+            promptSeleccionado = PROMPT_AUDIOMETRIA; 
+        } else if (tipoDocumento === 'Electrocardiograma') { 
+            promptSeleccionado = PROMPT_ELECTROCARDIOGRAMA; 
+        } else if (tipoDocumento === 'Electrocardiograma (Libre)') { 
+            promptSeleccionado = PROMPT_ELECTRO_LIBRE; 
+        } else { 
+            promptSeleccionado = PROMPT_HC_NORMAL; 
+        }
         const requestBody = { contents: [{ parts: [{ text: promptSeleccionado }, { inline_data: { mime_type: "application/pdf", data: pdfBase64 } }] }], generationConfig: { response_mime_type: "application/json" } };
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestBody) });
         if (!response.ok) throw new Error(`Google API Error: ${response.status}`);
