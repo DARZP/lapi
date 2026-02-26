@@ -170,6 +170,16 @@
 
             <section id="vista-minas" class="hidden h-full flex flex-col lg:flex-row gap-6">
                 <div class="bg-white p-6 rounded-lg shadow-sm w-full lg:w-1/3 border-t-4 border-yellow-500 flex flex-col h-full">
+                <div id="drop-zone-minas" 
+                         ondragover="event.preventDefault(); this.classList.add('bg-yellow-100', 'border-yellow-600')" 
+                         ondragleave="this.classList.remove('bg-yellow-100', 'border-yellow-600')" 
+                         ondrop="event.preventDefault(); this.classList.remove('bg-yellow-100', 'border-yellow-600'); procesarLoteArchivosMinas(event.dataTransfer.files)"
+                         class="border-2 border-dashed border-yellow-400 rounded-lg p-6 text-center bg-yellow-50 transition cursor-pointer mb-6"
+                         onclick="document.getElementById('file-upload-lote').click()">
+                        <p class="text-sm text-yellow-800 font-bold">📥 Arrastra aquí tus PDFs (Máx. 5 a la vez)</p>
+                        <p class="text-[10px] text-yellow-600 mt-1">La IA leerá los datos y armará los expedientes automáticamente.</p>
+                        <input type="file" id="file-upload-lote" multiple accept="application/pdf" class="hidden" onchange="procesarLoteArchivosMinas(this.files)">
+                    </div>
                     <div>
                         <h3 class="font-bold text-gray-800 text-xl mb-1 flex items-center"><span class="mr-2 text-2xl">⛏️</span> Registro MINAS</h3>
                         <p class="text-xs text-gray-500 mb-6">Alta de pacientes e identificadores.</p>
@@ -349,6 +359,39 @@
         </div>
     </main>
 
+        <div id="modal-editar-paciente" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 fade-in">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md shadow-2xl">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">✏️ Editar Expediente</h3>
+            <input type="hidden" id="edit-id-paciente">
+            <div class="space-y-3">
+                <div><label class="block text-xs font-bold text-gray-600">Nombre</label><input type="text" id="edit-nombre" class="w-full p-2 border rounded outline-none text-sm"></div>
+                <div><label class="block text-xs font-bold text-gray-600">Fecha Nacimiento</label><input type="date" id="edit-nacimiento" class="w-full p-2 border rounded outline-none text-sm"></div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="block text-xs font-bold text-gray-600">No. Orden</label><input type="text" id="edit-orden" class="w-full p-2 border rounded outline-none text-sm"></div>
+                    <div><label class="block text-xs font-bold text-gray-600">Folio HC</label><input type="text" id="edit-folio" class="w-full p-2 border rounded outline-none text-sm"></div>
+                </div>
+                <div class="pt-2">
+                    <label class="block text-xs font-bold text-gray-600 mb-2">Estudios del Expediente:</label>
+                    <div class="flex flex-col gap-2 bg-gray-50 p-3 rounded border">
+                        <label class="flex items-center space-x-2 text-sm"><input type="checkbox" value="Historia Clínica" class="edit-cb-estudio h-4 w-4 text-yellow-500"><span>Historia Clínica</span></label>
+                        <label class="flex items-center space-x-2 text-sm"><input type="checkbox" value="Espirometría" class="edit-cb-estudio h-4 w-4 text-yellow-500"><span>Espirometría</span></label>
+                        <label class="flex items-center space-x-2 text-sm"><input type="checkbox" value="Audiometría" class="edit-cb-estudio h-4 w-4 text-yellow-500"><span>Audiometría</span></label>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end space-x-3">
+                <button onclick="document.getElementById('modal-editar-paciente').classList.add('hidden')" class="px-4 py-2 bg-gray-200 text-gray-700 font-bold rounded hover:bg-gray-300">Cancelar</button>
+                <button onclick="guardarEdicionPaciente()" class="px-4 py-2 bg-yellow-500 text-white font-bold rounded hover:bg-yellow-600">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="overlay-carga-lote" class="hidden fixed inset-0 bg-white bg-opacity-90 z-50 flex flex-col items-center justify-center p-4">
+        <div class="animate-spin text-5xl mb-4">🧠</div>
+        <h2 class="text-xl font-bold text-gray-800 text-center">Extrayendo Datos con IA...</h2>
+        <p id="texto-estado-lote" class="text-sm text-gray-500 mt-2 font-medium">Procesando archivo 1 de 3</p>
+    </div>
+        
     <script>
         // ==============================================================================
         // CONFIGURACIÓN DE IA Y API (Laboratorio)
@@ -729,6 +772,7 @@
                 const card = document.createElement('div');
                 card.className = "border border-gray-200 rounded-lg p-4 bg-gray-50 shadow-sm fade-in mb-4";
                 
+                // AQUÍ ESTÁ EL CAMBIO CON LOS DOS BOTONES (EDITAR Y ELIMINAR)
                 let html = `
                     <div class="flex justify-between items-start mb-4 border-b border-gray-200 pb-3">
                         <div>
@@ -739,7 +783,10 @@
                             </div>
                             <p class="text-xs font-medium text-gray-500 mt-2">${p.estudios.join(' • ')}</p>
                         </div>
-                        <button onclick="eliminarPacienteMinas('${p.id}')" class="text-red-400 hover:text-red-600 text-[10px] font-bold px-2 py-1 border border-red-200 bg-white rounded">✕ Eliminar</button>
+                        <div class="flex space-x-2">
+                            <button onclick="abrirModalEditarMinas('${p.id}')" class="text-blue-500 hover:text-blue-700 text-[10px] font-bold px-2 py-1 border border-blue-200 bg-white rounded shadow-sm">✏️ Editar</button>
+                            <button onclick="eliminarPacienteMinas('${p.id}')" class="text-red-500 hover:text-red-700 text-[10px] font-bold px-2 py-1 border border-red-200 bg-white rounded shadow-sm">✕ Eliminar</button>
+                        </div>
                     </div>
                     <div class="space-y-2">
                 `;
@@ -761,7 +808,6 @@
                         docBtn = `<div class="flex items-center space-x-2"><span class="bg-red-100 text-red-700 border border-red-300 px-2 py-0.5 rounded text-[10px] font-bold flex items-center">❌ Rechazado ${btnChecklist}</span> <button onclick="accionDocMinasIndividual('${p.id}', '${docName}', 'analizar')" class="text-[10px] text-blue-600 hover:text-blue-800 font-bold transition" title="Volver a auditar este documento">↻ Repetir</button> <button onclick="accionDocMinasIndividual('${p.id}', '${docName}', 'subir')" class="text-[10px] text-gray-400 hover:text-gray-600 underline">Resubir</button></div>`;
                     }
 
-                    // Magia visual del Escáner y contenedores
                     let divClasses = "relative overflow-hidden flex justify-between items-center p-2 rounded border ";
                     let animHTML = "";
                     if (statusObj.estado === 'analizando') {
@@ -774,7 +820,7 @@
                     html += `<div class="${divClasses}">${animHTML}<span class="relative z-10 text-sm text-gray-700 font-medium">${docName}</span><div class="relative z-10">${docBtn}</div></div>`;
                 });
 
-                html += `</div>`; // Eliminado el botón general de "Analizar Integral"
+                html += `</div>`;
                 card.innerHTML = html;
                 contenedor.appendChild(card);
             });
@@ -1501,6 +1547,147 @@
                 })
                 .catch(err => { statusObj.estado = 'rechazado'; statusObj.checklist = [{categoria: "Error de Red", pass: false, comentario: err.message}]; actualizarUI(); });
             }
+        }
+
+        // ==========================================
+        // 1. EDICIÓN DE PACIENTES
+        // ==========================================
+        function abrirModalEditarMinas(id) {
+            const p = bdMinas[fechaActualStr].pacientes.find(x => x.id === id);
+            if(!p) return;
+            document.getElementById('edit-id-paciente').value = p.id;
+            document.getElementById('edit-nombre').value = p.nombre;
+            document.getElementById('edit-nacimiento').value = p.fechaNacimiento || '';
+            document.getElementById('edit-orden').value = p.numeroOrden || '';
+            document.getElementById('edit-folio').value = p.folioHC || '';
+            
+            document.querySelectorAll('.edit-cb-estudio').forEach(cb => {
+                cb.checked = p.estudios.includes(cb.value);
+            });
+            document.getElementById('modal-editar-paciente').classList.remove('hidden');
+        }
+
+        function guardarEdicionPaciente() {
+            const id = document.getElementById('edit-id-paciente').value;
+            const p = bdMinas[fechaActualStr].pacientes.find(x => x.id === id);
+            if(!p) return;
+
+            p.nombre = document.getElementById('edit-nombre').value.trim();
+            p.fechaNacimiento = document.getElementById('edit-nacimiento').value;
+            p.numeroOrden = document.getElementById('edit-orden').value.trim();
+            p.folioHC = document.getElementById('edit-folio').value.trim();
+
+            const cbs = document.querySelectorAll('.edit-cb-estudio:checked');
+            const nuevosEstudios = Array.from(cbs).map(cb => cb.value);
+            
+            // Eliminar estudios desmarcados
+            p.estudios.forEach(est => {
+                if (!nuevosEstudios.includes(est)) delete p.docsStatus[est];
+            });
+
+            // Agregar estudios nuevos sin borrar el progreso de los que ya existían
+            nuevosEstudios.forEach(est => {
+                if (!p.docsStatus[est]) p.docsStatus[est] = { estado: 'pendiente' };
+            });
+            p.estudios = nuevosEstudios;
+
+            document.getElementById('modal-editar-paciente').classList.add('hidden');
+            renderizarExpedientesMinas();
+
+            if (db) db.collection("PacientesMinas").doc(p.id).set(p).catch(e => console.log(e));
+        }
+
+        // ==========================================
+        // 2. EXTRACCIÓN MASIVA (DRAG & DROP)
+        // ==========================================
+        async function procesarLoteArchivosMinas(files) {
+            if (!files || files.length === 0) return;
+            if (files.length > 5) { alert("Para evitar saturar el sistema, arrastra máximo 5 archivos a la vez."); return; }
+
+            document.getElementById('overlay-carga-lote').classList.remove('hidden');
+
+            for (let i = 0; i < files.length; i++) {
+                document.getElementById('texto-estado-lote').textContent = `Extrayendo datos y armando expediente del archivo ${i + 1} de ${files.length}...`;
+                
+                const file = files[i];
+                const base64 = await convertirArchivoABase64(file);
+                
+                try {
+                    // Pedimos a la IA que lea solo los datos básicos (Tarda ~3 segs)
+                    const req = await fetch('/.netlify/functions/analizarDocumento', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' }, 
+                        body: JSON.stringify({ pdfBase64: base64, tipoDocumento: 'Extraccion' })
+                    });
+                    const resJSON = await req.json();
+                    
+                    // Lógica de Asignación Inteligente
+                    asignarDocumentoAPaciente(resJSON, base64);
+
+                } catch (e) { console.error("Error al extraer:", e); }
+            }
+            
+            document.getElementById('overlay-carga-lote').classList.add('hidden');
+            document.getElementById('file-upload-lote').value = ""; // Limpiar input
+            renderizarExpedientesMinas();
+        }
+
+        function asignarDocumentoAPaciente(datosExtraidos, base64) {
+            const { tipoDocumento, nombre, fechaNacimiento, orden, folio } = datosExtraidos;
+            if (!tipoDocumento || !nombre) return; // Fallo la extracción
+            
+            // Buscar si ya existe el paciente (Por orden, por folio, o por similitud de nombre)
+            let pacienteExistente = bdMinas[fechaActualStr].pacientes.find(p => 
+                (orden && p.numeroOrden === orden) || 
+                (folio && p.folioHC === folio) || 
+                (p.nombre.toLowerCase().includes(nombre.toLowerCase().split(' ')[0]))
+            );
+
+            if (pacienteExistente) {
+                // 1. Si no tiene ese estudio contemplado, se lo agregamos automáticamente
+                if (!pacienteExistente.estudios.includes(tipoDocumento)) {
+                    pacienteExistente.estudios.push(tipoDocumento);
+                    pacienteExistente.docsStatus[tipoDocumento] = { estado: 'subido', pdfBase64: base64, checklist: [] };
+                } 
+                // 2. Si ya lo tiene, preguntamos si lo queremos sobreescribir
+                else {
+                    const obj = pacienteExistente.docsStatus[tipoDocumento];
+                    if (obj.estado === 'pendiente' || confirm(`El paciente ${pacienteExistente.nombre} ya tiene asignado(a) un(a) ${tipoDocumento}. ¿Deseas reemplazar el archivo cargado?`)) {
+                        pacienteExistente.docsStatus[tipoDocumento] = { estado: 'subido', pdfBase64: base64, checklist: [] };
+                        pacienteExistente.statusIntegral = 'pendiente';
+                    }
+                }
+                
+                // Actualizamos los huecos de info que pudieran faltarle al perfil
+                if (!pacienteExistente.fechaNacimiento && fechaNacimiento) pacienteExistente.fechaNacimiento = fechaNacimiento;
+                if (!pacienteExistente.numeroOrden && orden) pacienteExistente.numeroOrden = orden;
+                if (!pacienteExistente.folioHC && folio) pacienteExistente.folioHC = folio;
+
+                if (db) db.collection("PacientesMinas").doc(pacienteExistente.id).set(pacienteExistente);
+            } 
+            else {
+                // 3. Crear paciente desde cero
+                let docsDelPaciente = {};
+                docsDelPaciente[tipoDocumento] = { estado: 'subido', pdfBase64: base64, checklist: [] };
+                
+                const nuevoPaciente = { 
+                    id: Date.now().toString(), fechaOperativa: fechaActualStr, nombre: nombre, 
+                    fechaNacimiento: fechaNacimiento || '', numeroOrden: orden || '', folioHC: folio || '',
+                    estudios: [tipoDocumento], docsStatus: docsDelPaciente, statusIntegral: 'pendiente', datosExtraidosHC: null
+                };
+
+                bdMinas[fechaActualStr].pacientes.push(nuevoPaciente);
+                if(db) db.collection("PacientesMinas").doc(nuevoPaciente.id).set(nuevoPaciente);
+            }
+        }
+
+        // Helper
+        function convertirArchivoABase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = error => reject(error);
+            });
         }
         
     </script>
