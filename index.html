@@ -171,13 +171,18 @@
             <section id="vista-minas" class="hidden h-full flex flex-col lg:flex-row gap-6">
                 <div class="bg-white p-6 rounded-lg shadow-sm w-full lg:w-1/3 border-t-4 border-yellow-500 flex flex-col h-full">
                 <div id="drop-zone-minas" 
-                         ondragover="event.preventDefault(); this.classList.add('bg-yellow-100', 'border-yellow-600')" 
-                         ondragleave="this.classList.remove('bg-yellow-100', 'border-yellow-600')" 
-                         ondrop="event.preventDefault(); this.classList.remove('bg-yellow-100', 'border-yellow-600'); (event.dataTransfer.files)"
-                         class="border-2 border-dashed border-yellow-400 rounded-lg p-6 text-center bg-yellow-50 transition cursor-pointer mb-6"
+                         ondragenter="event.preventDefault(); event.stopPropagation();"
+                         ondragover="event.preventDefault(); event.stopPropagation(); this.classList.add('bg-yellow-200', 'border-yellow-600');" 
+                         ondragleave="event.preventDefault(); event.stopPropagation(); this.classList.remove('bg-yellow-200', 'border-yellow-600');" 
+                         ondrop="event.preventDefault(); event.stopPropagation(); this.classList.remove('bg-yellow-200', 'border-yellow-600'); procesarLoteArchivosMinas(event.dataTransfer.files);"
+                         class="border-2 border-dashed border-yellow-400 rounded-lg p-6 text-center bg-yellow-50 hover:bg-yellow-100 transition cursor-pointer mb-6"
                          onclick="document.getElementById('file-upload-lote').click()">
-                        <p class="text-sm text-yellow-800 font-bold">📥 Arrastra aquí tus PDFs (Máx. 5 a la vez)</p>
-                        <p class="text-[10px] text-yellow-600 mt-1">La IA leerá los datos y armará los expedientes automáticamente.</p>
+                        
+                        <div class="pointer-events-none">
+                            <p class="text-sm text-yellow-800 font-bold">📥 Arrastra aquí tus PDFs (Máx. 5 a la vez)</p>
+                            <p class="text-[10px] text-yellow-600 mt-1">Da clic o arrastra. La IA leerá los datos y armará los expedientes.</p>
+                        </div>
+                        
                         <input type="file" id="file-upload-lote" multiple accept="application/pdf" class="hidden" onchange="procesarLoteArchivosMinas(this.files)">
                     </div>
                     <div>
