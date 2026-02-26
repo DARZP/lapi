@@ -173,7 +173,7 @@
                 <div id="drop-zone-minas" 
                          ondragover="event.preventDefault(); this.classList.add('bg-yellow-100', 'border-yellow-600')" 
                          ondragleave="this.classList.remove('bg-yellow-100', 'border-yellow-600')" 
-                         ondrop="event.preventDefault(); this.classList.remove('bg-yellow-100', 'border-yellow-600'); procesarLoteArchivosMinas(event.dataTransfer.files)"
+                         ondrop="event.preventDefault(); this.classList.remove('bg-yellow-100', 'border-yellow-600'); (event.dataTransfer.files)"
                          class="border-2 border-dashed border-yellow-400 rounded-lg p-6 text-center bg-yellow-50 transition cursor-pointer mb-6"
                          onclick="document.getElementById('file-upload-lote').click()">
                         <p class="text-sm text-yellow-800 font-bold">📥 Arrastra aquí tus PDFs (Máx. 5 a la vez)</p>
@@ -1598,7 +1598,7 @@
         }
 
         // ==========================================
-        // 2. EXTRACCIÓN MASIVA (DRAG & DROP)
+        // EXTRACCIÓN MASIVA (DRAG & DROP)
         // ==========================================
         async function procesarLoteArchivosMinas(files) {
             if (!files || files.length === 0) return;
@@ -1615,11 +1615,12 @@
                 try {
                     // Pedimos a la IA que lea solo los datos básicos (Tarda ~3 segs)
                     const req = await fetch('/.netlify/functions/analizarDocumento', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' }, 
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json' }, 
                         body: JSON.stringify({ pdfBase64: base64, tipoDocumento: 'Extraccion' })
                     });
                     
-                    if (!req.ok) throw new Error("Timeout o error del servidor");
+                    if (!req.ok) throw new Error(`Error del servidor: ${req.status}`);
                     
                     const resJSON = await req.json();
                     
@@ -1627,9 +1628,10 @@
                     asignarDocumentoAPaciente(resJSON, base64);
 
                 } catch (e) { 
-                    console.error("Error al extraer:", e);
-                    alert(`Ocurrió un error al intentar leer el archivo ${i + 1}. Puede que sea demasiado pesado o el servidor tardó mucho en responder.`);
+                    console.error("Error al extraer archivo " + file.name + ":", e);
+                    alert(`Ocurrió un error al intentar leer el archivo ${i + 1} (${file.name}). Puede que sea demasiado pesado o el servidor de IA se saturó.`);
                 }
+            }
             
             document.getElementById('overlay-carga-lote').classList.add('hidden');
             document.getElementById('file-upload-lote').value = ""; // Limpiar input
