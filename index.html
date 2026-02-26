@@ -1598,67 +1598,81 @@
         }
 
         // ==========================================
-        // EXTRACCIÓN MASIVA (DRAG & DROP)
+        // EXTRACCIÓN MASIVA BLINDADA (DRAG & DROP)
         // ==========================================
         async function procesarLoteArchivosMinas(files) {
             if (!files || files.length === 0) return;
             if (files.length > 5) { alert("Para evitar saturar el sistema, arrastra máximo 5 archivos a la vez."); return; }
 
-            document.getElementById('overlay-carga-lote').classList.remove('hidden');
+            const overlay = document.getElementById('overlay-carga-lote');
+            const textoEstado = document.getElementById('texto-estado-lote');
+            
+            if(overlay) overlay.classList.remove('hidden');
 
             for (let i = 0; i < files.length; i++) {
-                document.getElementById('texto-estado-lote').textContent = `Extrayendo datos y armando expediente del archivo ${i + 1} de ${files.length}...`;
-                
-                const file = files[i];
-                const base64 = await convertirArchivoABase64(file);
+                if(textoEstado) textoEstado.textContent = `Extrayendo datos del archivo ${i + 1} de ${files.length}...`;
+                console.log(`\n--- INICIANDO ARCHIVO ${i+1}: ${files[i].name} ---`);
                 
                 try {
-                    // Pedimos a la IA que lea solo los datos básicos (Tarda ~3 segs)
+                    const base64 = await convertirArchivoABase64(files[i]);
+                    console.log("Paso 1: Archivo convertido a Base64 con éxito.");
+                    
                     const req = await fetch('/.netlify/functions/analizarDocumento', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' }, 
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json' }, 
                         body: JSON.stringify({ pdfBase64: base64, tipoDocumento: 'Extraccion' })
                     });
+                    console.log("Paso 2: Respuesta de Netlify recibida. Status:", req.status);
                     
-                    // Si Netlify marca error (ej. Timeout), detenemos el proceso antes de que rompa todo
                     if (!req.ok) {
-                        throw new Error(`Error de conexión con el servidor (${req.status})`);
+                        throw new Error(`El servidor devolvió un error ${req.status}. (Posible Timeout de 10 segundos).`);
                     }
                     
-                    const resJSON = await req.json();
+                    const txt = await req.text();
+                    console.log("Paso 3: Texto crudo recibido de Gemini:", txt);
+                    
+                    const resJSON = JSON.parse(txt);
+                    console.log("Paso 4: JSON interpretado correctamente:", resJSON);
                     
                     // Lógica de Asignación Inteligente
-                    asignarDocumentoAPaciente(resJSON, base64);
+                    asignarDocumentoAPacienteSeguro(resJSON, base64);
+                    console.log("Paso 5: Paciente asignado y creado en pantalla.");
 
                 } catch (e) { 
-                    console.error("Error al extraer archivo:", e);
-                    alert(`Ocurrió un error al intentar leer el archivo ${i + 1}. Puede que el servidor de IA esté saturado. Intenta subirlo de nuevo.`);
+                    console.error(`❌ Error crítico en archivo ${i + 1}:`, e);
+                    alert(`Ocurrió un problema con el archivo: ${files[i].name}\n\nMotivo: ${e.message}\n\nPor favor, revisa la consola (F12) para más detalles.`);
                 }
             }
             
-            document.getElementById('overlay-carga-lote').classList.add('hidden');
-            document.getElementById('file-upload-lote').value = ""; // Limpiar input
+            if(overlay) overlay.classList.add('hidden');
+            const inputLote = document.getElementById('file-upload-lote');
+            if(inputLote) inputLote.value = ""; 
             renderizarExpedientesMinas();
         }
 
-        function asignarDocumentoAPaciente(datosExtraidos, base64) {
-            const { tipoDocumento, nombre, fechaNacimiento, orden, folio } = datosExtraidos;
-            if (!tipoDocumento || !nombre) return; // Fallo la extracción
+        function asignarDocumentoAPacienteSeguro(datosExtraidos, base64) {
+            // Seguros anti-nulos por si la IA no logra leer bien una hoja borrosa
+            const tipoDocumento = datosExtraidos.tipoDocumento || 'Documento Desconocido';
+            const nombre = datosExtraidos.nombre || 'Paciente Sin Nombre';
+            const fechaNacimiento = datosExtraidos.fechaNacimiento || '';
+            const orden = datosExtraidos.orden || '';
+            const folio = datosExtraidos.folio || '';
             
-            // Buscar si ya existe el paciente (Por orden, por folio, o por similitud de nombre)
-            let pacienteExistente = bdMinas[fechaActualStr].pacientes.find(p => 
-                (orden && p.numeroOrden === orden) || 
-                (folio && p.folioHC === folio) || 
-                (p.nombre.toLowerCase().includes(nombre.toLowerCase().split(' ')[0]))
-            );
+            // Buscar si ya existe el paciente con filtros seguros
+            let pacienteExistente = bdMinas[fechaActualStr].pacientes.find(p => {
+                const coincideOrden = orden && p.numeroOrden === orden;
+                const coincideFolio = folio && p.folioHC === folio;
+                const primerNombreExtraido = nombre !== 'Paciente Sin Nombre' ? nombre.toLowerCase().split(' ')[0] : null;
+                const coincideNombre = p.nombre && primerNombreExtraido && p.nombre.toLowerCase().includes(primerNombreExtraido);
+                
+                return coincideOrden || coincideFolio || coincideNombre;
+            });
 
             if (pacienteExistente) {
-                // 1. Si no tiene ese estudio contemplado, se lo agregamos automáticamente
                 if (!pacienteExistente.estudios.includes(tipoDocumento)) {
                     pacienteExistente.estudios.push(tipoDocumento);
                     pacienteExistente.docsStatus[tipoDocumento] = { estado: 'subido', pdfBase64: base64, checklist: [] };
-                } 
-                // 2. Si ya lo tiene, preguntamos si lo queremos sobreescribir
-                else {
+                } else {
                     const obj = pacienteExistente.docsStatus[tipoDocumento];
                     if (obj.estado === 'pendiente' || confirm(`El paciente ${pacienteExistente.nombre} ya tiene asignado(a) un(a) ${tipoDocumento}. ¿Deseas reemplazar el archivo cargado?`)) {
                         pacienteExistente.docsStatus[tipoDocumento] = { estado: 'subido', pdfBase64: base64, checklist: [] };
@@ -1666,26 +1680,30 @@
                     }
                 }
                 
-                // Actualizamos los huecos de info que pudieran faltarle al perfil
                 if (!pacienteExistente.fechaNacimiento && fechaNacimiento) pacienteExistente.fechaNacimiento = fechaNacimiento;
                 if (!pacienteExistente.numeroOrden && orden) pacienteExistente.numeroOrden = orden;
                 if (!pacienteExistente.folioHC && folio) pacienteExistente.folioHC = folio;
 
-                if (db) db.collection("PacientesMinas").doc(pacienteExistente.id).set(pacienteExistente);
-            } 
-            else {
-                // 3. Crear paciente desde cero
+                if (db) db.collection("PacientesMinas").doc(pacienteExistente.id).set(pacienteExistente).catch(e => console.error(e));
+            } else {
                 let docsDelPaciente = {};
                 docsDelPaciente[tipoDocumento] = { estado: 'subido', pdfBase64: base64, checklist: [] };
                 
                 const nuevoPaciente = { 
-                    id: Date.now().toString(), fechaOperativa: fechaActualStr, nombre: nombre, 
-                    fechaNacimiento: fechaNacimiento || '', numeroOrden: orden || '', folioHC: folio || '',
-                    estudios: [tipoDocumento], docsStatus: docsDelPaciente, statusIntegral: 'pendiente', datosExtraidosHC: null
+                    id: Date.now().toString() + Math.floor(Math.random()*100), 
+                    fechaOperativa: fechaActualStr, 
+                    nombre: nombre, 
+                    fechaNacimiento: fechaNacimiento, 
+                    numeroOrden: orden, 
+                    folioHC: folio,
+                    estudios: [tipoDocumento], 
+                    docsStatus: docsDelPaciente, 
+                    statusIntegral: 'pendiente', 
+                    datosExtraidosHC: null
                 };
 
                 bdMinas[fechaActualStr].pacientes.push(nuevoPaciente);
-                if(db) db.collection("PacientesMinas").doc(nuevoPaciente.id).set(nuevoPaciente);
+                if(db) db.collection("PacientesMinas").doc(nuevoPaciente.id).set(nuevoPaciente).catch(e => console.error(e));
             }
         }
 
