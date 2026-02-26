@@ -347,7 +347,7 @@ exports.handler = async (event, context) => {
            - Si REQUIERE Historia Clínica (SÍ): Verifica que coincidan con la Estatura y Peso extraídos de la HC. Si los datos de HC dicen "NO DISPONIBLES AÚN", pon pass: false y en comentario: "⚠️ PENDIENTE: Se requiere analizar primero la Historia Clínica para cruzar peso y talla".
            - Si NO requiere Historia Clínica (NO): Pon pass: true y en comentario: "Validado - No requiere cruce con HC".
         4. "Etnia": Verifica que el documento diga exactamente "HISPANO".
-        5. "Configuración del Estudio": Verifica que el estudio esté tomado estrictamente con la configuración: "5mm/s,10mm/mV" (Busca esta información específicamente debajo de la derivación V6).
+        5. "Configuración del Estudio": Verifica que el estudio esté tomado estrictamente con la configuración: "25mm/s,10mm/mV" (Busca esta información específicamente debajo de la derivación V6).
         6. "Calidad y Hallazgos": Evalúa visualmente la calidad del trazo. Da un feedback de retroalimentación breve sobre si el estudio está bien tomado y describe los hallazgos o signos clínicos relevantes.
 
         (Nota: Sexo, Marcapasos, ID de visita, Habitación, Medicación, ID de orden, Prov.ord, Prot.ord NO requieren verificación, ignóralos en la evaluación).
@@ -361,7 +361,7 @@ exports.handler = async (event, context) => {
             { "categoria": "2. Fecha de Nacimiento", "pass": true/false, "comentario": "..." },
             { "categoria": "3. Altura y Peso (Cruce HC)", "pass": true/false, "comentario": "..." },
             { "categoria": "4. Etnia (HISPANO)", "pass": true/false, "comentario": "..." },
-            { "categoria": "5. Configuración (5mm/s, 10mm/mV)", "pass": true/false, "comentario": "..." },
+            { "categoria": "5. Configuración (25mm/s, 10mm/mV)", "pass": true/false, "comentario": "..." },
             { "categoria": "6. Calidad técnica y Hallazgos clínicos", "pass": true/false, "comentario": "..." }
           ]
         }
@@ -378,7 +378,7 @@ exports.handler = async (event, context) => {
         REGLAS DE ELECTROCARDIOGRAMA (MODO LIBRE):
         1. "ID de paciente": Verifica que este número sea estrictamente de 11 dígitos.
         2. "Etnia": Verifica que el documento diga exactamente "HISPANO".
-        3. "Configuración del Estudio": Verifica que el estudio esté tomado estrictamente con la configuración: "5mm/s,10mm/mV" (Busca esta información específicamente debajo de la derivación V6).
+        3. "Configuración del Estudio": Verifica que el estudio esté tomado estrictamente con la configuración: "25mm/s,10mm/mV" (Busca esta información específicamente debajo de la derivación V6).
         4. "Calidad y Hallazgos": Evalúa visualmente la calidad del trazo. Da un feedback de retroalimentación breve sobre si el estudio está bien tomado y describe los hallazgos o signos clínicos relevantes.
 
         (Nota: Fecha de Nacimiento, Altura, Peso, Sexo, Marcapasos, ID de visita, Habitación, Medicación, ID de orden, Prov.ord, Prot.ord NO requieren verificación en este modo, ignóralos).
@@ -390,7 +390,7 @@ exports.handler = async (event, context) => {
           "checklist": [
             { "categoria": "1. ID de Paciente (11 dígitos)", "pass": true/false, "comentario": "..." },
             { "categoria": "2. Etnia (HISPANO)", "pass": true/false, "comentario": "..." },
-            { "categoria": "3. Configuración (5mm/s, 10mm/mV)", "pass": true/false, "comentario": "..." },
+            { "categoria": "3. Configuración (25mm/s, 10mm/mV)", "pass": true/false, "comentario": "..." },
             { "categoria": "4. Calidad técnica y Hallazgos clínicos", "pass": true/false, "comentario": "..." }
           ]
         }
