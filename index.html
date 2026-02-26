@@ -1615,12 +1615,14 @@
                 try {
                     // Pedimos a la IA que lea solo los datos básicos (Tarda ~3 segs)
                     const req = await fetch('/.netlify/functions/analizarDocumento', {
-                        method: 'POST', 
-                        headers: { 'Content-Type': 'application/json' }, 
+                        method: 'POST', headers: { 'Content-Type': 'application/json' }, 
                         body: JSON.stringify({ pdfBase64: base64, tipoDocumento: 'Extraccion' })
                     });
                     
-                    if (!req.ok) throw new Error(`Error del servidor: ${req.status}`);
+                    // Si Netlify marca error (ej. Timeout), detenemos el proceso antes de que rompa todo
+                    if (!req.ok) {
+                        throw new Error(`Error de conexión con el servidor (${req.status})`);
+                    }
                     
                     const resJSON = await req.json();
                     
@@ -1628,8 +1630,8 @@
                     asignarDocumentoAPaciente(resJSON, base64);
 
                 } catch (e) { 
-                    console.error("Error al extraer archivo " + file.name + ":", e);
-                    alert(`Ocurrió un error al intentar leer el archivo ${i + 1} (${file.name}). Puede que sea demasiado pesado o el servidor de IA se saturó.`);
+                    console.error("Error al extraer archivo:", e);
+                    alert(`Ocurrió un error al intentar leer el archivo ${i + 1}. Puede que el servidor de IA esté saturado. Intenta subirlo de nuevo.`);
                 }
             }
             
