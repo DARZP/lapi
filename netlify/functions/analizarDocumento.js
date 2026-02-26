@@ -395,8 +395,31 @@ exports.handler = async (event, context) => {
         `;
 
         // ============================================================================
+        // PROMPT 8: EXTRACCIÓN INTELIGENTE POR LOTE (DRAG & DROP)
+        // ============================================================================
+        const PROMPT_EXTRACCION = `
+        Eres un asistente de extracción de datos médicos. Analiza la primera página del documento adjunto.
+        Extrae y clasifica la información.
+        1. tipoDocumento: Identifica si el documento es una "Historia Clínica", "Espirometría", "Audiometría" o "Electrocardiograma".
+        2. nombre: Nombre completo del paciente.
+        3. fechaNacimiento: Formateada estrictamente como "YYYY-MM-DD" (Año-Mes-Día).
+        4. orden: Número de Orden o ID de paciente. Si no tiene, pon null.
+        5. folio: Folio de Historia Clínica (solo aplica si es HC). Si no tiene, pon null.
+
+        DEVUELVE ÚNICAMENTE un JSON estricto con esta estructura (sin markdown):
+        {
+          "tipoDocumento": "...",
+          "nombre": "...",
+          "fechaNacimiento": "YYYY-MM-DD",
+          "orden": "...",
+          "folio": "..."
+        }
+        `;
+
+        // ============================================================================
         // LÓGICA DE SELECCIÓN DE PROMPT
         // ============================================================================
+        if (tipoDocumento === 'Extraccion') { promptSeleccionado = PROMPT_EXTRACCION; }
         if (tipoDocumento === 'Historia Clínica (Libre)') { promptSeleccionado = PROMPT_HC_LIBRE; } 
         else if (tipoDocumento === 'Historia Clínica') { promptSeleccionado = PROMPT_HC_NORMAL; }
         else if (tipoDocumento === 'Historia Clínica (MINAS)') { promptSeleccionado = PROMPT_HC_MINAS; } 
