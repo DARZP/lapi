@@ -1618,13 +1618,18 @@
                         method: 'POST', headers: { 'Content-Type': 'application/json' }, 
                         body: JSON.stringify({ pdfBase64: base64, tipoDocumento: 'Extraccion' })
                     });
+                    
+                    if (!req.ok) throw new Error("Timeout o error del servidor");
+                    
                     const resJSON = await req.json();
                     
                     // Lógica de Asignación Inteligente
                     asignarDocumentoAPaciente(resJSON, base64);
 
-                } catch (e) { console.error("Error al extraer:", e); }
-            }
+                } catch (e) { 
+                    console.error("Error al extraer:", e);
+                    alert(`Ocurrió un error al intentar leer el archivo ${i + 1}. Puede que sea demasiado pesado o el servidor tardó mucho en responder.`);
+                }
             
             document.getElementById('overlay-carga-lote').classList.add('hidden');
             document.getElementById('file-upload-lote').value = ""; // Limpiar input
