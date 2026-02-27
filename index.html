@@ -20,7 +20,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
-</head>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-storage-compat.js"></script>
 <body class="bg-gray-50 text-gray-800 font-sans h-screen flex overflow-hidden">
 
     <div id="toast-container" class="fixed top-5 right-5 z-[100] flex flex-col gap-2 pointer-events-none"></div>
@@ -38,21 +38,29 @@
         </div>
     </div>
 
-    <div id="modal-checklist" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center fade-in">
-        <div class="bg-white rounded-lg shadow-2xl w-full max-w-md mx-4 flex flex-col max-h-[80vh]">
-            <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-lg border-t-4 border-lapiOrange">
+    <div id="modal-checklist" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-[110] flex items-center justify-center fade-in p-4">
+        <div class="bg-white rounded-lg shadow-2xl w-full max-w-6xl flex flex-col max-h-[95vh] h-full overflow-hidden border-t-4 border-lapiOrange">
+            <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
                 <div>
-                    <h3 class="font-bold text-gray-800 text-lg">Reporte Detallado LAP.IA</h3>
+                    <h3 class="font-bold text-gray-800 text-lg">Auditoría Documental LAP.IA</h3>
                     <p id="checklist-subtitulo" class="text-xs text-gray-500">Documento</p>
                 </div>
                 <button onclick="cerrarModal('modal-checklist')" class="text-gray-500 hover:text-red-500 transition font-bold text-xl">&times;</button>
             </div>
-            <div class="p-5 flex-1 overflow-y-auto bg-white">
-                <h4 class="text-sm font-bold text-gray-600 mb-3 border-b pb-1">Criterios Evaluados:</h4>
-                <ul id="lista-checklist" class="space-y-3"></ul>
-            </div>
-            <div class="p-4 border-t border-gray-100 bg-gray-50 rounded-b-lg text-center">
-                <button onclick="cerrarModal('modal-checklist')" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-2 rounded text-sm font-bold transition">Cerrar</button>
+            
+            <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+                <div class="w-full lg:w-3/5 bg-gray-300 p-2 flex flex-col border-r border-gray-200">
+                    <iframe id="visor-pdf-iframe" class="w-full h-full rounded shadow-inner bg-white" src=""></iframe>
+                </div>
+                
+                <div class="w-full lg:w-2/5 p-5 overflow-y-auto bg-white flex flex-col">
+                    <h4 class="text-sm font-bold text-gray-600 mb-3 border-b pb-1">Criterios Evaluados:</h4>
+                    <ul id="lista-checklist" class="space-y-3 flex-1"></ul>
+                    
+                    <div class="pt-4 mt-4 border-t border-gray-100 text-center">
+                        <button onclick="cerrarModal('modal-checklist')" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-2 rounded text-sm font-bold transition">Cerrar Visor</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -469,12 +477,29 @@
         };
 
         let db = null;
+        let storage = null; // NUEVA VARIABLE PARA EL VISOR
         try {
             firebase.initializeApp(firebaseConfig);
             db = firebase.firestore();
+            storage = firebase.storage(); // INICIAMOS STORAGE
             console.log("Conexión a Firebase Base de Datos Iniciada.");
         } catch(e) {
-            console.warn("Aviso: Firebase aún no está configurado con claves reales. El sistema usará la memoria local temporalmente.");
+            console.warn("Aviso: Firebase local.");
+        }
+
+        
+        async function guardarPDFEnStorage(base64, idPaciente, tipoDoc) {
+            if (!storage) return null;
+            try {
+                // Se guardan ordenados por día operativo
+                const ruta = `visores_temporales/${fechaActualStr}/${idPaciente}_${tipoDoc.replace(/\s+/g, '')}.pdf`;
+                const ref = storage.ref().child(ruta);
+                await ref.putString(base64, 'base64', { contentType: 'application/pdf' });
+                return await ref.getDownloadURL();
+            } catch(e) {
+                console.error("Error al crear visor:", e);
+                return null;
+            }
         }
 
         async function cargarPacientesMinasDesdeFirebase() {
@@ -914,7 +939,7 @@
             });
         }
 
-        function accionDocMinasIndividual(idPaciente, docName, accion) {
+        async function accionDocMinasIndividual(idPaciente, docName, accion) {
             const paciente = bdMinas[fechaActualStr].pacientes.find(p => p.id === idPaciente.toString() || p.id === idPaciente);
             if(!paciente) return;
             
@@ -945,9 +970,11 @@
                 };
                 input.click();
 
-            } else if (accion === 'analizar') {
-                if (!statusObj.pdfBase64) { mostrarToast('⚠️ El PDF original ya no está en la memoria temporal (probablemente recargaste la página).\n\nPor favor, haz clic en "Resubir" para adjuntarlo nuevamente.'); return; }
-
+            else if (accion === 'analizar') {
+                if (!statusObj.pdfBase64) {
+                    alert('Error: No se ha cargado el documento PDF correctamente. Intenta resubirlo.');
+                    return;
+                }
                 const requiereHC = paciente ? paciente.estudios.includes('Historia Clínica') : false;
 
                 if (requiereHC && (docName === 'Espirometría' || docName === 'Audiometría')) {
@@ -959,6 +986,11 @@
                 }
 
                 statusObj.estado = 'analizando'; renderizarExpedientesMinas();
+
+                if (!statusObj.pdfUrl && statusObj.pdfBase64) {
+                    mostrarToast('Preparando Visor Seguro...', 'info');
+                    statusObj.pdfUrl = await guardarPDFEnStorage(statusObj.pdfBase64, paciente.id, docName);
+                }
                 
                 const tipoBackend = docName === 'Historia Clínica' ? 'Historia Clínica (MINAS)' : docName;
                 const datosParaIA = {
@@ -1042,6 +1074,10 @@
                 `;
                 ul.appendChild(li);
             });
+                const iframe = document.getElementById('visor-pdf-iframe');
+            if (statusObj.pdfUrl) { iframe.src = statusObj.pdfUrl; } 
+            else if (statusObj.pdfBase64) { iframe.src = `data:application/pdf;base64,${statusObj.pdfBase64}`; } 
+            else { iframe.src = ''; }
             document.getElementById('modal-checklist').classList.remove('hidden');
         }
 
@@ -1298,6 +1334,10 @@
                 `;
                 ul.appendChild(li);
             });
+                const iframe = document.getElementById('visor-pdf-iframe');
+            if (paciente.docsStatus[docName].pdfUrl) { iframe.src = paciente.docsStatus[docName].pdfUrl; } 
+            else if (paciente.docsStatus[docName].pdfBase64) { iframe.src = `data:application/pdf;base64,${paciente.docsStatus[docName].pdfBase64}`; } 
+            else { iframe.src = ''; }
             document.getElementById('modal-checklist').classList.remove('hidden');
         }
         
@@ -1592,7 +1632,7 @@
         }
 
         // --- 5. LLAMADA REAL A LA IA PARA SUCURSALES ---
-        function accionDocumento(docKey, accion, tipoEstudio) {
+        async function accionDocumento(docKey, accion, tipoEstudio) {
             const statusObj = asegurarEstructuraDoc(docKey);
             const idPaciente = docKey.split('-')[1]; 
             const paciente = idPaciente && bdGlobal[fechaActualStr][obtenerTargetSucursal()].pacientes ? bdGlobal[fechaActualStr][obtenerTargetSucursal()].pacientes.find(p => p.id === idPaciente) : null;
@@ -1635,7 +1675,15 @@
 
                 statusObj.estado = 'analizando'; actualizarUI();
                 
-                const datosParaIA = paciente ? { 
+                // ==========================================
+                // NUEVO: ENVIAR AL VISOR MIENTRAS LA IA PIENSA
+                // ==========================================
+                if (!statusObj.pdfUrl && statusObj.pdfBase64) {
+                    mostrarToast('Preparando Visor Seguro...', 'info');
+                    statusObj.pdfUrl = await guardarPDFEnStorage(statusObj.pdfBase64, paciente ? paciente.id : 'temp', tipoEstudio);
+                }
+
+                const datosParaIA = paciente ? {
                     nombre: paciente.nombre, nacimiento: paciente.fechaNacimiento, orden: paciente.numeroOrden, folio: paciente.folioHC, datosHC: paciente.datosExtraidosHC,
                     requiereHC: requiereHC // <-- Le avisamos a la IA si debe ser estricta o no
                 } : {};
