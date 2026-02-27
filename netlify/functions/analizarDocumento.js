@@ -46,7 +46,7 @@ exports.handler = async (event, context) => {
 
         ### SECCIÓN HÁBITOS Y COSTUMBRES
         - 12 al 20, y 22: NO REQUIEREN VERIFICACIÓN.
-        - 21 (Mascotas): Si es SÍ, requiere 4 datos: Tipo, Cantidad, Intra/extradomiciliarias, Vacunados/Desparasitados.
+        - 21 (Mascotas): Si es SÍ, requiere 4 datos: Tipo, Cantidad(en caso de que el tipo sea plural), Intra/extradomiciliarias, Vacunados/Desparasitados.
 
         ### SECCIÓN PERSONALES PATOLÓGICOS
         - 23 al 26: Si es SÍ, verificar coherencia.
@@ -181,7 +181,7 @@ exports.handler = async (event, context) => {
 
         ### SECCIÓN ANTECEDENTES HÁBITOS Y COSTUMBRES
         - 15 al 20, y 22: NO REQUIEREN VERIFICACIÓN.
-        - 21 (Mascotas): Si es SÍ, requiere 4 datos obligatorios: Tipo, Cantidad, Intra/extradomiciliarias, y Vacunados/Desparasitados.
+        - 21 (Mascotas): Si es SÍ, requiere 4 datos obligatorios: Tipo, Cantidad(en caso de que el tipo sea plural), Intra/extradomiciliarias, y Vacunados/Desparasitados.
 
         ### SECCIÓN ANTECEDENTES PERSONALES PATOLÓGICOS
         - 23 al 26: Si es SÍ, verificar coherencia.
