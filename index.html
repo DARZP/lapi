@@ -23,8 +23,9 @@
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans h-screen flex overflow-hidden">
 
-    <div id="modal-notas" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center fade-in">
-        <div class="bg-white rounded-lg shadow-2xl w-full max-w-md mx-4 flex flex-col max-h-[80vh]">
+    <div id="toast-container" class="fixed top-5 right-5 z-[100] flex flex-col gap-2 pointer-events-none"></div>
+
+    <div id="modal-notas" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center fade-in">     <div class="bg-white rounded-lg shadow-2xl w-full max-w-md mx-4 flex flex-col max-h-[80vh]">
             <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-lg">
                 <h3 class="font-bold text-gray-800" id="modal-titulo">Comentarios del Documento</h3>
                 <button onclick="cerrarModal('modal-notas')" class="text-gray-500 hover:text-red-500 transition font-bold text-xl">&times;</button>
@@ -258,6 +259,11 @@
                     <div class="flex space-x-3">
                         <div class="flex-1 bg-white flex items-center px-4 rounded-lg shadow-sm border border-gray-200">
                             <span>🔍</span>
+                                <div class="flex space-x-2 mb-2">
+                                        <button onclick="setFiltroMinas('todos')" id="btn-filtro-todos" class="px-4 py-1 text-xs font-bold rounded-full bg-gray-800 text-white transition shadow-sm">Todos</button>
+                                        <button onclick="setFiltroMinas('pendientes')" id="btn-filtro-pendientes" class="px-4 py-1 text-xs font-bold rounded-full bg-white border border-gray-300 text-gray-600 hover:bg-gray-100 transition shadow-sm">⚠️ Requieren Acción</button>
+                                        <button onclick="setFiltroMinas('rechazados')" id="btn-filtro-rechazados" class="px-4 py-1 text-xs font-bold rounded-full bg-white border border-gray-300 text-gray-600 hover:bg-gray-100 transition shadow-sm">❌ Rechazados IA</button>
+                                </div>
                             <input type="text" id="buscadorMinas" onkeyup="renderizarExpedientesMinas()" class="w-full p-3 bg-transparent outline-none text-sm font-medium text-gray-700" placeholder="Buscar por Nombre, No. Orden o Folio HC...">
                         </div>
                         <button onclick="exportarExcelMinas()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg shadow-sm transition flex items-center whitespace-nowrap">
@@ -510,7 +516,7 @@
                 };
                 reader.readAsDataURL(file);
             } else {
-                alert("Por favor, selecciona un archivo PDF válido.");
+                mostrarToast("Por favor, selecciona un archivo PDF válido.");
             }
         }
         
@@ -750,7 +756,7 @@
             const folio = inputFolio.value.trim();
 
             if (nombre === '' || nacimiento === '' || (orden === '' && folio === '') || cbs.length === 0) { 
-                alert('Faltan datos. Asegúrate de ingresar Nombre, Fecha de Nacimiento, al menos un identificador (No. de Orden o Folio) y estudios.'); 
+                mostrarToast('Faltan datos. Asegúrate de ingresar Nombre, Fecha de Nacimiento, al menos un identificador (No. de Orden o Folio) y estudios.'); 
                 return; 
             }
 
@@ -762,7 +768,7 @@
                 (folio !== '' && p.folioHC === folio)
             );
             if (duplicado) {
-                alert('⚠️ ERROR: Ya existe un paciente registrado HOY con ese Número de Orden o Folio HC. Por favor verifica.');
+                mostrarToast('⚠️ ERROR: Ya existe un paciente registrado HOY con ese Número de Orden o Folio HC. Por favor verifica.');
                 return;
             }
             
@@ -784,6 +790,26 @@
             if(db) db.collection("PacientesMinas").doc(nuevoPaciente.id).set(nuevoPaciente).catch(e=>console.error(e));
             
             inputNombre.value = ''; inputOrden.value = ''; inputFolio.value = ''; cbs.forEach(cb => cb.checked = false); 
+            renderizarExpedientesMinas();
+        }
+
+        let filtroActualMinas = 'todos';
+        function setFiltroMinas(filtro) {
+            filtroActualMinas = filtro;
+            ['todos', 'pendientes', 'rechazados'].forEach(f => {
+                const btn = document.getElementById(`btn-filtro-${f}`);
+                if (btn) {
+                    if (f === filtro) {
+                        btn.classList.replace('bg-white', 'bg-gray-800');
+                        btn.classList.replace('text-gray-600', 'text-white');
+                        btn.classList.remove('border', 'border-gray-300', 'hover:bg-gray-100');
+                    } else {
+                        btn.classList.replace('bg-gray-800', 'bg-white');
+                        btn.classList.replace('text-white', 'text-gray-600');
+                        btn.classList.add('border', 'border-gray-300', 'hover:bg-gray-100');
+                    }
+                }
+            });
             renderizarExpedientesMinas();
         }
 
@@ -811,16 +837,24 @@
             document.getElementById('stat-progreso-espiro').textContent = reqEs > 0 ? Math.round((apEs/reqEs)*100) + '%' : '-';
             document.getElementById('stat-progreso-audio').textContent = reqAu > 0 ? Math.round((apAu/reqAu)*100) + '%' : '-';
 
+            // APLICAR BÚSQUEDA
             const terminoBusqueda = (document.getElementById('buscadorMinas')?.value || '').toLowerCase();
             if (terminoBusqueda !== '') {
                 pacientes = pacientes.filter(p => p.nombre.toLowerCase().includes(terminoBusqueda) || p.numeroOrden.toLowerCase().includes(terminoBusqueda) || p.folioHC.toLowerCase().includes(terminoBusqueda));
             }
 
-            if(pacientes.length === 0) {
-                contenedor.innerHTML = '<p class="text-center text-gray-400 mt-10 italic">No se encontraron expedientes.</p>';
-                return;
+            // APLICAR FILTROS RÁPIDOS
+            if (filtroActualMinas === 'pendientes') {
+                pacientes = pacientes.filter(p => Object.values(p.docsStatus).some(d => d.estado === 'pendiente' || d.estado === 'subido'));
+            } else if (filtroActualMinas === 'rechazados') {
+                pacientes = pacientes.filter(p => Object.values(p.docsStatus).some(d => d.estado === 'rechazado'));
             }
 
+            if(pacientes.length === 0) {
+                contenedor.innerHTML = '<p class="text-center text-gray-400 mt-10 italic">No se encontraron expedientes con este filtro.</p>';
+                return;
+            }
+            
             pacientes.forEach(p => {
                 const docsKeys = Object.keys(p.docsStatus);
                 const card = document.createElement('div');
@@ -912,7 +946,7 @@
                 input.click();
 
             } else if (accion === 'analizar') {
-                if (!statusObj.pdfBase64) { alert('⚠️ El PDF original ya no está en la memoria temporal (probablemente recargaste la página).\n\nPor favor, haz clic en "Resubir" para adjuntarlo nuevamente.'); return; }
+                if (!statusObj.pdfBase64) { mostrarToast('⚠️ El PDF original ya no está en la memoria temporal (probablemente recargaste la página).\n\nPor favor, haz clic en "Resubir" para adjuntarlo nuevamente.'); return; }
 
                 const requiereHC = paciente ? paciente.estudios.includes('Historia Clínica') : false;
 
@@ -1056,7 +1090,7 @@
         // --- FUNCIÓN: DESCARGAR EXCEL ---
         function exportarExcelMinas() {
             if(!bdMinas[fechaActualStr] || bdMinas[fechaActualStr].pacientes.length === 0) {
-                alert("No hay pacientes registrados hoy para exportar.");
+                mostrarToast("No hay pacientes registrados hoy para exportar.");
                 return;
             }
 
@@ -1135,7 +1169,7 @@
 
             } else if (accion === 'analizar') {
                 if (!statusObj.pdfBase64) {
-                    alert('Error: No se ha cargado el documento PDF correctamente. Intenta resubirlo.');
+                    mostrarToast('Error: No se ha cargado el documento PDF correctamente. Intenta resubirlo.');
                     return;
                 }
 
@@ -1280,7 +1314,7 @@
                 renderizarExpedientesMinas();
                 
                 // Mostrar alerta simulando el feedback integral
-                alert(`LAP.IA: Expediente Integral de ${paciente.nombre}\n\n✅ Congruencia detectada entre interrogatorio de HC y resultados de Espirometría.\n✅ Identificadores y folios cruzan correctamente en los 3 documentos.\n\nEstatus: Aprobado para entrega a mina.`);
+                mostrarToast(`LAP.IA: Expediente Integral de ${paciente.nombre}\n\n✅ Congruencia detectada entre interrogatorio de HC y resultados de Espirometría.\n✅ Identificadores y folios cruzan correctamente en los 3 documentos.\n\nEstatus: Aprobado para entrega a mina.`);
             }, 1500);
         }
 
@@ -1419,7 +1453,7 @@
         function renderizarChat() { const chat = document.getElementById('modal-chat'); chat.innerHTML = ''; const statusObj = asegurarEstructuraDoc(docKeyActivo); if(statusObj.notas.length === 0) { chat.innerHTML = '<p class="text-center text-gray-400 text-sm mt-4 italic">No hay comentarios.</p>'; return; } statusObj.notas.forEach(nota => { const div = document.createElement('div'); let colorBg = 'bg-white'; let textColor = 'text-gray-800'; let align = 'justify-start'; let tagColor = 'bg-gray-200 text-gray-700'; if (nota.autor === 'LAP.IA') { colorBg = 'bg-red-50 border border-red-200'; tagColor = 'bg-red-500 text-white'; textColor = 'text-red-800'; } else if (nota.autor === 'Administrador') { colorBg = 'bg-blue-50'; tagColor = 'bg-blue-500 text-white'; align = 'justify-end'; } else { colorBg = 'bg-orange-50'; tagColor = 'bg-lapiOrange text-white'; align = 'justify-end'; } div.className = `flex ${align} mb-2 w-full`; div.innerHTML = `<div class="${colorBg} p-2.5 rounded-lg shadow-sm max-w-[85%]"><div class="flex items-center space-x-2 mb-1"><span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${tagColor}">${nota.autor}</span></div><p class="text-sm ${textColor}">${nota.texto}</p></div>`; chat.appendChild(div); }); chat.scrollTop = chat.scrollHeight; }
         function agregarNota() { const input = document.getElementById('input-nota'); const texto = input.value.trim(); if(texto === '') return; const statusObj = asegurarEstructuraDoc(docKeyActivo); statusObj.notas.push({ autor: rolActual === 'admin' ? 'Administrador' : sucursalActual, texto: texto }); if (rolActual === 'admin') statusObj.vistosAdmin = statusObj.notas.length; else statusObj.vistosSucursal = statusObj.notas.length; input.value = ''; renderizarChat(); actualizarUI(); }
         function crearBotonChat(docKey, titulo, statusObj) { if (statusObj.estado === 'pendiente') return ''; let noLeidos = rolActual === 'admin' ? statusObj.notas.length - statusObj.vistosAdmin : statusObj.notas.length - statusObj.vistosSucursal; let indicador = noLeidos > 0 ? `<span class="absolute -top-1 -right-1 flex h-3 w-3"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-red-500 border border-white"></span></span>` : (statusObj.notas.length > 0 ? `<span class="absolute -top-1 -right-1 flex h-3 w-3"><span class="relative inline-flex rounded-full h-3 w-3 bg-gray-400 border border-white"></span></span>` : ''); return `<button onclick="abrirModalNotas('${docKey}', '${titulo}')" class="relative bg-gray-100 hover:bg-gray-200 text-gray-600 p-2 rounded-lg transition ml-2 shadow-sm" title="Comentarios">💬 ${indicador}</button>`; }
-        function simularDescarga(tipo) { alert(`Sistema LAP.IA: preparando descarga de ${tipo === 'subidos' ? "archivos subidos" : "archivos aprobados por IA"}.`); }
+        function simularDescarga(tipo) { mostrarToast(`Sistema LAP.IA: preparando descarga de ${tipo === 'subidos' ? "archivos subidos" : "archivos aprobados por IA"}.`); }
 
         function generarDirectorioUI() { const grid = document.getElementById('grid-directorio'); grid.innerHTML = ''; SUCURSALES.forEach(sucursal => { const card = document.createElement('button'); card.onclick = () => { sucursalAuditada = sucursal; mostrarVista('vista-admin-detalle'); }; card.className = "bg-gray-50 hover:bg-lapiLight border border-gray-200 p-4 rounded-lg text-left transition flex items-center shadow-sm"; card.innerHTML = `<div class="bg-gray-200 text-gray-500 rounded-full w-8 h-8 flex items-center justify-center font-bold mr-3 text-sm">${sucursal.charAt(0)}</div> <span class="font-bold text-gray-700">${sucursal}</span>`; grid.appendChild(card); }); }
         function actualizarDashboardAdmin() { const tbody = document.getElementById('tabla-admin-body'); tbody.innerHTML = ''; let granTotal = 0; let granReq = 0; let granSub = 0; let granAprob = 0; SUCURSALES.forEach(suc => { const stats = calcularEstadisticasSucursal(bdGlobal[fechaActualStr]?.[suc]); if (stats.estudios > 0) { granTotal += stats.estudios; granReq += stats.req; granSub += stats.subidos; granAprob += stats.aprobados; const tr = document.createElement('tr'); tr.className = 'border-b hover:bg-gray-50 transition'; tr.innerHTML = `<td class="p-4 font-bold text-gray-700">${suc}</td><td class="p-4 text-center font-medium">${stats.estudios}</td><td class="p-4"><div class="flex items-center space-x-2"><div class="bg-gray-200 rounded-full h-2 w-full"><div class="bg-gray-600 h-2 rounded-full" style="width: ${stats.req > 0 ? Math.round((stats.subidos/stats.req)*100) : 0}%"></div></div><span class="text-xs font-bold w-8">${stats.req > 0 ? Math.round((stats.subidos/stats.req)*100) : 0}%</span></div></td><td class="p-4"><div class="flex items-center space-x-2"><div class="bg-orange-100 rounded-full h-2 w-full"><div class="bg-lapiOrange h-2 rounded-full" style="width: ${stats.req > 0 ? Math.round((stats.aprobados/stats.req)*100) : 0}%"></div></div><span class="text-xs font-bold text-lapiOrange w-8">${stats.req > 0 ? Math.round((stats.aprobados/stats.req)*100) : 0}%</span></div></td><td class="p-4 text-center"><button onclick="sucursalAuditada='${suc}'; mostrarVista('vista-admin-detalle')" class="text-blue-600 hover:text-blue-800 underline font-bold text-sm bg-blue-50 px-3 py-1 rounded">Auditar ➔</button></td>`; tbody.appendChild(tr); } }); if(granTotal === 0) tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-gray-500 italic">No hay registros hoy.</td></tr>'; document.getElementById('admin-totales').textContent = granTotal; document.getElementById('admin-carga').textContent = `${granReq>0?Math.round((granSub/granReq)*100):0}%`; document.getElementById('admin-ia').textContent = `${granReq>0?Math.round((granAprob/granReq)*100):0}%`; }
@@ -1509,7 +1543,7 @@
             const cbs = document.querySelectorAll('.estudio-cb:checked'); 
             
             if (!nombre || !nacimiento || (!orden && !folio) || cbs.length === 0) { 
-                alert('Faltan datos. Llena Nombre, Fecha, al menos un identificador (Orden o Folio) y selecciona estudios.'); 
+                mostrarToast('Faltan datos. Llena Nombre, Fecha, al menos un identificador (Orden o Folio) y selecciona estudios.'); 
                 return; 
             } 
             
@@ -1517,7 +1551,7 @@
                 (orden !== '' && p.numeroOrden === orden) || 
                 (folio !== '' && p.folioHC === folio)
             );
-            if (duplicado) { alert('⚠️ ERROR: Ya existe un paciente con este Orden o Folio hoy.'); return; }
+            if (duplicado) { mostrarToast('⚠️ ERROR: Ya existe un paciente con este Orden o Folio hoy.'); return; }
 
             const nuevoPaciente = {
                 id: Date.now().toString(), sucursal: sucursalActual, fechaOperativa: fechaActualStr,
@@ -1585,7 +1619,7 @@
                 input.click();
             } 
             else if (accion === 'analizar') {
-                if (!statusObj.pdfBase64) { alert('⚠️ PDF no encontrado en memoria. Por favor resube el archivo.'); return; }
+                if (!statusObj.pdfBase64) { mostrarToast('⚠️ PDF no encontrado en memoria. Por favor resube el archivo.'); return; }
                 
                 // SABER SI ESTE PACIENTE LLEVA HISTORIA CLÍNICA CONTRATADA
                 const requiereHC = paciente ? paciente.estudios.includes('Historia Clínica') : false;
@@ -1696,7 +1730,7 @@
         // ==========================================
         async function procesarLoteArchivosMinas(files) {
             if (!files || files.length === 0) return;
-            if (files.length > 5) { alert("Para evitar saturar el sistema, arrastra máximo 5 archivos a la vez."); return; }
+            if (files.length > 5) { mostrarToast("Para evitar saturar el sistema, arrastra máximo 5 archivos a la vez."); return; }
 
             const overlay = document.getElementById('overlay-carga-lote');
             const textoEstado = document.getElementById('texto-estado-lote');
@@ -1734,7 +1768,7 @@
 
                 } catch (e) { 
                     console.error(`❌ Error crítico en archivo ${i + 1}:`, e);
-                    alert(`Ocurrió un problema con el archivo: ${files[i].name}\n\nMotivo: ${e.message}\n\nPor favor, revisa la consola (F12) para más detalles.`);
+                    mostrarToast(`Ocurrió un problema con el archivo: ${files[i].name}\n\nMotivo: ${e.message}\n\nPor favor, revisa la consola (F12) para más detalles.`);
                 }
             }
             
@@ -1810,7 +1844,62 @@
         // ==========================================
         // 3. EDICIÓN Y EXTRACCIÓN MASIVA PARA RED (SUCURSALES)
         // ==========================================
-        
+        // ==============================================================================
+        // SISTEMA DE NOTIFICACIONES TOAST (Reemplazo de Alerts)
+        // ==============================================================================
+        function mostrarToast(mensaje, tipo = 'info') {
+            const container = document.getElementById('toast-container');
+            if(!container) return;
+            
+            const toast = document.createElement('div');
+            let bg = 'bg-gray-800'; let icon = 'ℹ️';
+            
+            if (tipo === 'exito') { bg = 'bg-green-600'; icon = '✅'; }
+            if (tipo === 'error') { bg = 'bg-red-500'; icon = '❌'; }
+            if (tipo === 'advertencia') { bg = 'bg-yellow-500'; icon = '⚠️'; }
+
+            toast.className = `${bg} text-white px-4 py-3 rounded-lg shadow-xl flex items-start space-x-3 text-sm font-bold transition-all duration-300 transform translate-x-full opacity-0 max-w-sm pointer-events-auto border border-white/20`;
+            toast.innerHTML = `<span class="text-lg leading-none mt-0.5">${icon}</span> <span class="flex-1">${mensaje}</span>`;
+            
+            container.appendChild(toast);
+            
+            // Animar entrada suave
+            setTimeout(() => { toast.classList.remove('translate-x-full', 'opacity-0'); }, 10);
+            
+            // Desaparecer automáticamente a los 4 segundos
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        // ==============================================================================
+        // PREVENCIÓN DE PÉRDIDA DE DATOS (Cierre de pestaña)
+        // ==============================================================================
+        window.addEventListener('beforeunload', function (e) {
+            let hayPendientes = false;
+            
+            // Revisamos en MINAS si hay algún documento en estado "subido"
+            if (bdMinas[fechaActualStr] && bdMinas[fechaActualStr].pacientes) {
+                bdMinas[fechaActualStr].pacientes.forEach(p => {
+                    Object.values(p.docsStatus).forEach(doc => { if (doc.estado === 'subido') hayPendientes = true; });
+                });
+            }
+            
+            // Revisamos en Sucursales si hay algún documento en estado "subido"
+            if (bdGlobal[fechaActualStr] && sucursalActual && bdGlobal[fechaActualStr][sucursalActual] && bdGlobal[fechaActualStr][sucursalActual].pacientes) {
+                bdGlobal[fechaActualStr][sucursalActual].pacientes.forEach(p => {
+                    Object.values(p.docsStatus).forEach(doc => { if (doc.estado === 'subido') hayPendientes = true; });
+                });
+            }
+
+            // Si detecta documentos sin analizar, lanza la advertencia nativa del navegador
+            if (hayPendientes) {
+                e.preventDefault();
+                e.returnValue = 'Tienes documentos en memoria que aún no han sido analizados por la IA. Si sales, tendrás que volver a arrastrarlos. ¿Deseas salir?';
+            }
+        });
+            
         function abrirModalEditarRed(id) {
             const p = bdGlobal[fechaActualStr][sucursalActual].pacientes.find(x => x.id === id);
             if(!p) return;
@@ -1858,7 +1947,7 @@
             
         async function procesarLoteArchivosRed(files) {
             if (!files || files.length === 0) return;
-            if (files.length > 5) { alert("Para evitar saturar el sistema, arrastra máximo 5 archivos a la vez."); return; }
+            if (files.length > 5) { mostrarToast("Para evitar saturar el sistema, arrastra máximo 5 archivos a la vez."); return; }
 
             const overlay = document.getElementById('overlay-carga-lote');
             const textoEstado = document.getElementById('texto-estado-lote');
@@ -1879,7 +1968,7 @@
                     asignarDocumentoAPacienteRed(resJSON, base64);
                 } catch (e) { 
                     console.error("-> ERROR EN EL PROCESO DE RED:", e);
-                    alert(`Error con el archivo ${files[i].name}:\n${e.message}`);
+                    mostrarToast(`Error con el archivo ${files[i].name}:\n${e.message}`);
                 }
             }
             if(overlay) overlay.classList.add('hidden');
@@ -1902,7 +1991,7 @@
             }
 
             if (!tipo || !nom || nom.trim() === '') {
-                alert("⚠️ La IA no pudo encontrar el Nombre del paciente o el Tipo de Documento. Se omitió.");
+                mostrarToast("⚠️ La IA no pudo encontrar el Nombre del paciente o el Tipo de Documento. Se omitió.");
                 return;
             }
 
