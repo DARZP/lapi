@@ -749,15 +749,18 @@
             const orden = inputOrden.value.trim();
             const folio = inputFolio.value.trim();
 
-            if (nombre === '' || nacimiento === '' || orden === '' || folio === '' || cbs.length === 0) { 
-                alert('Faltan datos. Asegúrate de ingresar Nombre, Fecha de Nacimiento, No. de Orden, Folio y estudios.'); 
+            if (nombre === '' || nacimiento === '' || (orden === '' && folio === '') || cbs.length === 0) { 
+                alert('Faltan datos. Asegúrate de ingresar Nombre, Fecha de Nacimiento, al menos un identificador (No. de Orden o Folio) y estudios.'); 
                 return; 
             }
 
             // ==========================================
-            // NUEVO: VALIDACIÓN DE DUPLICADOS
+            // VALIDACIÓN DE DUPLICADOS CORREGIDA
             // ==========================================
-            const duplicado = bdMinas[fechaActualStr].pacientes.some(p => p.numeroOrden === orden || p.folioHC === folio);
+            const duplicado = bdMinas[fechaActualStr].pacientes.some(p => 
+                (orden !== '' && p.numeroOrden === orden) || 
+                (folio !== '' && p.folioHC === folio)
+            );
             if (duplicado) {
                 alert('⚠️ ERROR: Ya existe un paciente registrado HOY con ese Número de Orden o Folio HC. Por favor verifica.');
                 return;
@@ -1505,9 +1508,15 @@
             const folio = document.getElementById('folioPaciente').value.trim();
             const cbs = document.querySelectorAll('.estudio-cb:checked'); 
             
-            if (!nombre || !nacimiento || !orden || !folio || cbs.length === 0) { alert('Faltan datos. Llena Nombre, Fecha, Orden y Folio.'); return; } 
+            if (!nombre || !nacimiento || (!orden && !folio) || cbs.length === 0) { 
+                alert('Faltan datos. Llena Nombre, Fecha, al menos un identificador (Orden o Folio) y selecciona estudios.'); 
+                return; 
+            } 
             
-            const duplicado = bdGlobal[fechaActualStr][sucursalActual].pacientes.some(p => p.numeroOrden === orden || p.folioHC === folio);
+            const duplicado = bdGlobal[fechaActualStr][sucursalActual].pacientes.some(p => 
+                (orden !== '' && p.numeroOrden === orden) || 
+                (folio !== '' && p.folioHC === folio)
+            );
             if (duplicado) { alert('⚠️ ERROR: Ya existe un paciente con este Orden o Folio hoy.'); return; }
 
             const nuevoPaciente = {
@@ -1736,20 +1745,24 @@
         }
 
         function asignarDocumentoAPacienteSeguro(datosExtraidos, base64) {
-            // Seguros anti-nulos por si la IA no logra leer bien una hoja borrosa
             const tipoDocumento = datosExtraidos.tipoDocumento || 'Documento Desconocido';
             const nombre = datosExtraidos.nombre || 'Paciente Sin Nombre';
             const fechaNacimiento = datosExtraidos.fechaNacimiento || '';
-            const orden = datosExtraidos.orden || '';
-            const folio = datosExtraidos.folio || '';
+            let orden = datosExtraidos.orden || '';
+            let folio = datosExtraidos.folio || '';
             
-            // Buscar si ya existe el paciente con filtros seguros
+            // FILTRO ESTRICTO DE IDENTIFICADORES (IA)
+            if (tipoDocumento.includes('Historia')) {
+                orden = ''; // Si es HC, bloqueamos y borramos la orden
+            } else {
+                folio = ''; // Si NO es HC, bloqueamos y borramos el folio
+            }
+
             let pacienteExistente = bdMinas[fechaActualStr].pacientes.find(p => {
                 const coincideOrden = orden && p.numeroOrden === orden;
                 const coincideFolio = folio && p.folioHC === folio;
                 const primerNombreExtraido = nombre !== 'Paciente Sin Nombre' ? nombre.toLowerCase().split(' ')[0] : null;
                 const coincideNombre = p.nombre && primerNombreExtraido && p.nombre.toLowerCase().includes(primerNombreExtraido);
-                
                 return coincideOrden || coincideFolio || coincideNombre;
             });
 
@@ -1775,16 +1788,9 @@
                 docsDelPaciente[tipoDocumento] = { estado: 'subido', pdfBase64: base64, checklist: [] };
                 
                 const nuevoPaciente = { 
-                    id: Date.now().toString() + Math.floor(Math.random()*100), 
-                    fechaOperativa: fechaActualStr, 
-                    nombre: nombre, 
-                    fechaNacimiento: fechaNacimiento, 
-                    numeroOrden: orden, 
-                    folioHC: folio,
-                    estudios: [tipoDocumento], 
-                    docsStatus: docsDelPaciente, 
-                    statusIntegral: 'pendiente', 
-                    datosExtraidosHC: null
+                    id: Date.now().toString() + Math.floor(Math.random()*100), fechaOperativa: fechaActualStr, 
+                    nombre: nombre, fechaNacimiento: fechaNacimiento, numeroOrden: orden, folioHC: folio,
+                    estudios: [tipoDocumento], docsStatus: docsDelPaciente, statusIntegral: 'pendiente', datosExtraidosHC: null
                 };
 
                 bdMinas[fechaActualStr].pacientes.push(nuevoPaciente);
@@ -1885,15 +1891,21 @@
             const tipo = datosExtraidos.tipoDocumento || datosExtraidos.TipoDocumento;
             const nom = datosExtraidos.nombre || datosExtraidos.Nombre;
             const nac = datosExtraidos.fechaNacimiento || datosExtraidos.FechaNacimiento || '';
-            const ord = datosExtraidos.orden || datosExtraidos.Orden || '';
-            const fol = datosExtraidos.folio || datosExtraidos.Folio || '';
+            let ord = datosExtraidos.orden || datosExtraidos.Orden || '';
+            let fol = datosExtraidos.folio || datosExtraidos.Folio || '';
+
+            // FILTRO ESTRICTO DE IDENTIFICADORES (IA)
+            if (tipo && tipo.includes('Historia')) {
+                ord = ''; // Si es HC, borramos la orden
+            } else {
+                fol = ''; // Si NO es HC, borramos el folio
+            }
 
             if (!tipo || !nom || nom.trim() === '') {
                 alert("⚠️ La IA no pudo encontrar el Nombre del paciente o el Tipo de Documento. Se omitió.");
                 return;
             }
 
-            // Traducir el tipo de estudio a su sufijo corto exacto
             const sufijoDoc = obtenerSufijoEstudio(tipo);
 
             // Buscar si ya existe el paciente en esta Sucursal
@@ -1906,7 +1918,6 @@
                     pacienteExistente.estudios.push(tipo);
                 }
                 
-                // Aplicamos el sufijo corto aquí para que lo detecte el Módulo Documental
                 const docKey = `doc-${pacienteExistente.id}-${sufijoDoc}`;
                 pacienteExistente.docsStatus[docKey] = { estado: 'subido', pdfBase64: base64, horaSubida: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }), notas: [], vistosAdmin: 0, vistosSucursal: 0, checklist: [] };
                 
@@ -1917,8 +1928,6 @@
                 if (db) db.collection("PacientesRed").doc(pacienteExistente.id).set(pacienteExistente);
             } else {
                 const nuevoId = Date.now().toString() + Math.floor(Math.random()*100);
-                
-                // Aplicamos el sufijo corto también al crear el paciente nuevo
                 const docKey = `doc-${nuevoId}-${sufijoDoc}`;
                 
                 let docsDelPaciente = {};
