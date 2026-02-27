@@ -391,6 +391,37 @@
         </div>
     </div>
     
+    <div id="modal-editar-paciente-red" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 fade-in">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md shadow-2xl border-t-4 border-lapiOrange">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">✏️ Editar Expediente (Sucursal)</h3>
+            <input type="hidden" id="edit-id-paciente-red">
+            <div class="space-y-3">
+                <div><label class="block text-xs font-bold text-gray-600">Nombre</label><input type="text" id="edit-nombre-red" class="w-full p-2 border rounded outline-none text-sm focus:ring-2 focus:ring-lapiOrange"></div>
+                <div><label class="block text-xs font-bold text-gray-600">Fecha Nacimiento</label><input type="date" id="edit-nacimiento-red" class="w-full p-2 border rounded outline-none text-sm focus:ring-2 focus:ring-lapiOrange"></div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="block text-xs font-bold text-gray-600">No. Orden</label><input type="text" id="edit-orden-red" class="w-full p-2 border rounded outline-none text-sm focus:ring-2 focus:ring-lapiOrange"></div>
+                    <div><label class="block text-xs font-bold text-gray-600">Folio HC</label><input type="text" id="edit-folio-red" class="w-full p-2 border rounded outline-none text-sm focus:ring-2 focus:ring-lapiOrange"></div>
+                </div>
+                <div class="pt-2">
+                    <label class="block text-xs font-bold text-gray-600 mb-2">Estudios del Expediente:</label>
+                    <div class="grid grid-cols-2 gap-2 bg-gray-50 p-3 rounded border">
+                        <label class="flex items-center space-x-2 text-xs"><input type="checkbox" value="Electrocardiograma" class="edit-cb-red text-lapiOrange h-3 w-3"><span>Electrocardiograma</span></label>
+                        <label class="flex items-center space-x-2 text-xs"><input type="checkbox" value="Historia Clínica" class="edit-cb-red text-lapiOrange h-3 w-3"><span>Historia Clínica</span></label>
+                        <label class="flex items-center space-x-2 text-xs"><input type="checkbox" value="Espirometría" class="edit-cb-red text-lapiOrange h-3 w-3"><span>Espirometría</span></label>
+                        <label class="flex items-center space-x-2 text-xs"><input type="checkbox" value="Audiometría" class="edit-cb-red text-lapiOrange h-3 w-3"><span>Audiometría</span></label>
+                        <label class="flex items-center space-x-2 text-xs"><input type="checkbox" value="Nórdico" class="edit-cb-red text-lapiOrange h-3 w-3"><span>Cuest. Nórdico</span></label>
+                        <label class="flex items-center space-x-2 text-xs"><input type="checkbox" value="EXCAVIS" class="edit-cb-red text-lapiOrange h-3 w-3"><span>EXCAVIS</span></label>
+                        <label class="flex items-center space-x-2 text-xs"><input type="checkbox" value="Timpanometría" class="edit-cb-red text-lapiOrange h-3 w-3"><span>Timpanometría</span></label>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end space-x-3">
+                <button onclick="document.getElementById('modal-editar-paciente-red').classList.add('hidden')" class="px-4 py-2 bg-gray-200 text-gray-700 font-bold rounded hover:bg-gray-300">Cancelar</button>
+                <button onclick="guardarEdicionPacienteRed()" class="px-4 py-2 bg-lapiOrange text-white font-bold rounded hover:bg-lapiDark">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+
     <div id="overlay-carga-lote" class="hidden fixed inset-0 bg-white bg-opacity-90 z-50 flex flex-col items-center justify-center p-4">
         <div class="animate-spin text-5xl mb-4">🧠</div>
         <h2 class="text-xl font-bold text-gray-800 text-center">Extrayendo Datos con IA...</h2>
@@ -1377,10 +1408,33 @@
          
         function eliminarPaciente(id) { bdGlobal[fechaActualStr][sucursalActual].pacientes = bdGlobal[fechaActualStr][sucursalActual].pacientes.filter(p => p.id !== id); actualizarUI(); }
         function actualizarListaPacientes() { 
-            const ul = document.getElementById('listaPacientes'); ul.innerHTML = ''; 
+            const ul = document.getElementById('listaPacientes'); 
+            ul.innerHTML = ''; 
             if (!sucursalActual || !bdGlobal[fechaActualStr] || !bdGlobal[fechaActualStr][sucursalActual]) return;
-            const pacs = bdGlobal[fechaActualStr][sucursalActual].pacientes; document.getElementById('contador-pacientes').textContent = pacs.length; pacs.forEach(p => { const li = document.createElement('li'); li.className = 'bg-gray-50 p-3 rounded flex justify-between items-center border border-gray-100'; li.innerHTML = `<div><strong class="text-gray-700">${p.nombre}</strong><br><span class="text-xs text-gray-500 font-medium">${p.estudios.join(', ')}</span></div><button onclick="eliminarPaciente(${p.id})" class="text-red-400 hover:text-red-600 font-bold text-xs p-2">Borrar</button>`; ul.appendChild(li); }); 
-        }
+            
+            const pacs = bdGlobal[fechaActualStr][sucursalActual].pacientes; 
+            document.getElementById('contador-pacientes').textContent = pacs.length; 
+            
+            pacs.forEach(p => { 
+                const li = document.createElement('li'); 
+                li.className = 'bg-gray-50 p-3 rounded flex justify-between items-center border border-gray-100 hover:bg-gray-100 transition'; 
+                
+                const btnEditar = `<button onclick="abrirModalEditarRed('${p.id}')" class="text-blue-500 hover:text-blue-700 text-xs font-bold border border-blue-200 bg-white px-2 py-1 rounded shadow-sm mr-2">✏️ Editar</button>`;
+                const btnEliminar = `<button onclick="eliminarPaciente('${p.id}')" class="text-red-500 hover:text-red-700 text-xs font-bold border border-red-200 bg-white px-2 py-1 rounded shadow-sm">✕ Eliminar</button>`;
+                
+                li.innerHTML = `
+                    <div>
+                        <strong class="text-gray-800 text-sm block">${p.nombre}</strong>
+                        <span class="text-xs text-gray-500 font-medium mt-1 block">${p.estudios.join(', ')}</span>
+                    </div>
+                    <div class="flex items-center">
+                        ${btnEditar}
+                        ${btnEliminar}
+                    </div>
+                `; 
+                ul.appendChild(li); 
+            }); 
+        }    
         function generarCajasDeCarga() { 
             const contenedor = document.getElementById('contenedorArchivos'); contenedor.innerHTML = ''; 
             if (!sucursalActual || !bdGlobal[fechaActualStr] || !bdGlobal[fechaActualStr][sucursalActual]) return;
@@ -1721,7 +1775,134 @@
                 reader.onerror = error => reject(error);
             });
         }
+        // ==========================================
+        // 3. EDICIÓN Y EXTRACCIÓN MASIVA PARA RED (SUCURSALES)
+        // ==========================================
         
+        function abrirModalEditarRed(id) {
+            const p = bdGlobal[fechaActualStr][sucursalActual].pacientes.find(x => x.id === id);
+            if(!p) return;
+            document.getElementById('edit-id-paciente-red').value = p.id;
+            document.getElementById('edit-nombre-red').value = p.nombre;
+            document.getElementById('edit-nacimiento-red').value = p.fechaNacimiento || '';
+            document.getElementById('edit-orden-red').value = p.numeroOrden || '';
+            document.getElementById('edit-folio-red').value = p.folioHC || '';
+            
+            document.querySelectorAll('.edit-cb-red').forEach(cb => {
+                cb.checked = p.estudios.includes(cb.value);
+            });
+            document.getElementById('modal-editar-paciente-red').classList.remove('hidden');
+        }
+
+        function guardarEdicionPacienteRed() {
+            const id = document.getElementById('edit-id-paciente-red').value;
+            const p = bdGlobal[fechaActualStr][sucursalActual].pacientes.find(x => x.id === id);
+            if(!p) return;
+
+            p.nombre = document.getElementById('edit-nombre-red').value.trim();
+            p.fechaNacimiento = document.getElementById('edit-nacimiento-red').value;
+            p.numeroOrden = document.getElementById('edit-orden-red').value.trim();
+            p.folioHC = document.getElementById('edit-folio-red').value.trim();
+
+            const cbs = document.querySelectorAll('.edit-cb-red:checked');
+            const nuevosEstudios = Array.from(cbs).map(cb => cb.value);
+            
+            p.estudios.forEach(est => {
+                if (!nuevosEstudios.includes(est)) delete p.docsStatus[`doc-${p.id}-${est.split(' ')[0]}`];
+            });
+
+            nuevosEstudios.forEach(est => {
+                const docKey = `doc-${p.id}-${est.split(' ')[0]}`;
+                if (!p.docsStatus[docKey]) p.docsStatus[docKey] = { estado: 'pendiente', notas: [], vistosAdmin: 0, vistosSucursal: 0, checklist: [] };
+            });
+            
+            p.estudios = nuevosEstudios;
+
+            document.getElementById('modal-editar-paciente-red').classList.add('hidden');
+            actualizarUI();
+
+            if (db) db.collection("PacientesRed").doc(p.id).set(p).catch(e => console.error(e));
+        }
+
+        async function procesarLoteArchivosRed(files) {
+            if (!files || files.length === 0) return;
+            if (files.length > 5) { alert("Para evitar saturar el sistema, arrastra máximo 5 archivos a la vez."); return; }
+
+            const overlay = document.getElementById('overlay-carga-lote');
+            const textoEstado = document.getElementById('texto-estado-lote');
+            if(overlay) overlay.classList.remove('hidden');
+
+            for (let i = 0; i < files.length; i++) {
+                if(textoEstado) textoEstado.textContent = `Extrayendo datos y enlazando archivo ${i + 1} de ${files.length}...`;
+                console.log(`\n--- PROCESANDO ARCHIVO RED: ${files[i].name} ---`);
+                
+                try {
+                    const base64 = await convertirArchivoABase64(files[i]);
+                    const req = await fetch('/.netlify/functions/analizarDocumento', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' }, 
+                        body: JSON.stringify({ pdfBase64: base64, tipoDocumento: 'Extraccion' })
+                    });
+                    if (!req.ok) throw new Error(`El servidor falló con código ${req.status}.`);
+                    const resJSON = JSON.parse(await req.text());
+                    asignarDocumentoAPacienteRed(resJSON, base64);
+                } catch (e) { 
+                    console.error("-> ERROR EN EL PROCESO DE RED:", e);
+                    alert(`Error con el archivo ${files[i].name}:\n${e.message}`);
+                }
+            }
+            if(overlay) overlay.classList.add('hidden');
+            document.getElementById('file-upload-lote-red').value = ""; 
+            actualizarUI();
+        }
+
+        function asignarDocumentoAPacienteRed(datosExtraidos, base64) {
+            const tipo = datosExtraidos.tipoDocumento || datosExtraidos.TipoDocumento;
+            const nom = datosExtraidos.nombre || datosExtraidos.Nombre;
+            const nac = datosExtraidos.fechaNacimiento || datosExtraidos.FechaNacimiento || '';
+            const ord = datosExtraidos.orden || datosExtraidos.Orden || '';
+            const fol = datosExtraidos.folio || datosExtraidos.Folio || '';
+
+            if (!tipo || !nom || nom.trim() === '') {
+                alert("⚠️ La IA no pudo encontrar el Nombre del paciente o el Tipo de Documento. Se omitió.");
+                return;
+            }
+
+            // Buscar si ya existe el paciente en esta Sucursal
+            let pacienteExistente = bdGlobal[fechaActualStr][sucursalActual].pacientes.find(p => 
+                (ord && p.numeroOrden === ord) || (fol && p.folioHC === fol) || (p.nombre && nom && p.nombre.toLowerCase().includes(nom.toLowerCase().split(' ')[0]))
+            );
+
+            if (pacienteExistente) {
+                if (!pacienteExistente.estudios.includes(tipo)) {
+                    pacienteExistente.estudios.push(tipo);
+                }
+                
+                // En la Red, los estudios se guardan con DocKey: "doc-[ID]-[TipoCorto]"
+                const docKey = `doc-${pacienteExistente.id}-${tipo.split(' ')[0]}`;
+                pacienteExistente.docsStatus[docKey] = { estado: 'subido', pdfBase64: base64, horaSubida: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }), notas: [], vistosAdmin: 0, vistosSucursal: 0, checklist: [] };
+                
+                if (!pacienteExistente.fechaNacimiento && nac) pacienteExistente.fechaNacimiento = nac;
+                if (!pacienteExistente.numeroOrden && ord) pacienteExistente.numeroOrden = ord;
+                if (!pacienteExistente.folioHC && fol) pacienteExistente.folioHC = fol;
+
+                if (db) db.collection("PacientesRed").doc(pacienteExistente.id).set(pacienteExistente);
+            } else {
+                const nuevoId = Date.now().toString() + Math.floor(Math.random()*100);
+                const docKey = `doc-${nuevoId}-${tipo.split(' ')[0]}`;
+                
+                let docsDelPaciente = {};
+                docsDelPaciente[docKey] = { estado: 'subido', pdfBase64: base64, horaSubida: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }), notas: [], vistosAdmin: 0, vistosSucursal: 0, checklist: [] };
+                
+                const nuevoPaciente = { 
+                    id: nuevoId, sucursal: sucursalActual, fechaOperativa: fechaActualStr, nombre: nom, 
+                    fechaNacimiento: nac, numeroOrden: ord, folioHC: fol,
+                    estudios: [tipo], docsStatus: docsDelPaciente, datosExtraidosHC: null
+                };
+
+                bdGlobal[fechaActualStr][sucursalActual].pacientes.push(nuevoPaciente);
+                if(db) db.collection("PacientesRed").doc(nuevoPaciente.id).set(nuevoPaciente);
+            }
+        }
     </script>
 </body>
 </html>
