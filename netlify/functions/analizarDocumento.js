@@ -70,7 +70,7 @@ exports.handler = async (event, context) => {
         - POR APARATOS:
           Grupo A: Congruencia O "Sin datos patológicos".
           Grupo B: 5 (CAP y MTL bilateral), 13 (No palpables), 17, 20, 21, 22 (Normal).
-          Grupo C: 4 (Ojos) cruce con Ametropía y Alteración Visión. 23 (Tatuajes) cruce con 30.
+          Grupo C: 4 (Ojos) cruce con Ametropía y Alteración Visión. REGLA DE LENTES: Si en la 46 o 47 existe la medición "Con lentes" (OI, OD, Bilateral), evalúa la ametropía (>=20/30) basándote EXCLUSIVAMENTE en esa medición. Si la toma "Con lentes" corrige la visión, NO es necesario hacer referencia a la patología en Ojos. 23 (Tatuajes) cruce con 30.
         
         ### FIRMA DEL PACIENTE
         - REQUIERE VERIFICACIÓN VISUAL DE LA FIRMA DEL PACIENTE, MISMA QUE DEBE ESTAR EN EL RECUADRO INFERIOR IZQUIERDO, YA QUE EL DERECHO CORRESPONDE A LA FIRMA DEL MÉDICO Y ESA NUNCA FALTARÁ.
@@ -208,7 +208,7 @@ exports.handler = async (event, context) => {
         - POR APARATOS: 
           Grupo A (1,2,3,6,7,8,9,10,11,12,14,15,16,18): Deben tener congruencia O decir "Sin datos patológicos". Ignorar signos de 14, 15, 16.
           Grupo B: 5 (CAP y MTL bilateral), 13 (No palpables), 17, 20, 21, 22 (Normal).
-          Grupo C: 4 (Ojos) cruce con Ametropía y Alteración de Visión. 23 (Tatuajes) cruce con 30 (Si no hay, decir "No presentes").
+          Grupo C: 4 (Ojos) cruce con Ametropía y Alteración de Visión. REGLA DE LENTES: Si en la 46 o 47 existe la medición "Con lentes" (OI, OD, Bilateral), evalúa la ametropía (>=20/30) basándote EXCLUSIVAMENTE en esa medición. Si la toma "Con lentes" corrige la visión, NO es necesario hacer referencia a la patología en Ojos. 23 (Tatuajes) cruce con 30 (Si no hay, decir "No presentes").
           Grupo D (19, 24-30, Actitud, Observaciones): NO REQUIEREN VERIFICACIÓN.
 
         ### FIRMA DEL PACIENTE
@@ -440,6 +440,7 @@ exports.handler = async (event, context) => {
         } else { 
             promptSeleccionado = PROMPT_HC_NORMAL; 
         }
+        
         const requestBody = { contents: [{ parts: [{ text: promptSeleccionado }, { inline_data: { mime_type: "application/pdf", data: pdfBase64 } }] }], generationConfig: { response_mime_type: "application/json" } };
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestBody) });
         if (!response.ok) throw new Error(`Google API Error: ${response.status}`);
@@ -448,5 +449,3 @@ exports.handler = async (event, context) => {
 
     } catch (error) { return { statusCode: 500, body: JSON.stringify({ error: error.message }) }; }
 };
-
-       
