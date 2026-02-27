@@ -1641,7 +1641,18 @@
             document.getElementById('modal-editar-paciente').classList.remove('hidden');
         }
 
-        function guardarEdicionPaciente() {
+        function obtenerSufijoEstudio(tipo) {
+            if (tipo === 'Historia Clínica') return 'Historia';
+            if (tipo === 'Espirometría') return 'Espiro';
+            if (tipo === 'Audiometría') return 'Audio';
+            if (tipo === 'Electrocardiograma') return 'Electro';
+            if (tipo === 'Nórdico' || tipo === 'Cuest. Nórdico') return 'Nordico';
+            if (tipo === 'EXCAVIS') return 'Excavis';
+            if (tipo === 'Timpanometría') return 'Timpano';
+            return tipo.split(' ')[0];
+        }
+
+        function guardarEdicionPacienteRed() {
             const id = document.getElementById('edit-id-paciente').value;
             const p = bdMinas[fechaActualStr].pacientes.find(x => x.id === id);
             if(!p) return;
@@ -1823,11 +1834,11 @@
             const nuevosEstudios = Array.from(cbs).map(cb => cb.value);
             
             p.estudios.forEach(est => {
-                if (!nuevosEstudios.includes(est)) delete p.docsStatus[`doc-${p.id}-${est.split(' ')[0]}`];
+                if (!nuevosEstudios.includes(est)) delete p.docsStatus[`doc-${p.id}-${obtenerSufijoEstudio(est)}`];
             });
 
             nuevosEstudios.forEach(est => {
-                const docKey = `doc-${p.id}-${est.split(' ')[0]}`;
+                const docKey = `doc-${p.id}-${obtenerSufijoEstudio(est)}`;
                 if (!p.docsStatus[docKey]) p.docsStatus[docKey] = { estado: 'pendiente', notas: [], vistosAdmin: 0, vistosSucursal: 0, checklist: [] };
             });
             
@@ -1838,7 +1849,7 @@
 
             if (db) db.collection("PacientesRed").doc(p.id).set(p).catch(e => console.error(e));
         }
-
+            
         async function procesarLoteArchivosRed(files) {
             if (!files || files.length === 0) return;
             if (files.length > 5) { alert("Para evitar saturar el sistema, arrastra máximo 5 archivos a la vez."); return; }
@@ -1882,6 +1893,9 @@
                 return;
             }
 
+            // Traducir el tipo de estudio a su sufijo corto exacto
+            const sufijoDoc = obtenerSufijoEstudio(tipo);
+
             // Buscar si ya existe el paciente en esta Sucursal
             let pacienteExistente = bdGlobal[fechaActualStr][sucursalActual].pacientes.find(p => 
                 (ord && p.numeroOrden === ord) || (fol && p.folioHC === fol) || (p.nombre && nom && p.nombre.toLowerCase().includes(nom.toLowerCase().split(' ')[0]))
@@ -1892,8 +1906,8 @@
                     pacienteExistente.estudios.push(tipo);
                 }
                 
-                // En la Red, los estudios se guardan con DocKey: "doc-[ID]-[TipoCorto]"
-                const docKey = `doc-${pacienteExistente.id}-${tipo.split(' ')[0]}`;
+                // Aplicamos el sufijo corto aquí para que lo detecte el Módulo Documental
+                const docKey = `doc-${pacienteExistente.id}-${sufijoDoc}`;
                 pacienteExistente.docsStatus[docKey] = { estado: 'subido', pdfBase64: base64, horaSubida: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }), notas: [], vistosAdmin: 0, vistosSucursal: 0, checklist: [] };
                 
                 if (!pacienteExistente.fechaNacimiento && nac) pacienteExistente.fechaNacimiento = nac;
@@ -1903,7 +1917,9 @@
                 if (db) db.collection("PacientesRed").doc(pacienteExistente.id).set(pacienteExistente);
             } else {
                 const nuevoId = Date.now().toString() + Math.floor(Math.random()*100);
-                const docKey = `doc-${nuevoId}-${tipo.split(' ')[0]}`;
+                
+                // Aplicamos el sufijo corto también al crear el paciente nuevo
+                const docKey = `doc-${nuevoId}-${sufijoDoc}`;
                 
                 let docsDelPaciente = {};
                 docsDelPaciente[docKey] = { estado: 'subido', pdfBase64: base64, horaSubida: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }), notas: [], vistosAdmin: 0, vistosSucursal: 0, checklist: [] };
