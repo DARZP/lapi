@@ -939,94 +939,7 @@
             });
         }
 
-        async function accionDocMinasIndividual(idPaciente, docName, accion) {
-            const paciente = bdMinas[fechaActualStr].pacientes.find(p => p.id === idPaciente.toString() || p.id === idPaciente);
-            if(!paciente) return;
-            
-            const statusObj = paciente.docsStatus[docName];
-            
-            if (accion === 'subir') {
-                const input = document.createElement('input');
-                input.type = 'file'; input.accept = 'application/pdf';
-                input.onchange = (e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                        const reader = new FileReader();
-                        reader.onload = function(evt) {
-                            statusObj.pdfBase64 = evt.target.result.split(',')[1];
-                            statusObj.estado = 'subido';
-                            statusObj.checklist = [];
-                            paciente.statusIntegral = 'pendiente'; 
-                            renderizarExpedientesMinas();
-
-                            if (db) {
-                                const docsParaGuardar = JSON.parse(JSON.stringify(paciente.docsStatus));
-                                Object.keys(docsParaGuardar).forEach(k => delete docsParaGuardar[k].pdfBase64);
-                                db.collection("PacientesMinas").doc(paciente.id.toString()).update({ docsStatus: docsParaGuardar, statusIntegral: paciente.statusIntegral }).catch(e => console.error(e));
-                            }
-                        };
-                        reader.readAsDataURL(file);
-                    }
-                };
-                input.click();
-
-            else if (accion === 'analizar') {
-                if (!statusObj.pdfBase64) {
-                    alert('Error: No se ha cargado el documento PDF correctamente. Intenta resubirlo.');
-                    return;
-                }
-                const requiereHC = paciente ? paciente.estudios.includes('Historia Clínica') : false;
-
-                if (requiereHC && (docName === 'Espirometría' || docName === 'Audiometría')) {
-                    const hcStatus = paciente.docsStatus['Historia Clínica'];
-                    if (!hcStatus || hcStatus.estado !== 'aprobado') {
-                        const proceder = confirm(`⚠️ ALERTA DE SISTEMA ⚠️\n\nEstás a punto de analizar la ${docName}, pero la Historia Clínica aún no ha sido Aprobada.\n\nLa IA requiere cruzar datos con la HC. Si continúas, las reglas de cruce saldrán rechazadas.\n\n¿Deseas analizar de todos modos?`);
-                        if (!proceder) return;
-                    }
-                }
-
-                statusObj.estado = 'analizando'; renderizarExpedientesMinas();
-
-                if (!statusObj.pdfUrl && statusObj.pdfBase64) {
-                    mostrarToast('Preparando Visor Seguro...', 'info');
-                    statusObj.pdfUrl = await guardarPDFEnStorage(statusObj.pdfBase64, paciente.id, docName);
-                }
-                
-                const tipoBackend = docName === 'Historia Clínica' ? 'Historia Clínica (MINAS)' : docName;
-                const datosParaIA = {
-                    nombre: paciente.nombre, nacimiento: paciente.fechaNacimiento, orden: paciente.numeroOrden, folio: paciente.folioHC, datosHC: paciente.datosExtraidosHC, requiereHC: requiereHC
-                };
-                    
-                fetch('/.netlify/functions/analizarDocumento', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pdfBase64: statusObj.pdfBase64, tipoDocumento: tipoBackend, datosPaciente: datosParaIA })
-                })
-                .then(response => response.text())
-                .then(responseText => {
-                    try {
-                        const errorObj = JSON.parse(responseText);
-                        if(errorObj.error) throw new Error(errorObj.error);
-                        
-                        const resultadoIA = JSON.parse(responseText);
-                        statusObj.checklist = resultadoIA.checklist;
-                        statusObj.estado = resultadoIA.aprobadoGeneral ? 'aprobado' : 'rechazado';
-                        
-                        if (tipoBackend === 'Historia Clínica (MINAS)' && resultadoIA.datosExtraidosHC) {
-                            paciente.datosExtraidosHC = resultadoIA.datosExtraidosHC;
-                        }
-                        renderizarExpedientesMinas();
-
-                        if (db) {
-                            const docsParaGuardar = JSON.parse(JSON.stringify(paciente.docsStatus));
-                            Object.keys(docsParaGuardar).forEach(k => delete docsParaGuardar[k].pdfBase64);
-                            const updateData = { docsStatus: docsParaGuardar };
-                            if (paciente.datosExtraidosHC) updateData.datosExtraidosHC = paciente.datosExtraidosHC;
-                            db.collection("PacientesMinas").doc(paciente.id.toString()).update(updateData).catch(e => console.error(e));
-                        }
-                    } catch(e) { statusObj.estado = 'rechazado'; statusObj.checklist = [{categoria: "Error Interno", pass: false, comentario: "Falló la lectura del documento. " + e.message}]; renderizarExpedientesMinas(); }
-                })
-                .catch(error => { statusObj.estado = 'rechazado'; statusObj.checklist = [{categoria: "Error de Red", pass: false, comentario: "Error de servidor: " + error.message}]; renderizarExpedientesMinas(); });
-            }
-        }
+        
 
         function abrirModalChecklistMinas(idPaciente, docName) {
             const paciente = bdMinas[fechaActualStr].pacientes.find(p => p.id === idPaciente.toString() || p.id === idPaciente);
@@ -1164,7 +1077,7 @@
             }
         }
 
-        function accionDocMinasIndividual(idPaciente, docName, accion) {
+        async function accionDocMinasIndividual(idPaciente, docName, accion) {
             const paciente = bdMinas[fechaActualStr].pacientes.find(p => p.id === idPaciente.toString() || p.id === idPaciente);
             if(!paciente) return;
             
@@ -1188,7 +1101,6 @@
 
                             // Actualizamos el estado "Subido" en la base de datos
                             if (db) {
-                                // OJO: No guardamos el pdfBase64 en Firebase para no saturar la base de datos, solo el estatus
                                 const docsParaGuardar = JSON.parse(JSON.stringify(paciente.docsStatus));
                                 Object.keys(docsParaGuardar).forEach(k => delete docsParaGuardar[k].pdfBase64);
                                 
@@ -1205,23 +1117,42 @@
 
             } else if (accion === 'analizar') {
                 if (!statusObj.pdfBase64) {
-                    mostrarToast('Error: No se ha cargado el documento PDF correctamente. Intenta resubirlo.');
+                    mostrarToast('Error: No se ha cargado el documento PDF correctamente. Intenta resubirlo.', 'error');
                     return;
+                }
+
+                // ==========================================
+                // REGLA: ESPERAR A LA HISTORIA CLÍNICA
+                // ==========================================
+                const requiereHC = paciente ? paciente.estudios.includes('Historia Clínica') : false;
+                if (requiereHC && (docName === 'Espirometría' || docName === 'Audiometría')) {
+                    const hcStatus = paciente.docsStatus['Historia Clínica'];
+                    if (!hcStatus || hcStatus.estado !== 'aprobado') {
+                        const proceder = confirm(`⚠️ ALERTA DE SISTEMA ⚠️\n\nEstás a punto de analizar la ${docName}, pero la Historia Clínica aún no ha sido Aprobada.\n\nLa IA requiere cruzar datos con la HC. Si continúas, las reglas de cruce saldrán rechazadas.\n\n¿Deseas analizar de todos modos?`);
+                        if (!proceder) return;
+                    }
                 }
 
                 statusObj.estado = 'analizando'; 
                 renderizarExpedientesMinas();
                 
+                // ==========================================
+                // NUEVO: ENVIAR AL VISOR MINAS
+                // ==========================================
+                if (!statusObj.pdfUrl && statusObj.pdfBase64) {
+                    mostrarToast('Preparando Visor Seguro...', 'info');
+                    statusObj.pdfUrl = await guardarPDFEnStorage(statusObj.pdfBase64, paciente.id, docName);
+                }
+
                 const tipoBackend = docName === 'Historia Clínica' ? 'Historia Clínica (MINAS)' : docName;
 
-                // ==========================================================
-                // NUEVO: PREPARAMOS LOS DATOS DEL PACIENTE PARA LA IA
-                // ==========================================================
                 const datosParaIA = {
                     nombre: paciente.nombre,
                     nacimiento: paciente.fechaNacimiento,
                     orden: paciente.numeroOrden,
-                    datosHC: paciente.datosExtraidosHC // Null si aún no se ha analizado la HC
+                    folio: paciente.folioHC,
+                    datosHC: paciente.datosExtraidosHC,
+                    requiereHC: requiereHC
                 };
 
                 fetch('/.netlify/functions/analizarDocumento', {
@@ -1230,7 +1161,7 @@
                     body: JSON.stringify({ 
                         pdfBase64: statusObj.pdfBase64,
                         tipoDocumento: tipoBackend,
-                        datosPaciente: datosParaIA // ENVIAMOS LOS DATOS AQUI
+                        datosPaciente: datosParaIA
                     })
                 })
                 .then(response => response.text())
@@ -1243,21 +1174,16 @@
                         statusObj.checklist = resultadoIA.checklist;
                         statusObj.estado = resultadoIA.aprobadoGeneral ? 'aprobado' : 'rechazado';
                         
-                        // ==========================================================
-                        // NUEVO: GUARDAR DATOS EXTRAÍDOS DE LA HC
-                        // ==========================================================
                         if (tipoBackend === 'Historia Clínica (MINAS)' && resultadoIA.datosExtraidosHC) {
                             paciente.datosExtraidosHC = resultadoIA.datosExtraidosHC;
                         }
 
                         renderizarExpedientesMinas();
 
-                        // ¡LA MAGIA! Guardar el dictamen y datos extraídos en la base de datos permanentemente
                         if (db) {
                             const docsParaGuardar = JSON.parse(JSON.stringify(paciente.docsStatus));
                             Object.keys(docsParaGuardar).forEach(k => delete docsParaGuardar[k].pdfBase64);
 
-                            // Preparamos el paquete de actualización para Firebase
                             const updateData = { docsStatus: docsParaGuardar };
                             if (paciente.datosExtraidosHC) {
                                 updateData.datosExtraidosHC = paciente.datosExtraidosHC;
