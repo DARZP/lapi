@@ -16,12 +16,20 @@
         
         @keyframes sweep { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
         .animate-sweep { animation: sweep 2s infinite linear; }
+
+        @keyframes fillBar { from { width: 0%; } }
+        .animate-fill-bar { animation: fillBar 1.2s ease-out forwards; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-storage-compat.js"></script>
 <body class="bg-gray-50 text-gray-800 font-sans h-screen flex overflow-hidden">
+
+<div id="indicador-carga" class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-5 py-2 rounded-full shadow-2xl z-[120] flex items-center space-x-3 text-sm font-bold fade-in border border-gray-700">
+ <div class="animate-spin h-4 w-4 border-2 border-lapiOrange border-t-transparent rounded-full"></div>
+  <span id="texto-indicador-carga">Sincronizando...</span>
+ </div>
 
     <div id="toast-container" class="fixed top-5 right-5 z-[100] flex flex-col gap-2 pointer-events-none"></div>
 
@@ -504,7 +512,7 @@
 
         async function cargarPacientesMinasDesdeFirebase() {
             if (!db) return;
-            
+            mostrarCarga('Descargando expedientes MINAS...');
             try {
                 // Buscamos los pacientes de la fecha seleccionada
                 const snapshot = await db.collection("PacientesMinas")
@@ -522,6 +530,7 @@
                 // Le decimos a la pantalla que se dibuje de nuevo
                 renderizarExpedientesMinas();
             } catch (error) {
+            finally { ocultarCarga(); }
                 console.error("Error al descargar desde Firebase:", error);
             }
         }
@@ -876,7 +885,12 @@
             }
 
             if(pacientes.length === 0) {
-                contenedor.innerHTML = '<p class="text-center text-gray-400 mt-10 italic">No se encontraron expedientes con este filtro.</p>';
+                contenedor.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-12 text-gray-400 fade-in">
+                        <span class="text-6xl mb-4 opacity-50 grayscale">📂</span>
+                        <p class="text-lg font-bold text-gray-500">Bandeja Limpia</p>
+                        <p class="text-sm mt-1">No hay expedientes que coincidan con la búsqueda actual.</p>
+                    </div>`;
                 return;
             }
             
@@ -1422,8 +1436,56 @@
         function simularDescarga(tipo) { mostrarToast(`Sistema LAP.IA: preparando descarga de ${tipo === 'subidos' ? "archivos subidos" : "archivos aprobados por IA"}.`); }
 
         function generarDirectorioUI() { const grid = document.getElementById('grid-directorio'); grid.innerHTML = ''; SUCURSALES.forEach(sucursal => { const card = document.createElement('button'); card.onclick = () => { sucursalAuditada = sucursal; mostrarVista('vista-admin-detalle'); }; card.className = "bg-gray-50 hover:bg-lapiLight border border-gray-200 p-4 rounded-lg text-left transition flex items-center shadow-sm"; card.innerHTML = `<div class="bg-gray-200 text-gray-500 rounded-full w-8 h-8 flex items-center justify-center font-bold mr-3 text-sm">${sucursal.charAt(0)}</div> <span class="font-bold text-gray-700">${sucursal}</span>`; grid.appendChild(card); }); }
-        function actualizarDashboardAdmin() { const tbody = document.getElementById('tabla-admin-body'); tbody.innerHTML = ''; let granTotal = 0; let granReq = 0; let granSub = 0; let granAprob = 0; SUCURSALES.forEach(suc => { const stats = calcularEstadisticasSucursal(bdGlobal[fechaActualStr]?.[suc]); if (stats.estudios > 0) { granTotal += stats.estudios; granReq += stats.req; granSub += stats.subidos; granAprob += stats.aprobados; const tr = document.createElement('tr'); tr.className = 'border-b hover:bg-gray-50 transition'; tr.innerHTML = `<td class="p-4 font-bold text-gray-700">${suc}</td><td class="p-4 text-center font-medium">${stats.estudios}</td><td class="p-4"><div class="flex items-center space-x-2"><div class="bg-gray-200 rounded-full h-2 w-full"><div class="bg-gray-600 h-2 rounded-full" style="width: ${stats.req > 0 ? Math.round((stats.subidos/stats.req)*100) : 0}%"></div></div><span class="text-xs font-bold w-8">${stats.req > 0 ? Math.round((stats.subidos/stats.req)*100) : 0}%</span></div></td><td class="p-4"><div class="flex items-center space-x-2"><div class="bg-orange-100 rounded-full h-2 w-full"><div class="bg-lapiOrange h-2 rounded-full" style="width: ${stats.req > 0 ? Math.round((stats.aprobados/stats.req)*100) : 0}%"></div></div><span class="text-xs font-bold text-lapiOrange w-8">${stats.req > 0 ? Math.round((stats.aprobados/stats.req)*100) : 0}%</span></div></td><td class="p-4 text-center"><button onclick="sucursalAuditada='${suc}'; mostrarVista('vista-admin-detalle')" class="text-blue-600 hover:text-blue-800 underline font-bold text-sm bg-blue-50 px-3 py-1 rounded">Auditar ➔</button></td>`; tbody.appendChild(tr); } }); if(granTotal === 0) tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-gray-500 italic">No hay registros hoy.</td></tr>'; document.getElementById('admin-totales').textContent = granTotal; document.getElementById('admin-carga').textContent = `${granReq>0?Math.round((granSub/granReq)*100):0}%`; document.getElementById('admin-ia').textContent = `${granReq>0?Math.round((granAprob/granReq)*100):0}%`; }
-         
+        function actualizarDashboardAdmin() { 
+            const tbody = document.getElementById('tabla-admin-body'); 
+            tbody.innerHTML = ''; 
+            let granTotal = 0; let granReq = 0; let granSub = 0; let granAprob = 0; 
+            
+            SUCURSALES.forEach(suc => { 
+                const stats = calcularEstadisticasSucursal(bdGlobal[fechaActualStr]?.[suc]); 
+                if (stats.estudios > 0) { 
+                    granTotal += stats.estudios; 
+                    granReq += stats.req; 
+                    granSub += stats.subidos; 
+                    granAprob += stats.aprobados; 
+                    
+                    const tr = document.createElement('tr'); 
+                    tr.className = 'border-b hover:bg-gray-50 transition'; 
+                    tr.innerHTML = `
+                        <td class="p-4 font-bold text-gray-700">${suc}</td>
+                        <td class="p-4 text-center font-medium">${stats.estudios}</td>
+                        <td class="p-4">
+                            <div class="flex items-center space-x-2">
+                                <div class="bg-gray-200 rounded-full h-2 w-full">
+                                    <div class="bg-gray-600 h-2 rounded-full animate-fill-bar" style="width: ${stats.req > 0 ? Math.round((stats.subidos/stats.req)*100) : 0}%"></div>
+                                </div>
+                                <span class="text-xs font-bold w-8">${stats.req > 0 ? Math.round((stats.subidos/stats.req)*100) : 0}%</span>
+                            </div>
+                        </td>
+                        <td class="p-4">
+                            <div class="flex items-center space-x-2">
+                                <div class="bg-orange-100 rounded-full h-2 w-full">
+                                    <div class="bg-lapiOrange h-2 rounded-full animate-fill-bar" style="width: ${stats.req > 0 ? Math.round((stats.aprobados/stats.req)*100) : 0}%"></div>
+                                </div>
+                                <span class="text-xs font-bold text-lapiOrange w-8">${stats.req > 0 ? Math.round((stats.aprobados/stats.req)*100) : 0}%</span>
+                            </div>
+                        </td>
+                        <td class="p-4 text-center">
+                            <button onclick="sucursalAuditada='${suc}'; mostrarVista('vista-admin-detalle')" class="text-blue-600 hover:text-blue-800 underline font-bold text-sm bg-blue-50 px-3 py-1 rounded">Auditar ➔</button>
+                        </td>
+                    `; 
+                    tbody.appendChild(tr); 
+                } 
+            }); 
+            
+            if(granTotal === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-gray-500 italic">No hay registros hoy.</td></tr>'; 
+            }
+            
+            document.getElementById('admin-totales').textContent = granTotal; 
+            document.getElementById('admin-carga').textContent = `${granReq>0 ? Math.round((granSub/granReq)*100) : 0}%`; 
+            document.getElementById('admin-ia').textContent = `${granReq>0 ? Math.round((granAprob/granReq)*100) : 0}%`; 
+        } 
         function eliminarPaciente(id) { bdGlobal[fechaActualStr][sucursalActual].pacientes = bdGlobal[fechaActualStr][sucursalActual].pacientes.filter(p => p.id !== id); actualizarUI(); }
         function actualizarListaPacientes() { 
             const ul = document.getElementById('listaPacientes'); 
@@ -1454,9 +1516,29 @@
             }); 
         }    
         function generarCajasDeCarga() { 
-            const contenedor = document.getElementById('contenedorArchivos'); contenedor.innerHTML = ''; 
+            const contenedor = document.getElementById('contenedorArchivos'); 
+            contenedor.innerHTML = ''; 
+            
             if (!sucursalActual || !bdGlobal[fechaActualStr] || !bdGlobal[fechaActualStr][sucursalActual]) return;
-            const stats = calcularEstadisticasSucursal(bdGlobal[fechaActualStr][sucursalActual]); if (stats.req === 0) { contenedor.innerHTML = '<div class="text-center text-gray-400 mt-10 italic border-2 border-dashed p-8 rounded">Registra pacientes primero.</div>'; return; } const documentosOrdenados = ordenarDocumentos(stats.docKeysRequeridos, document.getElementById('filtro-sucursal').value); documentosOrdenados.forEach(item => { renderizarCajaDocumento(item, contenedor, true); }); 
+            
+            const stats = calcularEstadisticasSucursal(bdGlobal[fechaActualStr][sucursalActual]); 
+            
+            // ESTADO VACÍO: Cuando el recepcionista aún no registra pacientes en la pestaña anterior
+            if (stats.req === 0) { 
+                contenedor.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-12 text-gray-400 fade-in border-2 border-dashed border-gray-200 rounded-lg mt-4">
+                        <span class="text-6xl mb-4 opacity-50 grayscale">📝</span>
+                        <p class="text-lg font-bold text-gray-500">Todo en orden</p>
+                        <p class="text-sm mt-1">Ve a la pestaña "Registro Diario" para dar de alta pacientes primero.</p>
+                    </div>`; 
+                return; 
+            } 
+            
+            const documentosOrdenados = ordenarDocumentos(stats.docKeysRequeridos, document.getElementById('filtro-sucursal').value); 
+            
+            documentosOrdenados.forEach(item => { 
+                renderizarCajaDocumento(item, contenedor, true); 
+            }); 
         }
 
         function renderizarCajaDocumento(item, contenedor, interactivo) {
@@ -1483,6 +1565,7 @@
         // --- 1. CARGAR DATOS DE SUCURSALES DESDE FIREBASE ---
         async function cargarPacientesRedDesdeFirebase() {
             if (!db) return;
+            mostrarCarga('Descargando expedientes MINAS...'); // <--- AQUI ACTIVA
             try {
                 const snapshot = await db.collection("PacientesRed").where("fechaOperativa", "==", fechaActualStr).get();
                 // Limpiamos memoria del día
@@ -1498,6 +1581,7 @@
                 });
                 actualizarUI();
             } catch (error) { console.error("Error BD Red:", error); }
+        finally { ocultarCarga();
         }
 
         // --- 3. NUEVO REGISTRO DE PACIENTE ESTÁNDAR ---
@@ -1537,9 +1621,21 @@
         function generarVistaDetalleAdmin() { 
             document.getElementById('detalle-titulo').innerHTML = `<span class="text-lapiOrange">Auditoría:</span> ${sucursalAuditada}`; 
             actualizarEstadisticasLocales(sucursalAuditada, 'audit'); 
-            const contenedor = document.getElementById('contenedorDetalleAdmin'); contenedor.innerHTML = ''; 
+            const contenedor = document.getElementById('contenedorDetalleAdmin'); 
+            contenedor.innerHTML = ''; 
+            
             const stats = calcularEstadisticasSucursal(bdGlobal[fechaActualStr]?.[sucursalAuditada]); 
-            if (stats.req === 0) { contenedor.innerHTML = `<div class="text-center text-gray-400 p-10 border-2 border-dashed rounded">Sin registros.</div>`; return; } 
+            
+            // ESTADO VACÍO 1: Cuando la sucursal no ha registrado a nadie hoy
+            if (stats.req === 0) { 
+                contenedor.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-12 text-gray-400 fade-in border-2 border-dashed border-gray-200 rounded-lg mt-4">
+                        <span class="text-6xl mb-4 opacity-50 grayscale">📭</span>
+                        <p class="text-lg font-bold text-gray-500">Sin registros de red</p>
+                        <p class="text-sm mt-1">Esta sucursal aún no ha registrado estudios el día de hoy.</p>
+                    </div>`; 
+                return; 
+            } 
             
             let documentosOrdenados = ordenarDocumentos(stats.docKeysRequeridos, document.getElementById('filtro-admin').value); 
             
@@ -1547,14 +1643,29 @@
             const termino = (document.getElementById('buscadorRed')?.value || '').toLowerCase();
             if (termino !== '') {
                 const pacientes = bdGlobal[fechaActualStr]?.[sucursalAuditada]?.pacientes || [];
-                // Encontramos IDs de pacientes que coinciden con la búsqueda
-                const idsCoincidentes = pacientes.filter(p => p.nombre.toLowerCase().includes(termino) || p.numeroOrden.toLowerCase().includes(termino) || p.folioHC.toLowerCase().includes(termino)).map(p => p.id);
-                // Filtramos los documentos para que solo salgan los de esos pacientes (y ocultamos los acumulados si se busca alguien específico)
+                const idsCoincidentes = pacientes.filter(p => 
+                    p.nombre.toLowerCase().includes(termino) || 
+                    p.numeroOrden.toLowerCase().includes(termino) || 
+                    p.folioHC.toLowerCase().includes(termino)
+                ).map(p => p.id);
+                
                 documentosOrdenados = documentosOrdenados.filter(doc => idsCoincidentes.some(id => doc.key.includes(`-${id}-`)));
             }
 
-            if(documentosOrdenados.length === 0) { contenedor.innerHTML = '<p class="text-center text-gray-400 mt-10 italic">No se encontraron estudios con ese criterio.</p>'; return; }
-            documentosOrdenados.forEach(item => { renderizarCajaDocumento(item, contenedor, false); }); 
+            // ESTADO VACÍO 2: Cuando la búsqueda no encuentra nada
+            if (documentosOrdenados.length === 0) { 
+                contenedor.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-12 text-gray-400 fade-in">
+                        <span class="text-6xl mb-4 opacity-50 grayscale">🔍</span>
+                        <p class="text-lg font-bold text-gray-500">Búsqueda sin resultados</p>
+                        <p class="text-sm mt-1">No se encontraron expedientes con ese nombre o folio.</p>
+                    </div>`; 
+                return; 
+            }
+            
+            documentosOrdenados.forEach(item => { 
+                renderizarCajaDocumento(item, contenedor, false); 
+            }); 
         }
 
         // --- 5. LLAMADA REAL A LA IA PARA SUCURSALES ---
@@ -1873,6 +1984,15 @@
                 e.returnValue = 'Tienes documentos en memoria que aún no han sido analizados por la IA. Si sales, tendrás que volver a arrastrarlos. ¿Deseas salir?';
             }
         });
+
+
+        function mostrarCarga(mensaje = 'Sincronizando...') {
+            document.getElementById('texto-indicador-carga').textContent = mensaje;
+            document.getElementById('indicador-carga').classList.remove('hidden');
+        }
+        function ocultarCarga() {
+            document.getElementById('indicador-carga').classList.add('hidden');
+        }
             
         function abrirModalEditarRed(id) {
             const p = bdGlobal[fechaActualStr][sucursalActual].pacientes.find(x => x.id === id);
