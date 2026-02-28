@@ -530,8 +530,9 @@
                 // Le decimos a la pantalla que se dibuje de nuevo
                 renderizarExpedientesMinas();
             } catch (error) {
-            finally { ocultarCarga(); }
                 console.error("Error al descargar desde Firebase:", error);
+            } finally { 
+                ocultarCarga(); 
             }
         }
         
@@ -1563,9 +1564,10 @@
 
         
         // --- 1. CARGAR DATOS DE SUCURSALES DESDE FIREBASE ---
+        // --- 1. CARGAR DATOS DE SUCURSALES DESDE FIREBASE ---
         async function cargarPacientesRedDesdeFirebase() {
             if (!db) return;
-            mostrarCarga('Descargando expedientes MINAS...'); // <--- AQUI ACTIVA
+            mostrarCarga('Actualizando Red...'); 
             try {
                 const snapshot = await db.collection("PacientesRed").where("fechaOperativa", "==", fechaActualStr).get();
                 // Limpiamos memoria del día
@@ -1580,8 +1582,11 @@
                     }
                 });
                 actualizarUI();
-            } catch (error) { console.error("Error BD Red:", error); }
-        finally { ocultarCarga();
+            } catch (error) { 
+                console.error("Error BD Red:", error); 
+            } finally { 
+                ocultarCarga(); 
+            }
         }
 
         // --- 3. NUEVO REGISTRO DE PACIENTE ESTÁNDAR ---
