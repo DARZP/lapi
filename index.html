@@ -1114,7 +1114,6 @@
                             paciente.statusIntegral = 'pendiente'; 
                             renderizarExpedientesMinas();
 
-                            // Actualizamos el estado "Subido" en la base de datos
                             if (db) {
                                 const docsParaGuardar = JSON.parse(JSON.stringify(paciente.docsStatus));
                                 Object.keys(docsParaGuardar).forEach(k => delete docsParaGuardar[k].pdfBase64);
@@ -1130,18 +1129,14 @@
                 };
                 input.click();
 
-            else if (accion === 'analizar') {
+            } else if (accion === 'analizar') {
                 if (!statusObj.pdfBase64) {
                     mostrarToast('Error: No se ha cargado el documento PDF correctamente. Intenta resubirlo.', 'error');
                     return;
                 }
 
-                // ==========================================
-                // NUEVAS REGLAS: CRUCE FLEXIBLE Y RE-ANÁLISIS (MINAS)
-                // ==========================================
                 const requiereHC = paciente ? paciente.estudios.includes('Historia Clínica') : false;
                 
-                // 1. Si evalúan Espiro/Audio, solo exigimos que la HC ya tenga datos extraídos (no importa si fue rechazada)
                 if (requiereHC && (docName === 'Espirometría' || docName === 'Audiometría')) {
                     if (!paciente.datosExtraidosHC) {
                         const proceder = confirm(`⚠️ ALERTA ⚠️\n\nEstás a punto de analizar la ${docName}, pero la Historia Clínica aún no ha sido analizada por la IA.\n\nSe requieren los datos de la HC para el cruce. Si continúas ahora, las reglas de cruce fallarán por falta de datos.\n\n¿Deseas analizar de todos modos?`);
@@ -1149,7 +1144,6 @@
                     }
                 }
 
-                // 2. Si re-evalúan la HC, avisamos si ya hay dependencias analizadas
                 if (docName === 'Historia Clínica') {
                     const audio = paciente.docsStatus['Audiometría'];
                     const espiro = paciente.docsStatus['Espirometría'];
@@ -1165,10 +1159,6 @@
                 statusObj.estado = 'analizando'; 
                 renderizarExpedientesMinas();
                 
-                
-                // ==========================================
-                // NUEVO: ENVIAR AL VISOR MINAS
-                // ==========================================
                 if (!statusObj.pdfUrl && statusObj.pdfBase64) {
                     mostrarToast('Preparando Visor Seguro...', 'info');
                     statusObj.pdfUrl = await guardarPDFEnStorage(statusObj.pdfBase64, paciente.id, docName);
@@ -1220,18 +1210,18 @@
                             }
 
                             db.collection("PacientesMinas").doc(paciente.id.toString()).update(updateData)
-                              .catch(e => console.error("Error al guardar Checklist en Firebase:", e));
+                              .catch(e => console.error("Error al guardar en Firebase:", e));
                         }
 
                     } catch(e) {
-                        console.error("Error en la IA:", e);
+                        console.error("Error en IA:", e);
                         statusObj.estado = 'rechazado';
                         statusObj.checklist = [{categoria: "Error Interno", pass: false, comentario: "Falló la lectura del documento. " + e.message}];
                         renderizarExpedientesMinas();
                     }
                 })
                 .catch(error => {
-                    console.error("Error de conexión:", error);
+                    console.error("Error de red:", error);
                     statusObj.estado = 'rechazado';
                     statusObj.checklist = [{categoria: "Error de Red", pass: false, comentario: "No se pudo contactar al servidor: " + error.message}];
                     renderizarExpedientesMinas();
@@ -1690,44 +1680,48 @@
 
         // --- 5. LLAMADA REAL A LA IA PARA SUCURSALES ---
         async function accionDocumento(docKey, accion, tipoEstudio) {
-            const statusObj = asegurarEstructuraDoc(docKey);
-            const idPaciente = docKey.split('-')[1]; 
-            const paciente = idPaciente && bdGlobal[fechaActualStr][obtenerTargetSucursal()].pacientes ? bdGlobal[fechaActualStr][obtenerTargetSucursal()].pacientes.find(p => p.id === idPaciente) : null;
+            const pId = docKey.split('-')[1];
+            const paciente = bdGlobal[fechaActualStr][sucursalActual].pacientes.find(x => x.id === pId);
+            if(!paciente) return;
 
-            if (accion === 'subir') { 
+            const statusObj = paciente.docsStatus[docKey];
+
+            if (accion === 'subir') {
                 const input = document.createElement('input');
-                input.type = 'file'; input.accept = 'application/pdf';
+                input.type = 'file';
+                input.accept = 'application/pdf';
+                
                 input.onchange = (e) => {
                     const file = e.target.files[0];
                     if (file) {
                         const reader = new FileReader();
                         reader.onload = function(evt) {
                             statusObj.pdfBase64 = evt.target.result.split(',')[1];
-                            statusObj.estado = 'subido'; statusObj.horaSubida = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }); 
-                            statusObj.notas = []; statusObj.checklist = []; actualizarUI();
-                            
-                            if (db && paciente) {
-                                db.collection("PacientesRed").doc(paciente.id).update({ [`docsStatus.${docKey}`]: { estado: statusObj.estado, horaSubida: statusObj.horaSubida, checklist: [] } }).catch(e=>console.log(e));
+                            statusObj.estado = 'subido';
+                            statusObj.horaSubida = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+                            statusObj.checklist = [];
+                            actualizarUI();
+
+                            if (db) {
+                                const docsParaGuardar = JSON.parse(JSON.stringify(paciente.docsStatus));
+                                Object.keys(docsParaGuardar).forEach(k => delete docsParaGuardar[k].pdfBase64);
+                                db.collection("PacientesRed").doc(paciente.id).update({ docsStatus: docsParaGuardar });
                             }
                         };
                         reader.readAsDataURL(file);
                     }
                 };
                 input.click();
-            } 
-            else if (accion === 'analizar') {
+
+            } else if (accion === 'analizar') {
                 if (!statusObj.pdfBase64) {
                     mostrarToast('⚠️ PDF no encontrado en memoria. Por favor resube el archivo.', 'error'); 
                     return; 
                 }
 
-                // ==========================================
-                // NUEVAS REGLAS: CRUCE FLEXIBLE Y RE-ANÁLISIS (SUCURSALES)
-                // ==========================================
                 const docKeyHC = `doc-${paciente.id}-Historia`;
                 const requiereHC = paciente.docsStatus[docKeyHC] !== undefined;
 
-                // 1. Si evalúan Espiro/Audio, solo exigimos datos extraídos
                 if (requiereHC && (tipoEstudio === 'Espirometría' || tipoEstudio === 'Audiometría')) {
                     if (!paciente.datosExtraidosHC) {
                         const proceder = confirm(`⚠️ ALERTA ⚠️\n\nEstás a punto de analizar la ${tipoEstudio}, pero la Historia Clínica aún no ha sido analizada por la IA.\n\nSe requieren los datos de la HC para el cruce. Si continúas ahora, las reglas de cruce fallarán por falta de datos.\n\n¿Deseas analizar de todos modos?`);
@@ -1735,7 +1729,6 @@
                     }
                 }
 
-                // 2. Si re-evalúan la HC, avisamos si hay dependencias
                 if (tipoEstudio === 'Historia Clínica') {
                     const docKeyAudio = `doc-${paciente.id}-Audio`;
                     const docKeyEspiro = `doc-${paciente.id}-Espiro`;
@@ -1753,42 +1746,70 @@
                 statusObj.estado = 'analizando'; 
                 actualizarUI();
 
-                // ==========================================
-                // NUEVO: ENVIAR AL VISOR MIENTRAS LA IA PIENSA
-                // ==========================================
                 if (!statusObj.pdfUrl && statusObj.pdfBase64) {
                     mostrarToast('Preparando Visor Seguro...', 'info');
-                    statusObj.pdfUrl = await guardarPDFEnStorage(statusObj.pdfBase64, paciente ? paciente.id : 'temp', tipoEstudio);
+                    statusObj.pdfUrl = await guardarPDFEnStorage(statusObj.pdfBase64, paciente.id, tipoEstudio);
                 }
 
-                const datosParaIA = paciente ? {
-                    nombre: paciente.nombre, nacimiento: paciente.fechaNacimiento, orden: paciente.numeroOrden, folio: paciente.folioHC, datosHC: paciente.datosExtraidosHC,
-                    requiereHC: requiereHC // <-- Le avisamos a la IA si debe ser estricta o no
-                } : {};
+                const datosParaIA = {
+                    nombre: paciente.nombre,
+                    nacimiento: paciente.fechaNacimiento,
+                    orden: paciente.numeroOrden,
+                    folio: paciente.folioHC,
+                    datosHC: paciente.datosExtraidosHC,
+                    requiereHC: requiereHC
+                };
 
                 fetch('/.netlify/functions/analizarDocumento', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify({ pdfBase64: statusObj.pdfBase64, tipoDocumento: tipoEstudio, datosPaciente: datosParaIA })
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        pdfBase64: statusObj.pdfBase64, 
+                        tipoDocumento: tipoEstudio,
+                        datosPaciente: datosParaIA
+                    })
                 })
-                .then(res => res.text())
-                .then(txt => {
+                .then(response => response.text())
+                .then(responseText => {
                     try {
-                        const result = JSON.parse(txt);
-                        statusObj.checklist = result.checklist;
-                        statusObj.estado = result.aprobadoGeneral ? 'aprobado' : 'rechazado';
-                        if (!result.aprobadoGeneral) statusObj.notas.push({ autor: 'LAP.IA', texto: `Falla crítica: ${result.motivoPrincipal || 'Revisar checklist'}` });
+                        const errorObj = JSON.parse(responseText);
+                        if(errorObj.error) throw new Error(errorObj.error);
+
+                        const resultadoIA = JSON.parse(responseText);
+                        statusObj.checklist = resultadoIA.checklist;
+                        statusObj.estado = resultadoIA.aprobadoGeneral ? 'aprobado' : 'rechazado';
                         
-                        if (tipoEstudio === 'Historia Clínica' && result.datosExtraidosHC && paciente) { paciente.datosExtraidosHC = result.datosExtraidosHC; }
+                        if (tipoEstudio === 'Historia Clínica' && resultadoIA.datosExtraidosHC) {
+                            paciente.datosExtraidosHC = resultadoIA.datosExtraidosHC;
+                        }
+
                         actualizarUI();
 
-                        if (db && paciente) {
-                            const updateData = { [`docsStatus.${docKey}`]: { estado: statusObj.estado, horaSubida: statusObj.horaSubida, checklist: statusObj.checklist, notas: statusObj.notas } };
-                            if (paciente.datosExtraidosHC) updateData.datosExtraidosHC = paciente.datosExtraidosHC;
+                        if (db) {
+                            const docsParaGuardar = JSON.parse(JSON.stringify(paciente.docsStatus));
+                            Object.keys(docsParaGuardar).forEach(k => delete docsParaGuardar[k].pdfBase64);
+
+                            const updateData = { docsStatus: docsParaGuardar };
+                            if (paciente.datosExtraidosHC) {
+                                updateData.datosExtraidosHC = paciente.datosExtraidosHC;
+                            }
+
                             db.collection("PacientesRed").doc(paciente.id).update(updateData);
                         }
-                    } catch(e) { statusObj.estado = 'rechazado'; statusObj.checklist = [{categoria: "Error Interno", pass: false, comentario: "Falló la lectura."}]; actualizarUI(); }
+
+                    } catch(e) {
+                        console.error("Error en IA:", e);
+                        statusObj.estado = 'rechazado';
+                        statusObj.checklist = [{categoria: "Error Interno", pass: false, comentario: "Falló la lectura. " + e.message}];
+                        actualizarUI();
+                    }
                 })
-                .catch(err => { statusObj.estado = 'rechazado'; statusObj.checklist = [{categoria: "Error de Red", pass: false, comentario: err.message}]; actualizarUI(); });
+                .catch(error => {
+                    console.error("Error de conexión:", error);
+                    statusObj.estado = 'rechazado';
+                    statusObj.checklist = [{categoria: "Error de Red", pass: false, comentario: "No se pudo conectar al servidor: " + error.message}];
+                    actualizarUI();
+                });
             }
         }
 
