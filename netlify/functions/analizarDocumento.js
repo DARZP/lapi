@@ -313,7 +313,7 @@ exports.handler = async (event, context) => {
         3. "Antecedentes Laborales (Ruido)": 
            - Si REQUIERE Historia Clínica (SÍ): Si el PDF marca "SI" a exposición a ruido, las exposiciones DEBERÁN ser congruentes con la exposición de RUIDO de la HC. Si marca "NO", no requiere verificación. Si los datos HC dicen "NO DISPONIBLES AÚN", pon pass: false y comentario "⚠️ PENDIENTE: Cruzar con Historia Clínica".
            - Si NO requiere Historia Clínica (NO): Pon pass: true y comentario "Validado - No requiere cruce con HC".
-        4. "Tablas de Estudio, Diagnóstico y Recomendación": Verifica que el resultado del estudio (tabla) corresponda con "DIAGNÓSTICO". Si la audiometría es normal, en "RECOMENDACIÓN" debe decir exactamente: "Realizar estudio de forma anual e ingresar a programa de conservación auditiva".
+        4. "Tablas de Estudio, Diagnóstico y Recomendación": Verifica que el resultado del estudio (tabla) corresponda con "DIAGNÓSTICO" (Para considerar una Audiometría normal todos los registros deben ser menores a 30 dB) Si la audiometría es normal, en "RECOMENDACIÓN" debe decir exactamente: "Realizar estudio de forma anual e ingresar a programa de conservación auditiva". En caso de un registro en 30dB o más el cuadro de "DIAGNÓSTICO" estará vacio y en RECOMENDACIÓN  debe decir exactamente: "Realizar audiometría aérea y ósea antes de 30 días e ingresar a programa de protección auditiva"
 
         DEVUELVE ÚNICAMENTE un JSON estricto con esta estructura (sin markdown):
         {
