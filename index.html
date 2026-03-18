@@ -1816,8 +1816,34 @@
         }
 
         // ==========================================
-        // EXTRACCIÓN MASIVA BLINDADA (DRAG & DROP)
+        // HERRAMIENTA DE LIMPIEZA PARA FIREBASE (Blindaje)
         // ==========================================
+        function prepararParaFirebase(paciente) {
+            const clon = {
+                id: String(paciente.id),
+                fechaOperativa: paciente.fechaOperativa || fechaActualStr,
+                nombre: paciente.nombre || 'Sin Nombre',
+                fechaNacimiento: paciente.fechaNacimiento || '',
+                numeroOrden: paciente.numeroOrden || '',
+                folioHC: paciente.folioHC || '',
+                estudios: Array.isArray(paciente.estudios) ? paciente.estudios : [],
+                datosExtraidosHC: paciente.datosExtraidosHC || null,
+                docsStatus: {}
+            };
+            
+            if (paciente.sucursal) clon.sucursal = paciente.sucursal;
+            if (paciente.statusIntegral) clon.statusIntegral = paciente.statusIntegral;
+            
+            // Reconstruimos los documentos asegurándonos de que Firebase no reciba el PDF pesado
+            if (paciente.docsStatus) {
+                Object.keys(paciente.docsStatus).forEach(k => {
+                    clon.docsStatus[k] = { ...paciente.docsStatus[k] };
+                    delete clon.docsStatus[k].pdfBase64; 
+                });
+            }
+            return clon;
+        }
+            
         async function procesarLoteArchivosMinas(files) {
             if (!files || files.length === 0) return;
             if (files.length > 5) { mostrarToast("Para evitar saturar el sistema, arrastra máximo 5 archivos a la vez."); return; }
@@ -1869,30 +1895,23 @@
         }
 
         function asignarDocumentoAPacienteSeguro(datosExtraidos, base64) {
-            const tipoDocumento = datosExtraidos.tipoDocumento || 'Documento Desconocido';
-            const nombre = datosExtraidos.nombre || 'Paciente Sin Nombre';
-            const fechaNacimiento = datosExtraidos.fechaNacimiento || '';
-            let orden = datosExtraidos.orden || '';
-            let folio = datosExtraidos.folio || '';
+            const tipoDocumento = String(datosExtraidos.tipoDocumento || 'Documento Desconocido');
+            const nombre = String(datosExtraidos.nombre || 'Paciente Sin Nombre');
+            const fechaNacimiento = String(datosExtraidos.fechaNacimiento || '');
+            let orden = String(datosExtraidos.orden || datosExtraidos.Orden || '');
+            let folio = String(datosExtraidos.folio || datosExtraidos.Folio || '');
             
-            // FILTRO ESTRICTO DE IDENTIFICADORES (IA)
-            if (tipoDocumento && typeof tipoDocumento === 'string' && tipoDocumento.includes('Historia')) {
-                orden = ''; // Si es HC, bloqueamos y borramos la orden
-            } else {
-                folio = ''; // Si NO es HC, bloqueamos y borramos el folio
-            }
+            if (tipoDocumento.includes('Historia')) { orden = ''; } 
+            else { folio = ''; }
 
             let pacienteExistente = null;
             if (bdMinas[fechaActualStr] && bdMinas[fechaActualStr].pacientes) {
                 pacienteExistente = bdMinas[fechaActualStr].pacientes.find(p => {
                     const coincideOrden = orden && p.numeroOrden === orden;
                     const coincideFolio = folio && p.folioHC === folio;
-                    
-                    // PROTECCIÓN: Si la BD tiene un nombre null, lo convierte a texto vacío para no chocar
-                    const nombreBD = p.nombre || ''; 
-                    const primerNombreExtraido = (nombre && nombre !== 'Paciente Sin Nombre') ? nombre.toLowerCase().split(' ')[0] : null;
+                    const nombreBD = String(p.nombre || ''); 
+                    const primerNombreExtraido = nombre !== 'Paciente Sin Nombre' ? nombre.toLowerCase().split(' ')[0] : null;
                     const coincideNombre = nombreBD && primerNombreExtraido && nombreBD.toLowerCase().includes(primerNombreExtraido);
-                    
                     return coincideOrden || coincideFolio || coincideNombre;
                 });
             }
@@ -1903,30 +1922,19 @@
 
                 if (!pacienteExistente.estudios.includes(tipoDocumento)) {
                     pacienteExistente.estudios.push(tipoDocumento);
+                }
+                
+                const obj = pacienteExistente.docsStatus[tipoDocumento] || {};
+                if (obj.estado === 'pendiente' || !obj.estado || confirm(`El paciente ya tiene ${tipoDocumento}. ¿Deseas reemplazarlo?`)) {
                     pacienteExistente.docsStatus[tipoDocumento] = { estado: 'subido', pdfBase64: base64, checklist: [] };
-                } else {
-                    const obj = pacienteExistente.docsStatus[tipoDocumento] || {};
-                    if (obj.estado === 'pendiente' || confirm(`El paciente ${pacienteExistente.nombre || 'Sin Nombre'} ya tiene asignado(a) un(a) ${tipoDocumento}. ¿Deseas reemplazar el archivo cargado?`)) {
-                        pacienteExistente.docsStatus[tipoDocumento] = { estado: 'subido', pdfBase64: base64, checklist: [] };
-                        pacienteExistente.statusIntegral = 'pendiente';
-                    }
+                    pacienteExistente.statusIntegral = 'pendiente';
                 }
                 
                 if (!pacienteExistente.fechaNacimiento && fechaNacimiento) pacienteExistente.fechaNacimiento = fechaNacimiento;
                 if (!pacienteExistente.numeroOrden && orden) pacienteExistente.numeroOrden = orden;
                 if (!pacienteExistente.folioHC && folio) pacienteExistente.folioHC = folio;
 
-                if (db) {
-                    try {
-                        const pacGuardar = JSON.parse(JSON.stringify(pacienteExistente));
-                        if (pacGuardar.docsStatus) {
-                            Object.keys(pacGuardar.docsStatus).forEach(k => {
-                                if (pacGuardar.docsStatus[k]) delete pacGuardar.docsStatus[k].pdfBase64;
-                            });
-                        }
-                        db.collection("PacientesMinas").doc(pacienteExistente.id).set(pacGuardar).catch(e => console.error("Error Firebase:", e));
-                    } catch(err) { console.error("Error clonando paciente:", err); }
-                }
+                if (db) db.collection("PacientesMinas").doc(pacienteExistente.id).set(prepararParaFirebase(pacienteExistente)).catch(e => console.error("Error FB:", e));
             } else {
                 let docsDelPaciente = {};
                 docsDelPaciente[tipoDocumento] = { estado: 'subido', pdfBase64: base64, checklist: [] };
@@ -1941,20 +1949,10 @@
                     bdMinas[fechaActualStr].pacientes.push(nuevoPaciente);
                 }
                 
-                if (db) {
-                    try {
-                        const pacGuardar = JSON.parse(JSON.stringify(nuevoPaciente));
-                        if (pacGuardar.docsStatus) {
-                            Object.keys(pacGuardar.docsStatus).forEach(k => {
-                                if (pacGuardar.docsStatus[k]) delete pacGuardar.docsStatus[k].pdfBase64;
-                            });
-                        }
-                        db.collection("PacientesMinas").doc(nuevoPaciente.id).set(pacGuardar).catch(e => console.error("Error Firebase:", e));
-                    } catch(err) { console.error("Error clonando nuevo paciente:", err); }
-                }
+                if (db) db.collection("PacientesMinas").doc(nuevoPaciente.id).set(prepararParaFirebase(nuevoPaciente)).catch(e => console.error("Error FB:", e));
             }
         }
-
+            
         // Helper
         function convertirArchivoABase64(file) {
             return new Promise((resolve, reject) => {
@@ -2109,37 +2107,30 @@
         }
 
         function asignarDocumentoAPacienteRed(datosExtraidos, base64) {
-            const tipo = datosExtraidos.tipoDocumento || datosExtraidos.TipoDocumento || 'Documento Desconocido';
-            const nom = datosExtraidos.nombre || datosExtraidos.Nombre || 'Paciente Sin Nombre';
-            const nac = datosExtraidos.fechaNacimiento || datosExtraidos.FechaNacimiento || '';
-            let ord = datosExtraidos.orden || datosExtraidos.Orden || '';
-            let fol = datosExtraidos.folio || datosExtraidos.Folio || '';
+            const tipo = String(datosExtraidos.tipoDocumento || datosExtraidos.TipoDocumento || 'Documento Desconocido');
+            const nom = String(datosExtraidos.nombre || datosExtraidos.Nombre || 'Paciente Sin Nombre');
+            const nac = String(datosExtraidos.fechaNacimiento || datosExtraidos.FechaNacimiento || '');
+            let ord = String(datosExtraidos.orden || datosExtraidos.Orden || '');
+            let fol = String(datosExtraidos.folio || datosExtraidos.Folio || '');
 
-            // FILTRO ESTRICTO DE IDENTIFICADORES (IA)
-            if (tipo && typeof tipo === 'string' && tipo.includes('Historia')) {
-                ord = ''; 
-            } else {
-                fol = ''; 
-            }
+            if (tipo.includes('Historia')) { ord = ''; } 
+            else { fol = ''; }
 
             if (!tipo || !nom || nom === 'Paciente Sin Nombre') {
-                mostrarToast("⚠️ La IA no pudo encontrar el Nombre del paciente o el Tipo de Documento. Se omitió.", 'advertencia');
+                mostrarToast("⚠️ La IA no pudo encontrar el Nombre. Se omitió.", 'advertencia');
                 return;
             }
 
             const sufijoDoc = obtenerSufijoEstudio(tipo);
-
             let pacienteExistente = null;
+
             if (bdGlobal[fechaActualStr] && bdGlobal[fechaActualStr][sucursalActual] && bdGlobal[fechaActualStr][sucursalActual].pacientes) {
                 pacienteExistente = bdGlobal[fechaActualStr][sucursalActual].pacientes.find(p => {
                     const coincideOrden = ord && p.numeroOrden === ord;
                     const coincideFolio = fol && p.folioHC === fol;
-                    
-                    // PROTECCIÓN CONTRA NOMBRES NULOS
-                    const nombreBD = p.nombre || '';
+                    const nombreBD = String(p.nombre || '');
                     const primerNombreExtraido = nom !== 'Paciente Sin Nombre' ? nom.toLowerCase().split(' ')[0] : null;
                     const coincideNombre = nombreBD && primerNombreExtraido && nombreBD.toLowerCase().includes(primerNombreExtraido);
-                    
                     return coincideOrden || coincideFolio || coincideNombre;
                 });
             }
@@ -2159,17 +2150,7 @@
                 if (!pacienteExistente.numeroOrden && ord) pacienteExistente.numeroOrden = ord;
                 if (!pacienteExistente.folioHC && fol) pacienteExistente.folioHC = fol;
 
-                if (db) {
-                    try {
-                        const pacGuardar = JSON.parse(JSON.stringify(pacienteExistente));
-                        if (pacGuardar.docsStatus) {
-                            Object.keys(pacGuardar.docsStatus).forEach(k => {
-                                if(pacGuardar.docsStatus[k]) delete pacGuardar.docsStatus[k].pdfBase64;
-                            });
-                        }
-                        db.collection("PacientesRed").doc(pacienteExistente.id).set(pacGuardar).catch(e => console.error("Error BD:", e));
-                    } catch(err) { console.error("Error clonando:", err); }
-                }
+                if (db) db.collection("PacientesRed").doc(pacienteExistente.id).set(prepararParaFirebase(pacienteExistente)).catch(e => console.error("Error BD:", e));
             } else {
                 const nuevoId = Date.now().toString() + Math.floor(Math.random()*100);
                 const docKey = `doc-${nuevoId}-${sufijoDoc}`;
@@ -2187,17 +2168,7 @@
                     bdGlobal[fechaActualStr][sucursalActual].pacientes.push(nuevoPaciente);
                 }
                 
-                if (db) {
-                    try {
-                        const pacGuardar = JSON.parse(JSON.stringify(nuevoPaciente));
-                        if (pacGuardar.docsStatus) {
-                            Object.keys(pacGuardar.docsStatus).forEach(k => {
-                                if(pacGuardar.docsStatus[k]) delete pacGuardar.docsStatus[k].pdfBase64;
-                            });
-                        }
-                        db.collection("PacientesRed").doc(nuevoPaciente.id).set(pacGuardar).catch(e => console.error("Error BD:", e));
-                    } catch(err) { console.error("Error clonando nuevo:", err); }
-                }
+                if (db) db.collection("PacientesRed").doc(nuevoPaciente.id).set(prepararParaFirebase(nuevoPaciente)).catch(e => console.error("Error BD:", e));
             }
         }
     </script>
