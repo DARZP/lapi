@@ -1130,26 +1130,41 @@
                 };
                 input.click();
 
-            } else if (accion === 'analizar') {
+            else if (accion === 'analizar') {
                 if (!statusObj.pdfBase64) {
                     mostrarToast('Error: No se ha cargado el documento PDF correctamente. Intenta resubirlo.', 'error');
                     return;
                 }
 
                 // ==========================================
-                // REGLA: ESPERAR A LA HISTORIA CLÍNICA
+                // NUEVAS REGLAS: CRUCE FLEXIBLE Y RE-ANÁLISIS (MINAS)
                 // ==========================================
                 const requiereHC = paciente ? paciente.estudios.includes('Historia Clínica') : false;
+                
+                // 1. Si evalúan Espiro/Audio, solo exigimos que la HC ya tenga datos extraídos (no importa si fue rechazada)
                 if (requiereHC && (docName === 'Espirometría' || docName === 'Audiometría')) {
-                    const hcStatus = paciente.docsStatus['Historia Clínica'];
-                    if (!hcStatus || hcStatus.estado !== 'aprobado') {
-                        const proceder = confirm(`⚠️ ALERTA DE SISTEMA ⚠️\n\nEstás a punto de analizar la ${docName}, pero la Historia Clínica aún no ha sido Aprobada.\n\nLa IA requiere cruzar datos con la HC. Si continúas, las reglas de cruce saldrán rechazadas.\n\n¿Deseas analizar de todos modos?`);
+                    if (!paciente.datosExtraidosHC) {
+                        const proceder = confirm(`⚠️ ALERTA ⚠️\n\nEstás a punto de analizar la ${docName}, pero la Historia Clínica aún no ha sido analizada por la IA.\n\nSe requieren los datos de la HC para el cruce. Si continúas ahora, las reglas de cruce fallarán por falta de datos.\n\n¿Deseas analizar de todos modos?`);
+                        if (!proceder) return;
+                    }
+                }
+
+                // 2. Si re-evalúan la HC, avisamos si ya hay dependencias analizadas
+                if (docName === 'Historia Clínica') {
+                    const audio = paciente.docsStatus['Audiometría'];
+                    const espiro = paciente.docsStatus['Espirometría'];
+                    const audioLista = audio && (audio.estado === 'aprobado' || audio.estado === 'rechazado');
+                    const espiroLista = espiro && (espiro.estado === 'aprobado' || espiro.estado === 'rechazado');
+
+                    if (audioLista || espiroLista) {
+                        const proceder = confirm(`⚠️ AVISO IMPORTANTE ⚠️\n\nYa has analizado una Audiometría o Espirometría que usó los datos de esta Historia Clínica.\n\nSi vuelves a analizar la Historia y los datos médicos cambian, te recomendamos volver a presionar "Analizar IA" en los otros estudios para actualizar los cruces y resultados.\n\n¿Continuar con el análisis de la Historia Clínica?`);
                         if (!proceder) return;
                     }
                 }
 
                 statusObj.estado = 'analizando'; 
                 renderizarExpedientesMinas();
+                
                 
                 // ==========================================
                 // NUEVO: ENVIAR AL VISOR MINAS
@@ -1701,22 +1716,43 @@
                 input.click();
             } 
             else if (accion === 'analizar') {
-                if (!statusObj.pdfBase64) { mostrarToast('⚠️ PDF no encontrado en memoria. Por favor resube el archivo.'); return; }
-                
-                // SABER SI ESTE PACIENTE LLEVA HISTORIA CLÍNICA CONTRATADA
-                const requiereHC = paciente ? paciente.estudios.includes('Historia Clínica') : false;
+                if (!statusObj.pdfBase64) {
+                    mostrarToast('⚠️ PDF no encontrado en memoria. Por favor resube el archivo.', 'error'); 
+                    return; 
+                }
 
-                // ALERTA INTELIGENTE SÓLO SI REQUIERE HC Y AÚN NO LA HA APROBADO
-                if (paciente && requiereHC && (tipoEstudio === 'Espirometría' || tipoEstudio === 'Audiometría' || tipoEstudio === 'Electrocardiograma')) {
-                    const hcStatus = paciente.docsStatus[`doc-${paciente.id}-Historia`];
-                    if (!hcStatus || hcStatus.estado !== 'aprobado') {
-                        const proceder = confirm(`⚠️ ALERTA DE SISTEMA ⚠️\n\nEste paciente SÍ tiene contratada una Historia Clínica, pero aún no ha sido aprobada.\n\nLa IA requiere cruzar datos con la HC. Si continúas, las reglas de cruce saldrán rechazadas temporalmente.\n\n¿Deseas analizar de todos modos?`);
+                // ==========================================
+                // NUEVAS REGLAS: CRUCE FLEXIBLE Y RE-ANÁLISIS (SUCURSALES)
+                // ==========================================
+                const docKeyHC = `doc-${paciente.id}-Historia`;
+                const requiereHC = paciente.docsStatus[docKeyHC] !== undefined;
+
+                // 1. Si evalúan Espiro/Audio, solo exigimos datos extraídos
+                if (requiereHC && (tipoEstudio === 'Espirometría' || tipoEstudio === 'Audiometría')) {
+                    if (!paciente.datosExtraidosHC) {
+                        const proceder = confirm(`⚠️ ALERTA ⚠️\n\nEstás a punto de analizar la ${tipoEstudio}, pero la Historia Clínica aún no ha sido analizada por la IA.\n\nSe requieren los datos de la HC para el cruce. Si continúas ahora, las reglas de cruce fallarán por falta de datos.\n\n¿Deseas analizar de todos modos?`);
                         if (!proceder) return;
                     }
                 }
 
-                statusObj.estado = 'analizando'; actualizarUI();
-                
+                // 2. Si re-evalúan la HC, avisamos si hay dependencias
+                if (tipoEstudio === 'Historia Clínica') {
+                    const docKeyAudio = `doc-${paciente.id}-Audio`;
+                    const docKeyEspiro = `doc-${paciente.id}-Espiro`;
+                    const audio = paciente.docsStatus[docKeyAudio];
+                    const espiro = paciente.docsStatus[docKeyEspiro];
+                    const audioLista = audio && (audio.estado === 'aprobado' || audio.estado === 'rechazado');
+                    const espiroLista = espiro && (espiro.estado === 'aprobado' || espiro.estado === 'rechazado');
+
+                    if (audioLista || espiroLista) {
+                        const proceder = confirm(`⚠️ AVISO IMPORTANTE ⚠️\n\nYa has analizado una Audiometría o Espirometría que usó los datos de esta Historia Clínica.\n\nSi vuelves a analizar la Historia y los datos médicos cambian, te recomendamos volver a presionar "Analizar IA" en los otros estudios para actualizar los resultados.\n\n¿Continuar con el análisis de la Historia Clínica?`);
+                        if (!proceder) return;
+                    }
+                }
+
+                statusObj.estado = 'analizando'; 
+                actualizarUI();
+
                 // ==========================================
                 // NUEVO: ENVIAR AL VISOR MIENTRAS LA IA PIENSA
                 // ==========================================
