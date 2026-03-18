@@ -1853,7 +1853,7 @@
                     console.log("Paso 4: JSON interpretado correctamente:", resJSON);
                     
                     // Lógica de Asignación Inteligente
-                    asignarDocumentoAPacienteSeguro(resJSON, base64);
+                    (resJSON, base64);
                     console.log("Paso 5: Paciente asignado y creado en pantalla.");
 
                 } catch (e) { 
@@ -1906,7 +1906,12 @@
                 if (!pacienteExistente.numeroOrden && orden) pacienteExistente.numeroOrden = orden;
                 if (!pacienteExistente.folioHC && folio) pacienteExistente.folioHC = folio;
 
-                if (db) db.collection("PacientesMinas").doc(pacienteExistente.id).set(pacienteExistente).catch(e => console.error(e));
+                if (db) {
+                    // CLONAMOS Y BORRAMOS EL PDF ANTES DE GUARDAR EN FIREBASE
+                    const pacGuardar = JSON.parse(JSON.stringify(pacienteExistente));
+                    Object.keys(pacGuardar.docsStatus).forEach(k => delete pacGuardar.docsStatus[k].pdfBase64);
+                    db.collection("PacientesMinas").doc(pacienteExistente.id).set(pacGuardar).catch(e => console.error(e));
+                }
             } else {
                 let docsDelPaciente = {};
                 docsDelPaciente[tipoDocumento] = { estado: 'subido', pdfBase64: base64, checklist: [] };
@@ -1918,7 +1923,12 @@
                 };
 
                 bdMinas[fechaActualStr].pacientes.push(nuevoPaciente);
-                if(db) db.collection("PacientesMinas").doc(nuevoPaciente.id).set(nuevoPaciente).catch(e => console.error(e));
+                if (db) {
+                    // CLONAMOS Y BORRAMOS EL PDF ANTES DE GUARDAR EN FIREBASE
+                    const pacGuardar = JSON.parse(JSON.stringify(nuevoPaciente));
+                    Object.keys(pacGuardar.docsStatus).forEach(k => delete pacGuardar.docsStatus[k].pdfBase64);
+                    db.collection("PacientesMinas").doc(nuevoPaciente.id).set(pacGuardar).catch(e => console.error(e));
+                }
             }
         }
 
@@ -2113,7 +2123,12 @@
                 if (!pacienteExistente.numeroOrden && ord) pacienteExistente.numeroOrden = ord;
                 if (!pacienteExistente.folioHC && fol) pacienteExistente.folioHC = fol;
 
-                if (db) db.collection("PacientesRed").doc(pacienteExistente.id).set(pacienteExistente);
+                if (db) {
+                    // CLONAMOS Y BORRAMOS EL PDF ANTES DE GUARDAR EN FIREBASE
+                    const pacGuardar = JSON.parse(JSON.stringify(pacienteExistente));
+                    Object.keys(pacGuardar.docsStatus).forEach(k => delete pacGuardar.docsStatus[k].pdfBase64);
+                    db.collection("PacientesRed").doc(pacienteExistente.id).set(pacGuardar);
+                }
             } else {
                 const nuevoId = Date.now().toString() + Math.floor(Math.random()*100);
                 const docKey = `doc-${nuevoId}-${sufijoDoc}`;
@@ -2128,7 +2143,12 @@
                 };
 
                 bdGlobal[fechaActualStr][sucursalActual].pacientes.push(nuevoPaciente);
-                if(db) db.collection("PacientesRed").doc(nuevoPaciente.id).set(nuevoPaciente);
+                if (db) {
+                    // CLONAMOS Y BORRAMOS EL PDF ANTES DE GUARDAR EN FIREBASE
+                    const pacGuardar = JSON.parse(JSON.stringify(nuevoPaciente));
+                    Object.keys(pacGuardar.docsStatus).forEach(k => delete pacGuardar.docsStatus[k].pdfBase64);
+                    db.collection("PacientesRed").doc(nuevoPaciente.id).set(pacGuardar);
+                }
             }
         }
     </script>
