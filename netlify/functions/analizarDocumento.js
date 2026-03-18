@@ -171,9 +171,10 @@ exports.handler = async (event, context) => {
         - 2. Antigüedad: Debe estar registrada obligatoriamente en formato de tiempo (Años o Años con Meses).
         - 3. Orden de Registros: Ordenados cronológicamente (más reciente a más antiguo). En "FUNCIÓN PRINCIPAL", cada registro debe incluir obligatoriamente al menos UN factor de riesgo explícito.
         - A. RIESGOS FÍSICOS: Si es SÍ, verifica detalles estrictos (Ruido, Vibración, Radiación, Iluminación, Temperaturas, Altura, Confinados).
-        - B. RIESGOS QUÍMICOS: Si es NO, requiere la leyenda exacta "Niega exposición a SILICE, MONOXIDO DE CARBONO, CIANURO DE HIDROGENO, PLOMO, ESTIRENO, TOLUENO, ETILO BENCENO, XILENO." en Observaciones. Si es SÍ, verifica detalles.
+        - B. RIESGOS QUÍMICOS: Si es SÍ, verifica detalles.
         - C y E. BIOLÓGICOS Y PSICOSOCIALES: NO REQUIEREN VERIFICACIÓN.
         - D. ERGONÓMICOS: Si es SÍ, verifica detalles estrictos.
+        -OBSERVACIONES DEL EXAMINADOR. En caso de que A, B, C, D, E Sean NO, (las 4) en esta sección se requiere la leyenda exacta "Niega exposición a silice, monoxido de carbono, cianuro de hidrogeno, plomo, estireno, tolueno, etilo benceno, xileno."
 
         ### SECCIÓN DE RIESGOS LABORALES
         - 4 y 5: Si es SÍ, verifica que CADA dato esté contestado (Empresa, causa, días, cuándo, qué le pasó, secuelas, proceso).
