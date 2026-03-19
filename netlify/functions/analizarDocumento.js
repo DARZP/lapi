@@ -24,10 +24,13 @@ exports.handler = async (event, context) => {
         // TEXTO BASE: REGLAS HISTORIA CLÍNICA (SUCURSALES NORMALES Y LIBRE)
         // ============================================================================
         const REGLAS_HC_BASE = `
-        ### REGLA GLOBAL DE FORMATO DE REDACCIÓN (APLICA A TODO EL DOCUMENTO)
-        - TIPO ORACIÓN: Absolutamente todos los apartados de redacción libre (cuadros de observaciones, descripciones, detalles de riesgos, etc.) DEBEN estar escritos en formato "Tipo Oración" (Solo la primera letra inicial en mayúscula y el resto en minúsculas). 
-        - EXCEPCIONES: LA SECCIÓN DE DATOS GENERALES (SECCIÓN DE IDENTIFICACIÓN) PUEDE TENER INFORMACIÓN EN MAYÚSCULAS E IGUALMENTE EN ELRESTO DEL DOCUMENTO se permiten mayúsculas sostenidas para siglas médicas o corporativas (ej. IMSS, HAS, EPP, DM2).
-        - ACCIÓN: Si detectas campos de texto libre escritos TODO EN MAYÚSCULAS SOSTENIDAS (que no sean siglas), marca la sección correspondiente como fallida (pass: false) y especifica en el comentario: "Error de formato: El texto libre debe escribirse en tipo oración, no todo en mayúsculas."
+        ### REGLAS DE FORMATO: MAYÚSCULAS Y TIPO ORACIÓN (CRÍTICO)
+        Para la evaluación de Mayúsculas ("Tipo Oración"), DEBES obedecer estrictamente estas 3 excepciones antes de marcar un fallo:
+        1. DATOS GENERALES: La sección completa de "1. Identidad y demográficos" (o Datos Generales) TIENE PERMITIDO estar 100% EN MAYÚSCULAS. No lo marques como error.
+        2. SIGLAS MÉDICAS: El uso de siglas institucionales o médicas (ej. IMSS, HAS, DM2, TA, FC, APP, APNP, etc.) en MAYÚSCULAS ESTÁ PERMITIDO en cualquier parte de todo el documento. No lo marques como error.
+        3. NOMBRES PROPIOS: Apellidos, nombres de medicamentos o lugares en mayúsculas están permitidos.
+        
+        CRITERIO DE RECHAZO: SOLO debes marcar 'pass: false' en esta categoría si encuentras párrafos completos de redacción libre (como Diagnósticos largos, Observaciones o descripciones de riesgos) escritos totalmente en MAYÚSCULAS. De lo contrario, marca 'pass: true'.
         
         ### SECCIÓN DE IDENTIFICACIÓN
         4. Datos que NO REQUIEREN VERIFICACIÓN: Nacionalidad, Originario de, Estado civil, Religión, Empresa, Puesto, Departamento, Escolaridad, Grupo sanguíneo, Acepta transfusiones.
@@ -153,11 +156,13 @@ exports.handler = async (event, context) => {
         - Nombre de Plataforma: ${dp.nombre || 'No proporcionado'}
         - Fecha de Nacimiento de Plataforma: ${dp.nacimiento || 'No proporcionado'}
 
-        --- INICIO DEL MANUAL DE REGLAS MINAS ---
-        ### REGLA GLOBAL DE FORMATO DE REDACCIÓN (APLICA A TODO EL DOCUMENTO)
-        - TIPO ORACIÓN: Absolutamente todos los apartados de redacción libre (cuadros de observaciones, descripciones, detalles de riesgos, etc.) DEBEN estar escritos en formato "Tipo Oración" (Solo la primera letra inicial en mayúscula y el resto en minúsculas). 
-        - EXCEPCIONES: Solo se permiten mayúsculas sostenidas para siglas médicas o corporativas (ej. IMSS, HAS, EPP, DM2).
-        - ACCIÓN: Si detectas campos de texto libre escritos TODO EN MAYÚSCULAS SOSTENIDAS (que no sean siglas), marca la sección correspondiente como fallida (pass: false) y especifica en el comentario: "Error de formato: El texto libre debe escribirse en tipo oración, no todo en mayúsculas."
+        ### REGLAS DE FORMATO: MAYÚSCULAS Y TIPO ORACIÓN (CRÍTICO)
+        Para la evaluación de Mayúsculas ("Tipo Oración"), DEBES obedecer estrictamente estas 3 excepciones antes de marcar un fallo:
+        1. DATOS GENERALES: La sección completa de "1. Identidad y demográficos" (o Datos Generales) TIENE PERMITIDO estar 100% EN MAYÚSCULAS. No lo marques como error.
+        2. SIGLAS MÉDICAS: El uso de siglas institucionales o médicas (ej. IMSS, HAS, DM2, TA, FC, APP, APNP, etc.) en MAYÚSCULAS ESTÁ PERMITIDO en cualquier parte de todo el documento. No lo marques como error.
+        3. NOMBRES PROPIOS: Apellidos, nombres de medicamentos o lugares en mayúsculas están permitidos.
+        
+        CRITERIO DE RECHAZO: SOLO debes marcar 'pass: false' en esta categoría si encuentras párrafos completos de redacción libre (como Diagnósticos largos, Observaciones o descripciones de riesgos) escritos totalmente en MAYÚSCULAS. De lo contrario, marca 'pass: true'.
         
         ### SECCIÓN DE IDENTIFICACIÓN
         1. Folio: Verifica que el folio de la historia clínica coincida EXACTAMENTE con el folio registrado en el expediente de la plataforma.
