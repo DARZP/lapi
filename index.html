@@ -1111,6 +1111,7 @@
                             statusObj.pdfBase64 = evt.target.result.split(',')[1];
                             statusObj.estado = 'subido';
                             statusObj.checklist = [];
+                            delete statusObj.pdfUrl; // <--- ESTA LÍNEA DESTRABA EL VISOR
                             paciente.statusIntegral = 'pendiente'; 
                             renderizarExpedientesMinas();
 
@@ -1700,6 +1701,7 @@
                             statusObj.estado = 'subido';
                             statusObj.horaSubida = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
                             statusObj.checklist = [];
+                            delete statusObj.pdfUrl; // <--- ESTA LÍNEA DESTRABA EL VISOR
                             actualizarUI();
 
                             if (db) {
@@ -1932,20 +1934,23 @@
             let orden = datosExtraidos.orden || '';
             let folio = datosExtraidos.folio || '';
 
-            // ==========================================
-            // EL FILTRO MÁGICO PARA ORDEN / FOLIO
-            // ==========================================
-            if (tipoDocumento.includes('Historia')) {
-                orden = ''; // Si es HC, forzamos a que NO tenga Número de Orden
-            } else {
-                folio = ''; // Si es otro estudio, forzamos a que NO tenga Folio
-            }
+            if (tipoDocumento.includes('Historia')) { orden = ''; } 
+            else { folio = ''; }
 
-            let pacienteExistente = bdMinas[fechaActualStr].pacientes.find(p => 
-                (orden && p.numeroOrden === orden) || 
-                (folio && p.folioHC === folio) || 
-                (p.nombre && p.nombre.toLowerCase().includes(nombre.toLowerCase().split(' ')[0]))
-            );
+            let pacienteExistente = bdMinas[fechaActualStr].pacientes.find(p => {
+                const coincideOrden = orden && p.numeroOrden === orden;
+                const coincideFolio = folio && p.folioHC === folio;
+                
+                let coincideNombre = false;
+                if (p.nombre && nombre && nombre !== 'Paciente Sin Nombre') {
+                    const palabrasNuevas = nombre.toLowerCase().split(' ').filter(w => w.length > 2);
+                    const nombreViejo = p.nombre.toLowerCase();
+                    const coincidencias = palabrasNuevas.filter(w => nombreViejo.includes(w)).length;
+                    coincideNombre = coincidencias >= 2 || (palabrasNuevas.length === 1 && coincidencias === 1);
+                }
+
+                return coincideOrden || coincideFolio || coincideNombre;
+            });
 
             if (pacienteExistente) {
                 if (!pacienteExistente.estudios.includes(tipoDocumento)) {
@@ -1953,7 +1958,7 @@
                     pacienteExistente.docsStatus[tipoDocumento] = { estado: 'subido', pdfBase64: base64, checklist: [] };
                 } else {
                     const obj = pacienteExistente.docsStatus[tipoDocumento];
-                    if (obj.estado === 'pendiente' || confirm(`El paciente ${pacienteExistente.nombre} ya tiene asignado(a) un(a) ${tipoDocumento}. ¿Deseas reemplazar el archivo cargado?`)) {
+                    if (obj.estado === 'pendiente' || confirm(`El paciente ${pacienteExistente.nombre} ya tiene ${tipoDocumento}. ¿Reemplazar?`)) {
                         pacienteExistente.docsStatus[tipoDocumento] = { estado: 'subido', pdfBase64: base64, checklist: [] };
                         pacienteExistente.statusIntegral = 'pendiente';
                     }
@@ -2147,32 +2152,36 @@
             let ord = datosExtraidos.orden || datosExtraidos.Orden || '';
             let fol = datosExtraidos.folio || datosExtraidos.Folio || '';
 
-            // ==========================================
-            // EL FILTRO MÁGICO PARA ORDEN / FOLIO
-            // ==========================================
-            if (tipo && tipo.includes('Historia')) {
-                ord = ''; // Si es HC, forzamos a que NO tenga Número de Orden
-            } else {
-                fol = ''; // Si es otro estudio, forzamos a que NO tenga Folio
-            }
+            if (tipo && tipo.includes('Historia')) { ord = ''; } 
+            else { fol = ''; }
 
             if (!tipo || !nom || nom.trim() === '') {
-                mostrarToast("⚠️ La IA no pudo encontrar el Nombre del paciente o el Tipo de Documento. Se omitió.", 'advertencia');
+                mostrarToast("⚠️ La IA no pudo encontrar el Nombre del paciente o el Tipo de Documento.", 'advertencia');
                 return;
             }
 
             const sufijoDoc = obtenerSufijoEstudio(tipo);
 
-            let pacienteExistente = bdGlobal[fechaActualStr][sucursalActual].pacientes.find(p => 
-                (ord && p.numeroOrden === ord) || 
-                (fol && p.folioHC === fol) || 
-                (p.nombre && nom && p.nombre.toLowerCase().includes(nom.toLowerCase().split(' ')[0]))
-            );
+            let pacienteExistente = bdGlobal[fechaActualStr][sucursalActual].pacientes.find(p => {
+                const coincideOrden = ord && p.numeroOrden === ord;
+                const coincideFolio = fol && p.folioHC === fol;
+                
+                // ==========================================
+                // NUEVO FILTRO ESTRICTO DE NOMBRES (Mínimo 2 palabras)
+                // ==========================================
+                let coincideNombre = false;
+                if (p.nombre && nom && nom.trim() !== '') {
+                    const palabrasNuevas = nom.toLowerCase().split(' ').filter(w => w.length > 2);
+                    const nombreViejo = p.nombre.toLowerCase();
+                    const coincidencias = palabrasNuevas.filter(w => nombreViejo.includes(w)).length;
+                    coincideNombre = coincidencias >= 2 || (palabrasNuevas.length === 1 && coincidencias === 1);
+                }
+
+                return coincideOrden || coincideFolio || coincideNombre;
+            });
 
             if (pacienteExistente) {
-                if (!pacienteExistente.estudios.includes(tipo)) {
-                    pacienteExistente.estudios.push(tipo);
-                }
+                if (!pacienteExistente.estudios.includes(tipo)) pacienteExistente.estudios.push(tipo);
                 
                 const docKey = `doc-${pacienteExistente.id}-${sufijoDoc}`;
                 pacienteExistente.docsStatus[docKey] = { estado: 'subido', pdfBase64: base64, horaSubida: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }), notas: [], vistosAdmin: 0, vistosSucursal: 0, checklist: [] };
