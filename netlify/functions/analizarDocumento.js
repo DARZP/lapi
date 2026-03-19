@@ -34,7 +34,7 @@ exports.handler = async (event, context) => {
         
         ### SECCIÓN DE IDENTIFICACIÓN
         4. Datos que NO REQUIEREN VERIFICACIÓN: Nacionalidad, Originario de, Estado civil, Religión, Empresa, Puesto, Departamento, Escolaridad, Grupo sanguíneo, Acepta transfusiones.
-        5. Datos que REQUIEREN VERIFICACIÓN DE LLENADO: Grupo étnico, Discapacidad, Domicilio particular (calle, # ext, # int, colonia, localidad, municipio, estado y C.P.), Teléfono de casa, Teléfono celular, IMSS, RFC, CURP, Contacto de emergencia (Nombre, dirección, parentesco, teléfono, celular).
+        5. Datos que REQUIEREN VERIFICACIÓN DE LLENADO: Grupo étnico, Discapacidad, Domicilio particular (calle, # ext, # int, colonia, localidad, municipio, estado y C.P.), Teléfono de casa, Teléfono celular, IMSS, RFC, CURP, Contacto de emergencia (Nombre, dirección, parentesco, teléfono, celular). MPORTANTE: No juzgues la validez del texto; cualquier respuesta escrita (ej. 'Desconoce', 'No aporta', '0000', 'N/A' o rayas '-') es 100% VÁLIDA. SOLO marca error si el espacio o renglón está completamente en blanco.
 
         ### SECCIÓN ANTECEDENTES LABORALES
         - 1. NO REQUIERE VERIFICACIÓN.
@@ -43,7 +43,7 @@ exports.handler = async (event, context) => {
         - A. RIESGOS FÍSICOS: Si es SÍ, verificar: Ruido, Vibración, Radiación, Iluminación, Temperaturas, Altura, Confinados con sus respectivos EPP y detalles.
         - B. RIESGOS QUÍMICOS: Si es NO, NO REQUIERE VERIFICACIÓN. Si es SÍ, verificar (Tipo, EPP).
         - C. BIOLÓGICOS y E. PSICOSOCIALES: NO REQUIEREN VERIFICACIÓN.
-        - D. ERGONÓMICOS: Si es SÍ, verificar (Tipo de objeto/peso, EPP para carga. Movimiento y segmento. Tipo de postura).
+        - D. ERGONÓMICOS: ATENCIÓN VISUAL ESTRICTA: Revisa con extremo cuidado si la casilla "SÍ" está claramente marcada. NO asumas "SÍ" si está tachado o marcado en "NO". SOLO si "SÍ" está innegablemente marcado, verifica (Tipo de objeto/peso, EPP para carga. Movimiento y segmento. Tipo de postura).
         - RIESGOS LABORALES (4 y 5): Si es SÍ, verificar que cada dato esté lleno. 6 al 11: NO VERIFICAR.
         - OBSERVACIONES DEL EXAMINADOR: NO REQUIERE VERIFICACIÓN.
 
@@ -55,11 +55,11 @@ exports.handler = async (event, context) => {
         - 23 al 26: Si es SÍ, verificar coherencia.
         - 28 (Fracturas): Si es SÍ, verificar coherencia y que en Observaciones incluya (Hueso, Año, Tratamiento).
         - 29: Verificar coherencia.
-        - 30 (Tatuajes): Si es SÍ, en observaciones debe incluir (Región, Tipo, Monocromático/policromático, Dimensiones).
+        - 30 (Tatuajes, Perforaciones, Expansiones): Si marcan "Tatuajes", en observaciones debe incluir (Región, Tipo, Monocromático/policromático, Dimensiones). EXCEPCIÓN OBLIGATORIA: Si marcan "Perforaciones" o "Expansiones", SOLO exige cantidad y ubicación (NO exijas color ni dimensiones para perforaciones o expansiones).
         - 31 (Vacunas): Si es Incompleto, verificar qué faltan. Columna FECHA con fecha válida debe tener Dosis y Marca. "OTRAS" puede ir vacía.
-        - 32 (Alergias): Si es SÍ, verificar coherencia.
-        - OBSERVACIONES: Para cada SÍ (23,24,25,26,27,32) debe existir registro detallado haciendo referencia al número.
-
+        - 32 (Alergias): Si es SÍ, el detalle o reacción de la alergia puede estar escrito directamente sobre la misma línea de la pregunta O en el cuadro de observaciones. Ambas ubicaciones son correctas y 100% válidas.
+        - OBSERVACIONES: Para cada SÍ (23,24,25,26,27,32) debe existir registro detallado haciendo referencia al número (respetando la flexibilidad de la línea para alergias).
+        
         ### SECCIÓN INTERROGATORIO POR APARATOS Y SISTEMAS
         - 34: Todo síntoma en "SÍ" DEBE estar en el cuadro de observaciones de su sistema afín.
         - Alteración de la visión: Debe incluir Diagnóstico, Lentes, Antigüedad, Último ajuste.
@@ -158,7 +158,7 @@ exports.handler = async (event, context) => {
 
         ### REGLAS DE FORMATO: MAYÚSCULAS Y TIPO ORACIÓN (CRÍTICO)
         Para la evaluación de Mayúsculas ("Tipo Oración"), DEBES obedecer estrictamente estas 3 excepciones antes de marcar un fallo:
-        1. DATOS GENERALES: La sección completa de "1. Identidad y demográficos" (o Datos Generales) TIENE PERMITIDO estar 100% EN MAYÚSCULAS. No lo marques como error.
+        1. DATOS GENERALES: La sección completa de "1. Idencos" (o Datos Generales) TIENE PERMITIDO estar 100% EN MAYÚSCULAS. No lo marques como error.
         2. SIGLAS MÉDICAS: El uso de siglas institucionales o médicas (ej. IMSS, HAS, DM2, TA, FC, APP, APNP, etc.) en MAYÚSCULAS ESTÁ PERMITIDO en cualquier parte de todo el documento. No lo marques como error.
         3. NOMBRES PROPIOS: Apellidos, nombres de medicamentos o lugares en mayúsculas están permitidos.
         
@@ -169,7 +169,8 @@ exports.handler = async (event, context) => {
         2. Nombre: Verifica que el nombre en la historia clínica coincida EXACTAMENTE con el nombre registrado en la plataforma.
         3. Fecha de nacimiento: Verifica que la fecha coincida EXACTAMENTE con la registrada en la plataforma.
         4. Datos que NO REQUIEREN VERIFICACIÓN: Nacionalidad, Originario de, Estado civil, Religión, Empresa, Puesto, Departamento, Escolaridad, Grupo sanguíneo, Acepta transfusiones.
-        5. Datos que REQUIEREN VERIFICACIÓN DE LLENADO: Debes verificar que CADA DATO de la siguiente lista SIEMPRE ESTÉ CONTESTADO: Grupo étnico, Discapacidad, Domicilio particular (calle, #ext, #int, colonia, localidad, municipio, estado y C.P.), Teléfono de casa, Teléfono celular, IMSS, RFC, CURP, Contacto de emergencia (Nombre, dirección, parentesco, teléfono, celular).
+        5. Datos que REQUIEREN VERIFICACIÓN DE LLENADO: Debes verificar que CADA DATO de la siguiente lista SIEMPRE ESTÉ CONTESTADO: Grupo étnico, Discapacidad, Domicilio particular (calle, # ext, # int, colonia, localidad, municipio, estado y C.P.), Teléfono de casa, Teléfono celular, IMSS, RFC, CURP, Contacto de emergencia (Nombre, dirección, parentesco, teléfono, celular). MPORTANTE: No juzgues la validez del texto; cualquier respuesta escrita (ej. 'Desconoce', 'No aporta', '0000', 'N/A' o rayas '-') es 100% VÁLIDA. SOLO marca error si el espacio o renglón está completamente en blanco.
+
 
         ### SECCIÓN ANTECEDENTES LABORALES
         - 1. NO REQUIERE VERIFICACIÓN.
@@ -178,9 +179,9 @@ exports.handler = async (event, context) => {
         - A. RIESGOS FÍSICOS: Si es SÍ, verifica detalles estrictos (Ruido, Vibración, Radiación, Iluminación, Temperaturas, Altura, Confinados).
         - B. RIESGOS QUÍMICOS: Si es SÍ, verifica detalles.
         - C y E. BIOLÓGICOS Y PSICOSOCIALES: NO REQUIEREN VERIFICACIÓN.
-        - D. ERGONÓMICOS: Si es SÍ, verifica detalles estrictos.
-        -OBSERVACIONES DEL EXAMINADOR. En caso de que A, B, C, D, E Sean NO, (las 4) en esta sección se requiere la leyenda exacta "Niega exposición a silice, monoxido de carbono, cianuro de hidrogeno, plomo, estireno, tolueno, etilo benceno, xileno."
-
+        - D. ERGONÓMICOS: ATENCIÓN VISUAL ESTRICTA: Revisa con cuidado dónde está la marca. NO asumas "SÍ" si la marca está sobre "NO" o es ambigua. SOLO si es un "SÍ" claro e innegable, verifica detalles estrictos (Años, Horas, Observaciones).
+        - OBSERVACIONES DEL EXAMINADOR. En caso de que A, B, C, D, E Sean NO, (las 4) en esta sección se requiere la leyenda exacta "Niega exposición a silice, monoxido de carbono, cianuro de hidrogeno, plomo, estireno, tolueno, etilo benceno, xileno."
+        
         ### SECCIÓN DE RIESGOS LABORALES
         - 4 y 5: Si es SÍ, verifica que CADA dato esté contestado (Empresa, causa, días, cuándo, qué le pasó, secuelas, proceso).
         - 6 al 11: NO REQUIEREN VERIFICACIÓN.
@@ -194,11 +195,11 @@ exports.handler = async (event, context) => {
         - 27: Ignorar aquí.
         - 28 (Fracturas): Si es SÍ, verificar coherencia y en Observaciones debe incluir (Hueso, Año, Tratamiento).
         - 29: Enfermedades, verificar coherencia.
-        - 30 (Tatuajes): Si hay tatuajes, en observaciones debe incluir (Región, Tipo, Color, Dimensiones).
+        - 30 (Tatuajes, Perforaciones, Expansiones): Si marcan "Tatuajes", en observaciones debe incluir (Región, Tipo, Monocromático/policromático, Dimensiones). EXCEPCIÓN OBLIGATORIA: Si marcan "Perforaciones" o "Expansiones", SOLO exige cantidad y ubicación (NO exijas color ni dimensiones para perforaciones o expansiones).
         - 31 (Vacunas): Si es Incompleto, verificar qué faltan. Columna FECH debe tener Dosis y Marca. Fila OTRAS puede ir vacía.
-        - 32 (Alergias): Si es SÍ, verificar coherencia.
-        - OBSERVACIONES: Para cada SÍ (23, 24, 25, 26, 27, 32) debe existir un registro detallado que haga referencia al número.
-
+        - 32 (Alergias): Si es SÍ, el detalle o reacción de la alergia puede estar escrito directamente sobre la misma línea de la pregunta O en el cuadro de observaciones. Ambas ubicaciones son correctas y 100% válidas.
+        - OBSERVACIONES: Para cada SÍ (23,24,25,26,27,32) debe existir registro detallado haciendo referencia al número (respetando la flexibilidad de la línea para alergias).
+        
         ### SECCIÓN INTERROGATORIO POR APARATOS Y SISTEMAS
         - 34: Todo síntoma en "SÍ" DEBE estar descrito en el cuadro de observaciones de su sistema afín incluyendo 4 datos (Síntoma, Antigüedad, Tratamiento, Seguimiento).
         - Alteración de la visión: Debe incluir Diagnóstico, Lentes, Antigüedad y Último ajuste.
