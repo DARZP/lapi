@@ -1160,7 +1160,7 @@
                 renderizarExpedientesMinas();
                 
                 if (!statusObj.pdfUrl && statusObj.pdfBase64) {
-                    mostrarToast('Preparando Visor Seguro...', 'info');
+                    mostrarToast('Preparando Revisión...', 'info');
                     statusObj.pdfUrl = await guardarPDFEnStorage(statusObj.pdfBase64, paciente.id, docName);
                 }
 
@@ -1747,7 +1747,7 @@
                 actualizarUI();
 
                 if (!statusObj.pdfUrl && statusObj.pdfBase64) {
-                    mostrarToast('Preparando Visor Seguro...', 'info');
+                    mostrarToast('Preparando Revisión...', 'info');
                     statusObj.pdfUrl = await guardarPDFEnStorage(statusObj.pdfBase64, paciente.id, tipoEstudio);
                 }
 
