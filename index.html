@@ -816,40 +816,35 @@
             }
         }
 
-        function mostrarVista(idVista, btnElement) {
-            ['vista-inicio', 'vista-admin', 'vista-admin-directorio', 'vista-admin-detalle', 'vista-minas', 'vista-registro', 'vista-carga', 'vista-analisis-libre'].forEach(id => {
+        function mostrarVista(idVista, btnActivo) {
+            // Lista actualizada con TODAS las pantallas (incluyendo panel-estadisticas)
+            ['vista-inicio', 'vista-directorio', 'vista-admin', 'vista-minas', 'panel-estadisticas'].forEach(id => {
                 const el = document.getElementById(id);
-                if(el) el.classList.add('hidden');
-            });
-            document.querySelectorAll('#sidebar nav button').forEach(b => {
-                b.classList.remove('bg-gray-800', 'border-l-4', 'border-lapiOrange');
+                if (el) {
+                    el.classList.add('hidden');
+                    el.classList.remove('flex'); // Previene desfases
+                }
             });
             
-            const elementToShow = document.getElementById(idVista);
-            if(elementToShow) elementToShow.classList.remove('hidden');
-            
-            // Flex handling specifically for launchpad
-            if(idVista === 'vista-inicio') elementToShow.classList.add('flex');
-            else document.getElementById('vista-inicio').classList.remove('flex');
+            const vista = document.getElementById(idVista);
+            if (vista) {
+                vista.classList.remove('hidden');
+                // Si la vista requiere formato flex, se lo regresamos
+                if (idVista === 'vista-minas' || idVista === 'panel-estadisticas' || idVista === 'vista-admin') {
+                    vista.classList.add('flex');
+                }
+            }
 
-            if(btnElement) btnElement.classList.add('bg-gray-800', 'border-l-4', 'border-lapiOrange');
+            // Reiniciar botones
+            document.querySelectorAll('#sidebar button').forEach(btn => {
+                btn.classList.remove('bg-gray-800', 'text-lapiOrange', 'border-l-4', 'border-lapiOrange');
+            });
             
-            const titulos = { 
-                'vista-inicio': 'Página Principal',
-                'vista-admin': 'Panel de Control de Red LAP.IA', 
-                'vista-admin-directorio': 'Directorio Operativo de Red', 
-                'vista-admin-detalle': 'Auditoría Documental', 
-                'vista-minas': 'Gestión de Expedientes MINAS',
-                'vista-registro': `Registro - ${sucursalActual}`, 
-                'vista-carga': `Análisis LAP.IA - ${sucursalActual}`, 
-                'vista-analisis-libre': 'Laboratorio de Calidad LAP.IA' 
-            };
-            document.getElementById('titulo-vista').textContent = titulos[idVista];
-            
-            if(idVista === 'vista-inicio') renderizarInicio();
-            actualizarUI();
+            // Iluminar botón activo
+            if (btnActivo) {
+                btnActivo.classList.add('bg-gray-800', 'text-lapiOrange', 'border-l-4', 'border-lapiOrange');
+            }
         }
-
         function actualizarUI() {
             if (!rolActual) return;
             if (rolActual === 'admin') {
@@ -1275,8 +1270,30 @@
                         if(errorObj.error) throw new Error(errorObj.error);
                         
                         const resultadoIA = JSON.parse(responseText);
+
+                        // ==========================================
+                        // RECOLECCIÓN DE MÉTRICAS (MINAS)
+                        // ==========================================
+                        const esPrimeraEvaluacion = !statusObj.evaluadoPorIA;
+                        statusObj.medicoTratante = resultadoIA.medicoTratante || 'No Identificado';
+                        statusObj.evaluadoPorIA = true;
+
                         statusObj.checklist = resultadoIA.checklist;
                         statusObj.estado = resultadoIA.aprobadoGeneral ? 'aprobado' : 'rechazado';
+                        
+                        if (esPrimeraEvaluacion && db) {
+                            const cantidadErrores = resultadoIA.checklist.filter(item => item.pass === false).length;
+                            db.collection("AuditoriaEstadisticas").add({
+                                fechaRegistro: new Date().toISOString(),
+                                mesOperativo: fechaActualStr,
+                                medico: statusObj.medicoTratante,
+                                estudio: docName,
+                                aprobado: resultadoIA.aprobadoGeneral,
+                                erroresContados: cantidadErrores,
+                                origen: 'MINAS'
+                            }).catch(err => console.error("Error guardando métricas:", err));
+                        }
+                        // ==========================================
                         
                         if (tipoBackend === 'Historia Clínica (MINAS)' && resultadoIA.datosExtraidosHC) {
                             paciente.datosExtraidosHC = resultadoIA.datosExtraidosHC;
@@ -1861,9 +1878,31 @@
                         if(errorObj.error) throw new Error(errorObj.error);
 
                         const resultadoIA = JSON.parse(responseText);
+                        
+                        // ==========================================
+                        // RECOLECCIÓN DE MÉTRICAS (SUCURSALES / RED)
+                        // ==========================================
+                        const esPrimeraEvaluacion = !statusObj.evaluadoPorIA;
+                        statusObj.medicoTratante = resultadoIA.medicoTratante || 'No Identificado';
+                        statusObj.evaluadoPorIA = true;
+
                         statusObj.checklist = resultadoIA.checklist;
                         statusObj.estado = resultadoIA.aprobadoGeneral ? 'aprobado' : 'rechazado';
                         
+                        if (esPrimeraEvaluacion && db) {
+                            const cantidadErrores = resultadoIA.checklist.filter(item => item.pass === false).length;
+                            db.collection("AuditoriaEstadisticas").add({
+                                fechaRegistro: new Date().toISOString(),
+                                mesOperativo: fechaActualStr,
+                                medico: statusObj.medicoTratante,
+                                estudio: tipoEstudio,
+                                aprobado: resultadoIA.aprobadoGeneral,
+                                erroresContados: cantidadErrores,
+                                origen: 'RED'
+                            }).catch(err => console.error("Error guardando métricas:", err));
+                        }
+                        // ==========================================
+
                         if (tipoEstudio === 'Historia Clínica' && resultadoIA.datosExtraidosHC) {
                             paciente.datosExtraidosHC = resultadoIA.datosExtraidosHC;
                         }
