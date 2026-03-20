@@ -105,6 +105,7 @@ exports.handler = async (event, context) => {
         DEVUELVE ÚNICAMENTE un JSON estricto con esta estructura (sin markdown):
         {
           "aprobadoGeneral": true/false, "motivoPrincipal": "...",
+          "medicoTratante": "Extrae el nombre completo del médico que firma o avala el documento. Si no está, pon 'No Identificado'",
           "datosExtraidosHC": { "estatura": "...", "peso": "...", "fuma": "...", "fumaDetalles": "...", "audio_patologicos": "...", "audio_exantematicas": "...", "audio_ruido": "..." },
           "checklist": [
             { "categoria": "1. Identidad (Folio, Nombre, Nacimiento)", "pass": true/false, "comentario": "..." },
@@ -131,6 +132,7 @@ exports.handler = async (event, context) => {
         DEVUELVE ÚNICAMENTE un JSON estricto con esta estructura (sin markdown):
         {
           "aprobadoGeneral": true/false, "motivoPrincipal": "...",
+          "medicoTratante": "Extrae el nombre completo del médico que firma o avala el documento. Si no está, pon 'No Identificado'",
           "checklist": [
             { "categoria": "1. Integridad Demográfica", "pass": true/false, "comentario": "..." },
             { "categoria": "2. Antecedentes Laborales", "pass": true/false, "comentario": "..." },
@@ -235,6 +237,7 @@ exports.handler = async (event, context) => {
         {
           "aprobadoGeneral": true/false,
           "motivoPrincipal": "Resumen de la falla o 'Documento óptimo'",
+          "medicoTratante": "Extrae el nombre completo del médico que firma o avala el documento. Si no está, pon 'No Identificado'",
           "datosExtraidosHC": {
               "estatura": "...", "peso": "...", "fuma": "...", "fumaDetalles": "...", "audio_patologicos": "...", "audio_exantematicas": "...", "audio_ruido": "..."
           },
@@ -285,6 +288,7 @@ exports.handler = async (event, context) => {
         {
           "aprobadoGeneral": true/false,
           "motivoPrincipal": "Resumen de la falla o 'Documento congruente y óptimo'",
+          "medicoTratante": "Extrae el nombre completo del médico que firma o avala el documento. Si no está, pon 'No Identificado'",
           "checklist": [
             { "categoria": "1. Fecha de Nacimiento", "pass": true/false, "comentario": "..." },
             { "categoria": "2. Nombre y Apellidos", "pass": true/false, "comentario": "..." },
@@ -324,6 +328,7 @@ exports.handler = async (event, context) => {
         {
           "aprobadoGeneral": true/false,
           "motivoPrincipal": "Resumen de la falla o 'Documento congruente y óptimo'",
+          "medicoTratante": "Extrae el nombre completo del médico que firma o avala el documento. Si no está, pon 'No Identificado'",
           "checklist": [
             { "categoria": "1. Identificación", "pass": true/false, "comentario": "..." },
             { "categoria": "2. Antecedentes Personales Patológicos", "pass": true/false, "comentario": "..." },
@@ -362,6 +367,7 @@ exports.handler = async (event, context) => {
         {
           "aprobadoGeneral": true/false,
           "motivoPrincipal": "Resumen de la falla o 'Estudio de calidad y congruente'",
+          "medicoTratante": "Extrae el nombre completo del médico que firma o avala el documento. Si no está, pon 'No Identificado'",
           "checklist": [
             { "categoria": "1. ID de Paciente (11 dígitos)", "pass": true/false, "comentario": "..." },
             { "categoria": "2. Fecha de Nacimiento", "pass": true/false, "comentario": "..." },
@@ -393,6 +399,7 @@ exports.handler = async (event, context) => {
         {
           "aprobadoGeneral": true/false,
           "motivoPrincipal": "Resumen de la falla o 'Estudio de calidad'",
+          "medicoTratante": "Extrae el nombre completo del médico que firma o avala el documento. Si no está, pon 'No Identificado'",
           "checklist": [
             { "categoria": "1. ID de Paciente (11 dígitos)", "pass": true/false, "comentario": "..." },
             { "categoria": "2. Etnia (HISPANO)", "pass": true/false, "comentario": "..." },
