@@ -2368,6 +2368,118 @@
                 }
             }
         }
+
+        // ==============================================================================
+        // MÓDULO DE MÉTRICAS DE CALIDAD MÉDICA (AUDITORÍA IA FIREBASE)
+        // ==============================================================================
+        function abrirModalMetricas() {
+            document.getElementById('modal-metricas-calidad').classList.remove('hidden');
+            cargarMetricasDesdeFirebase();
+        }
+
+        function cerrarModalMetricas() {
+            document.getElementById('modal-metricas-calidad').classList.add('hidden');
+        }
+
+        async function cargarMetricasDesdeFirebase() {
+            if (!db) {
+                mostrarToast("Conexión a la base de datos no disponible.", "error");
+                return;
+            }
+
+            try {
+                // Descargamos todo el historial de auditorías
+                const snapshot = await db.collection("AuditoriaEstadisticas").get();
+                let datos = [];
+                snapshot.forEach(doc => datos.push(doc.data()));
+
+                if (datos.length === 0) {
+                    document.getElementById('tabla-medicos-metricas').innerHTML = `<tr><td colspan="6" class="p-6 text-center text-gray-500 italic">Aún no hay estudios evaluados por la IA en la base de datos. ¡Sube el primero!</td></tr>`;
+                    return;
+                }
+
+                // 1. Cálculos para Tarjetas KPI
+                const totalEvaluados = datos.length;
+                const totalAprobados = datos.filter(d => d.aprobado).length;
+                const totalRechazados = totalEvaluados - totalAprobados;
+                const efectividadGlobal = totalEvaluados > 0 ? ((totalAprobados / totalEvaluados) * 100).toFixed(1) : 0;
+                const totalErrores = datos.reduce((sum, d) => sum + (d.erroresContados || 0), 0);
+
+                document.getElementById('kpi-total-evaluados').innerText = totalEvaluados;
+                document.getElementById('kpi-efectividad').innerText = efectividadGlobal + '%';
+                document.getElementById('kpi-total-errores').innerText = totalErrores;
+
+                // 2. Gráfica de Pastel (Aprobados vs Rechazados)
+                Plotly.newPlot('grafica-aprobacion-metricas', [{
+                    labels: ['Aprobados', 'Rechazados'],
+                    values: [totalAprobados, totalRechazados],
+                    type: 'pie',
+                    hole: 0.4,
+                    marker: { colors: ['#10b981', '#ef4444'] }
+                }], { margin: {t: 40, b: 20, l: 20, r: 20}, title: 'Estatus Global de Auditoría' });
+
+                // 3. Gráfica de Barras (Estudios con más rechazos)
+                let rechazosPorEstudio = {};
+                datos.filter(d => !d.aprobado).forEach(d => {
+                    rechazosPorEstudio[d.estudio] = (rechazosPorEstudio[d.estudio] || 0) + 1;
+                });
+                let estArr = Object.keys(rechazosPorEstudio).map(k => ({name: k, count: rechazosPorEstudio[k]})).sort((a,b) => b.count - a.count);
+
+                if (estArr.length > 0) {
+                    Plotly.newPlot('grafica-estudios-metricas', [{
+                        x: estArr.map(d => d.name),
+                        y: estArr.map(d => d.count),
+                        type: 'bar',
+                        marker: { color: '#f59e0b' }
+                    }], { margin: {t: 40, b: 40, l: 40, r: 20}, title: 'Estudios más propensos a errores' });
+                } else {
+                    document.getElementById('grafica-estudios-metricas').innerHTML = '<div class="flex items-center justify-center h-full text-gray-400 italic">No hay rechazos registrados aún.</div>';
+                }
+
+                // 4. Ranking de Médicos (Tabla)
+                let medicos = {};
+                datos.forEach(d => {
+                    let med = d.medico || 'No Identificado';
+                    // Limpiamos la firma para no mostrar "Extrae el nombre completo..." si la IA falla
+                    if (med.length > 50) med = 'Firma Ilegible / No Identificada'; 
+                    
+                    if (!medicos[med]) medicos[med] = { evaluados: 0, aprobados: 0, rechazados: 0, errores: 0 };
+                    medicos[med].evaluados++;
+                    if (d.aprobado) medicos[med].aprobados++;
+                    else medicos[med].rechazados++;
+                    medicos[med].errores += (d.erroresContados || 0);
+                });
+
+                // Ordenamos del que evalúa más estudios al que menos
+                let ranking = Object.keys(medicos).map(k => {
+                    let m = medicos[k];
+                    m.nombre = k;
+                    m.efectividad = m.evaluados > 0 ? ((m.aprobados / m.evaluados) * 100).toFixed(1) : 0;
+                    return m;
+                }).sort((a,b) => b.evaluados - a.evaluados); 
+
+                let htmlTabla = '';
+                ranking.forEach(m => {
+                    let colorEfectividad = m.efectividad >= 90 ? 'text-green-600' : (m.efectividad >= 70 ? 'text-yellow-600' : 'text-red-600');
+                    htmlTabla += `
+                        <tr class="hover:bg-indigo-50 transition">
+                            <td class="p-3 font-bold text-gray-700">${m.nombre}</td>
+                            <td class="p-3 text-center bg-gray-50 font-medium">${m.evaluados}</td>
+                            <td class="p-3 text-center text-green-600 font-bold">${m.aprobados}</td>
+                            <td class="p-3 text-center text-red-500 font-bold">${m.rechazados}</td>
+                            <td class="p-3 text-center text-gray-600">${m.errores}</td>
+                            <td class="p-3 text-center font-black ${colorEfectividad}">${m.efectividad}%</td>
+                        </tr>
+                    `;
+                });
+                document.getElementById('tabla-medicos-metricas').innerHTML = htmlTabla;
+
+            } catch (error) {
+                console.error("Error cargando métricas:", error);
+                mostrarToast("Error al cargar métricas de Firebase.", "error");
+            }
+        }
+            
         // ==============================================================================
         // MÓDULO DE ANALÍTICA HISTÓRICA GERENCIAL (Integrado localmente)
         // ==============================================================================
@@ -2583,6 +2695,61 @@
             XLSX.utils.book_append_sheet(workbook, worksheet, "Histórico_Filtrado");
             XLSX.writeFile(workbook, "LAPIA_Reporte_Historico.xlsx");
         }
+        <div id="modal-metricas-calidad" class="fixed inset-0 bg-black bg-opacity-75 hidden z-50 flex items-center justify-center fade-in">
+        <div class="bg-white w-11/12 max-w-6xl h-5/6 rounded-lg shadow-2xl flex flex-col overflow-hidden">
+            <div class="bg-indigo-700 text-white px-6 py-4 flex justify-between items-center">
+                <h2 class="text-xl font-bold">📊 Auditoría y Calidad Médica (IA)</h2>
+                <button onclick="cerrarModalMetricas()" class="text-white hover:text-gray-300 font-bold text-3xl transition">&times;</button>
+            </div>
+            
+            <div class="p-6 flex-1 overflow-y-auto bg-gray-50 space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-white p-4 rounded shadow-sm border-l-4 border-blue-500">
+                        <h3 class="text-gray-500 text-xs font-bold uppercase tracking-wider">Total Evaluados (IA)</h3>
+                        <p id="kpi-total-evaluados" class="text-4xl font-black text-gray-800 mt-1">0</p>
+                    </div>
+                    <div class="bg-white p-4 rounded shadow-sm border-l-4 border-green-500">
+                        <h3 class="text-gray-500 text-xs font-bold uppercase tracking-wider">Efectividad Global</h3>
+                        <p id="kpi-efectividad" class="text-4xl font-black text-green-600 mt-1">0%</p>
+                    </div>
+                    <div class="bg-white p-4 rounded shadow-sm border-l-4 border-red-500">
+                        <h3 class="text-gray-500 text-xs font-bold uppercase tracking-wider">Errores Detectados</h3>
+                        <p id="kpi-total-errores" class="text-4xl font-black text-red-600 mt-1">0</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white p-4 rounded shadow-sm border border-gray-200">
+                        <div id="grafica-aprobacion-metricas" class="w-full h-64"></div>
+                    </div>
+                    <div class="bg-white p-4 rounded shadow-sm border border-gray-200">
+                        <div id="grafica-estudios-metricas" class="w-full h-64"></div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="bg-gray-800 text-white px-4 py-3 font-bold text-sm">🏆 Ranking de Desempeño por Médico</div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-gray-100 text-gray-600 border-b border-gray-200">
+                                <tr>
+                                    <th class="p-3">Médico Tratante</th>
+                                    <th class="p-3 text-center">Estudios Revisados</th>
+                                    <th class="p-3 text-center">Aprobados</th>
+                                    <th class="p-3 text-center">Rechazados</th>
+                                    <th class="p-3 text-center">Errores (Taches)</th>
+                                    <th class="p-3 text-center">% Efectividad</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-medicos-metricas" class="divide-y divide-gray-100">
+                                <tr><td colspan="6" class="p-6 text-center text-gray-400 italic">Cargando datos desde la nube...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     </script>
 </body>
 </html>
