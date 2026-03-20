@@ -549,6 +549,62 @@
         <h2 class="text-xl font-bold text-gray-800 text-center">Extrayendo Datos...</h2>
         <p id="texto-estado-lote" class="text-sm text-gray-500 mt-2 font-medium">Procesando archivo 1 de 3</p>
     </div>
+
+    <div id="modal-metricas-calidad" class="fixed inset-0 bg-black bg-opacity-75 hidden z-50 flex items-center justify-center fade-in">
+        <div class="bg-white w-11/12 max-w-6xl h-5/6 rounded-lg shadow-2xl flex flex-col overflow-hidden">
+            <div class="bg-indigo-700 text-white px-6 py-4 flex justify-between items-center">
+                <h2 class="text-xl font-bold">📊 Auditoría y Calidad Médica (IA)</h2>
+                <button onclick="cerrarModalMetricas()" class="text-white hover:text-gray-300 font-bold text-3xl transition">&times;</button>
+            </div>
+            
+            <div class="p-6 flex-1 overflow-y-auto bg-gray-50 space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-white p-4 rounded shadow-sm border-l-4 border-blue-500">
+                        <h3 class="text-gray-500 text-xs font-bold uppercase tracking-wider">Total Evaluados (IA)</h3>
+                        <p id="kpi-total-evaluados" class="text-4xl font-black text-gray-800 mt-1">0</p>
+                    </div>
+                    <div class="bg-white p-4 rounded shadow-sm border-l-4 border-green-500">
+                        <h3 class="text-gray-500 text-xs font-bold uppercase tracking-wider">Efectividad Global</h3>
+                        <p id="kpi-efectividad" class="text-4xl font-black text-green-600 mt-1">0%</p>
+                    </div>
+                    <div class="bg-white p-4 rounded shadow-sm border-l-4 border-red-500">
+                        <h3 class="text-gray-500 text-xs font-bold uppercase tracking-wider">Errores Detectados</h3>
+                        <p id="kpi-total-errores" class="text-4xl font-black text-red-600 mt-1">0</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white p-4 rounded shadow-sm border border-gray-200">
+                        <div id="grafica-aprobacion-metricas" class="w-full h-64"></div>
+                    </div>
+                    <div class="bg-white p-4 rounded shadow-sm border border-gray-200">
+                        <div id="grafica-estudios-metricas" class="w-full h-64"></div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="bg-gray-800 text-white px-4 py-3 font-bold text-sm">🏆 Ranking de Desempeño por Médico</div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-gray-100 text-gray-600 border-b border-gray-200">
+                                <tr>
+                                    <th class="p-3">Médico Tratante</th>
+                                    <th class="p-3 text-center">Estudios Revisados</th>
+                                    <th class="p-3 text-center">Aprobados</th>
+                                    <th class="p-3 text-center">Rechazados</th>
+                                    <th class="p-3 text-center">Errores (Taches)</th>
+                                    <th class="p-3 text-center">% Efectividad</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-medicos-metricas" class="divide-y divide-gray-100">
+                                <tr><td colspan="6" class="p-6 text-center text-gray-400 italic">Cargando datos desde la nube...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
         
     <script>
         // ==============================================================================
@@ -2695,61 +2751,7 @@
             XLSX.utils.book_append_sheet(workbook, worksheet, "Histórico_Filtrado");
             XLSX.writeFile(workbook, "LAPIA_Reporte_Historico.xlsx");
         }
-        <div id="modal-metricas-calidad" class="fixed inset-0 bg-black bg-opacity-75 hidden z-50 flex items-center justify-center fade-in">
-        <div class="bg-white w-11/12 max-w-6xl h-5/6 rounded-lg shadow-2xl flex flex-col overflow-hidden">
-            <div class="bg-indigo-700 text-white px-6 py-4 flex justify-between items-center">
-                <h2 class="text-xl font-bold">📊 Auditoría y Calidad Médica (IA)</h2>
-                <button onclick="cerrarModalMetricas()" class="text-white hover:text-gray-300 font-bold text-3xl transition">&times;</button>
-            </div>
-            
-            <div class="p-6 flex-1 overflow-y-auto bg-gray-50 space-y-6">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="bg-white p-4 rounded shadow-sm border-l-4 border-blue-500">
-                        <h3 class="text-gray-500 text-xs font-bold uppercase tracking-wider">Total Evaluados (IA)</h3>
-                        <p id="kpi-total-evaluados" class="text-4xl font-black text-gray-800 mt-1">0</p>
-                    </div>
-                    <div class="bg-white p-4 rounded shadow-sm border-l-4 border-green-500">
-                        <h3 class="text-gray-500 text-xs font-bold uppercase tracking-wider">Efectividad Global</h3>
-                        <p id="kpi-efectividad" class="text-4xl font-black text-green-600 mt-1">0%</p>
-                    </div>
-                    <div class="bg-white p-4 rounded shadow-sm border-l-4 border-red-500">
-                        <h3 class="text-gray-500 text-xs font-bold uppercase tracking-wider">Errores Detectados</h3>
-                        <p id="kpi-total-errores" class="text-4xl font-black text-red-600 mt-1">0</p>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="bg-white p-4 rounded shadow-sm border border-gray-200">
-                        <div id="grafica-aprobacion-metricas" class="w-full h-64"></div>
-                    </div>
-                    <div class="bg-white p-4 rounded shadow-sm border border-gray-200">
-                        <div id="grafica-estudios-metricas" class="w-full h-64"></div>
-                    </div>
-                </div>
-
-                <div class="bg-white rounded shadow-sm border border-gray-200 overflow-hidden">
-                    <div class="bg-gray-800 text-white px-4 py-3 font-bold text-sm">🏆 Ranking de Desempeño por Médico</div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-sm">
-                            <thead class="bg-gray-100 text-gray-600 border-b border-gray-200">
-                                <tr>
-                                    <th class="p-3">Médico Tratante</th>
-                                    <th class="p-3 text-center">Estudios Revisados</th>
-                                    <th class="p-3 text-center">Aprobados</th>
-                                    <th class="p-3 text-center">Rechazados</th>
-                                    <th class="p-3 text-center">Errores (Taches)</th>
-                                    <th class="p-3 text-center">% Efectividad</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tabla-medicos-metricas" class="divide-y divide-gray-100">
-                                <tr><td colspan="6" class="p-6 text-center text-gray-400 italic">Cargando datos desde la nube...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+        
     </script>
 </body>
 </html>
