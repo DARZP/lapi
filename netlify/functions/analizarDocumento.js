@@ -75,8 +75,9 @@ exports.handler = async (event, context) => {
           Grupo B: 5 (CAP y MTL bilateral), 13 (No palpables), 17, 20, 21, 22 (Normal).
           Grupo C: 4 (Ojos) cruce con Ametropía y Alteración Visión. REGLA DE LENTES: Si en la 46 o 47 existe la medición "Con lentes" (OI, OD, Bilateral), evalúa la ametropía (>=20/30) basándote EXCLUSIVAMENTE en esa medición. Si la toma "Con lentes" corrige la visión, NO es necesario hacer referencia a la patología en Ojos. 23 (Tatuajes) cruce con 30.
         
-        ### FIRMA DEL PACIENTE
-        - REQUIERE VERIFICACIÓN VISUAL DE LA FIRMA DEL PACIENTE, MISMA QUE DEBE ESTAR EN EL RECUADRO INFERIOR IZQUIERDO, YA QUE EL DERECHO CORRESPONDE A LA FIRMA DEL MÉDICO Y ESA NUNCA FALTARÁ.
+       ### FIRMA DEL PACIENTE (CRÍTICO)
+        - REQUIERE VERIFICACIÓN VISUAL ESTRICTA: Debes buscar visualmente un trazo a mano, garabato o escritura cursiva en el recuadro inferior izquierdo. 
+        - REGLA DE RECHAZO: El nombre impreso, tecleado o en letra de molde NO cuenta como firma. Si el recuadro solo tiene el nombre del paciente pero falta el trazo de la firma a mano, ES UN ERROR y debes marcar 'pass: false'. Recuerda que el recuadro derecho es del médico, no los confundas.
         `; 
         
         
@@ -219,8 +220,9 @@ exports.handler = async (event, context) => {
           Grupo C: 4 (Ojos) cruce con Ametropía y Alteración de Visión. REGLA DE LENTES: Si en la 46 o 47 existe la medición "Con lentes" (OI, OD, Bilateral), evalúa la ametropía (>=20/30) basándote EXCLUSIVAMENTE en esa medición. Si la toma "Con lentes" corrige la visión, NO es necesario hacer referencia a la patología en Ojos. 23 (Tatuajes) cruce con 30 (Si no hay, decir "No presentes").
           Grupo D (19, 24-30, Actitud, Observaciones): NO REQUIEREN VERIFICACIÓN.
 
-        ### FIRMA DEL PACIENTE
-        - REQUIERE VERIFICACIÓN VISUAL. DE LA FIRMA DEL PACIENTE, MISMA QUE DEBE ESTAR EN EL RECUADRO INFERIOR IZQUIERDO, YA QUE EL DERECHO CORRESPONDE A LA FIRMA DEL MÉDICO Y ESA NUNCA FALTARÁ
+        ### FIRMA DEL PACIENTE (CRÍTICO)
+        - REQUIERE VERIFICACIÓN VISUAL ESTRICTA: Debes buscar visualmente un trazo a mano, garabato o escritura cursiva en el recuadro inferior izquierdo. 
+        - REGLA DE RECHAZO: El nombre impreso, tecleado o en letra de molde NO cuenta como firma. Si el recuadro solo tiene el nombre del paciente pero falta el trazo de la firma a mano, ES UN ERROR y debes marcar 'pass: false'. Recuerda que el recuadro derecho es del médico, no los confundas.
         --- FIN DE REGLAS MINAS ---
 
         Además de la auditoría, DEBES EXTRAER los siguientes datos del paciente para guardarlos en la base de datos y usarlos en futuros estudios:
