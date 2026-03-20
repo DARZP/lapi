@@ -750,11 +750,13 @@
             document.getElementById('pantalla-login').classList.add('hidden'); 
             document.getElementById('sidebar').classList.remove('hidden'); 
             document.getElementById('sidebar').classList.add('flex'); 
+            
+            // ESTA ES LA LÍNEA QUE FALTABA (Enciende la pantalla blanca de trabajo)
             document.getElementById('contenido-principal').classList.remove('hidden');
+            
             document.getElementById('usuario-actual').textContent = rolActual === 'admin' ? 'Administrador LAPI' : `${sucursalActual}`;
             
             if (rolActual === 'admin') { 
-                // AQUÍ AGREGAMOS 'btn-nav-estadisticas' PARA QUE SE VEA
                 ['btn-nav-admin', 'btn-nav-directorio', 'btn-nav-minas', 'btn-nav-estadisticas'].forEach(id => {
                     const el = document.getElementById(id);
                     if(el) el.classList.remove('hidden');
@@ -764,11 +766,9 @@
                     if(el) el.classList.add('hidden');
                 }); 
                 
-                // CRÍTICO: Descargar datos de ambos mundos para el Admin
                 cargarPacientesMinasDesdeFirebase();
                 cargarPacientesRedDesdeFirebase(); 
             } else { 
-                // AQUÍ LO AGREGAMOS PARA QUE SE OCULTE A LAS SUCURSALES
                 ['btn-nav-admin', 'btn-nav-directorio', 'btn-nav-minas', 'btn-nav-estadisticas'].forEach(id => {
                     const el = document.getElementById(id);
                     if(el) el.classList.add('hidden');
@@ -778,7 +778,6 @@
                     if(el) el.classList.remove('hidden');
                 }); 
                 
-                // CRÍTICO: Descargar datos de la red para la Sucursal
                 cargarPacientesRedDesdeFirebase(); 
             }
             
@@ -817,25 +816,35 @@
         }
 
         function mostrarVista(idVista, btnActivo) {
-            // AÑADIMOS vista-laboratorio A LA LISTA DE LIMPIEZA
-            ['vista-inicio', 'vista-directorio', 'vista-laboratorio', 'vista-admin', 'vista-minas', 'panel-estadisticas'].forEach(id => {
+            // Lista exacta de todas las secciones de tu plataforma
+            [
+                'vista-inicio', 
+                'panel-estadisticas', 
+                'vista-admin', 
+                'vista-admin-directorio', 
+                'vista-admin-detalle', 
+                'vista-minas', 
+                'vista-registro', 
+                'vista-carga', 
+                'vista-analisis-libre'
+            ].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) {
                     el.classList.add('hidden');
-                    el.classList.remove('flex'); // Previene desfases
+                    el.classList.remove('flex'); // Previene el desfase de flexbox
                 }
             });
             
             const vista = document.getElementById(idVista);
             if (vista) {
                 vista.classList.remove('hidden');
-                // Si la vista requiere formato flex, se lo regresamos
-                if (idVista === 'vista-minas' || idVista === 'panel-estadisticas' || idVista === 'vista-admin') {
+                // Si la vista requiere formato flex (pantalla completa o lado a lado), se lo regresamos
+                if (idVista === 'vista-minas' || idVista === 'panel-estadisticas' || idVista === 'vista-admin' || idVista === 'vista-admin-directorio' || idVista === 'vista-admin-detalle') {
                     vista.classList.add('flex');
                 }
             }
 
-            // Reiniciar botones
+            // Reiniciar iluminación de botones
             document.querySelectorAll('#sidebar button').forEach(btn => {
                 btn.classList.remove('bg-gray-800', 'text-lapiOrange', 'border-l-4', 'border-lapiOrange');
             });
