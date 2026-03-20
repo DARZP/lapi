@@ -97,18 +97,15 @@
                 <button id="btn-nav-inicio" onclick="mostrarVista('vista-inicio', this)" class="w-full text-left p-3 rounded bg-gray-800 text-lapiOrange border-l-4 border-lapiOrange font-bold transition">🏠 Inicio</button>
                 <button id="btn-nav-admin" onclick="mostrarVista('vista-admin', this)" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium">🌐 Panel de Red</button>
                 <button id="btn-nav-estadisticas" onclick="mostrarVista('panel-estadisticas', this); inicializarDashboardHistorico();" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium text-blue-400">📊 Analítica Histórica</button>
-                <button id="btn-nav-directorio" onclick="mostrarVista('vista-directorio', this)" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium">📞 Directorio Médico</button>
-                <button id="btn-nav-laboratorio" onclick="mostrarVista('vista-laboratorio', this)" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium">🧪 Laboratorio Libre</button>
                 <button id="btn-nav-minas" onclick="mostrarVista('vista-minas', this)" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium">⛏️ Módulo MINAS</button>
                 <button id="btn-nav-registro" onclick="mostrarVista('vista-registro', this)" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium">📝 Registro Diario</button>
                 <button id="btn-nav-carga" onclick="mostrarVista('vista-carga', this)" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium">📂 Módulo Documental</button>
             </nav>
-            <div class="pt-4 mt-2 border-t border-gray-800">
-                <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-2 font-bold px-2">Herramientas IA</p>
-                <button onclick="mostrarVista('vista-analisis-libre', this)" id="btn-nav-libre" class="w-full text-left p-3 rounded hover:bg-gray-800 transition font-medium flex items-center">
-                    <svg class="w-4 h-4 mr-2 text-lapiOrange" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
-                    Laboratorio LAP.IA
-                </button>
+
+            <div class="mt-8 border-t border-gray-700 pt-4">
+                <p class="text-xs text-gray-500 uppercase font-bold mb-3 tracking-wider">Herramientas IA</p>
+                <button id="btn-nav-directorio" onclick="mostrarVista('vista-admin-directorio', this)" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium">📞 Directorio Médico</button>
+                <button id="btn-nav-laboratorio" onclick="mostrarVista('vista-analisis-libre', this)" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium">🧪 Laboratorio Libre</button>
             </div>
         </nav>
         <div class="p-4 border-t border-gray-800"><button onclick="cerrarSesion()" class="text-sm text-red-400 hover:text-red-300 w-full text-left">Salir del Sistema</button></div>
@@ -753,7 +750,6 @@
                 document.getElementById('usuario-actual').textContent = rolActual === 'admin' ? 'Administrador LAPI' : `${sucursalActual}`;
                 
                 if (rolActual === 'admin') { 
-                    // AQUÍ ESTÁN LOS 5 BOTONES DEL ADMINISTRADOR
                     ['btn-nav-admin', 'btn-nav-estadisticas', 'btn-nav-directorio', 'btn-nav-laboratorio', 'btn-nav-minas'].forEach(id => {
                         const el = document.getElementById(id);
                         if(el) el.classList.remove('hidden');
@@ -822,8 +818,8 @@
                 'panel-estadisticas', 
                 'vista-admin', 
                 'vista-admin-detalle', 
-                'vista-directorio', 
-                'vista-laboratorio', 
+                'vista-admin-directorio', 
+                'vista-analisis-libre', 
                 'vista-minas', 
                 'vista-registro', 
                 'vista-carga'
@@ -839,7 +835,7 @@
             if (vista) {
                 vista.classList.remove('hidden');
                 // Devolvemos el formato flex a las pantallas que lo necesitan
-                if (idVista === 'vista-minas' || idVista === 'panel-estadisticas' || idVista === 'vista-admin' || idVista === 'vista-directorio' || idVista === 'vista-admin-detalle' || idVista === 'vista-laboratorio') {
+                if (['vista-minas', 'panel-estadisticas', 'vista-admin', 'vista-admin-directorio', 'vista-admin-detalle', 'vista-analisis-libre'].includes(idVista)) {
                     vista.classList.add('flex');
                 }
             }
