@@ -38,7 +38,7 @@ exports.handler = async (event, context) => {
 
         ### SECCIÓN ANTECEDENTES LABORALES
         - 1. NO REQUIERE VERIFICACIÓN.
-        - 2. Antigüedad: Formato de tiempo (Años o Años con Meses).
+        - 2. Antigüedad y Congruencia Lógica: Formato de tiempo (Años o Meses). EXTREMA ATENCIÓN: Para el trabajo más reciente (el empleo actual), calcula matemáticamente si la 'Antigüedad' escrita coincide con el año de ingreso reportado hasta la fecha actual. (Ejemplo: Si ingresó en enero de 2018 y estamos en 2026, la antigüedad correcta es de 8 años. Si escribieron 9 años, el cálculo falla, es ERROR y debes marcar 'pass: false').
         - 3. Orden de Registros: Cronológicos (Más reciente a más antiguo).
         - A. RIESGOS FÍSICOS: Si es SÍ, verificar: Ruido, Vibración, Radiación, Iluminación, Temperaturas, Altura, Confinados con sus respectivos EPP y detalles.
         - B. RIESGOS QUÍMICOS: Si es NO, NO REQUIERE VERIFICACIÓN. Si es SÍ, verificar (Tipo, EPP).
@@ -174,14 +174,13 @@ exports.handler = async (event, context) => {
 
         ### SECCIÓN ANTECEDENTES LABORALES
         - 1. NO REQUIERE VERIFICACIÓN.
-        - 2. Antigüedad: Debe estar registrada obligatoriamente en formato de tiempo (Años o Años con Meses).
+        - 2. Antigüedad y Congruencia Lógica: Debe estar registrada obligatoriamente en formato de tiempo (Años o Meses). EXTREMA ATENCIÓN: Para el trabajo más reciente (el empleo actual), calcula matemáticamente si la 'Antigüedad' escrita coincide con el año de ingreso reportado hasta la fecha actual. (Ejemplo: Si ingresó en enero de 2018 y estamos en 2026, la antigüedad correcta es de 8 años. Si escribieron 9 años, el cálculo falla, es ERROR y debes marcar 'pass: false' detallando el error matemático).
         - 3. Orden de Registros: Ordenados cronológicamente (más reciente a más antiguo). En "FUNCIÓN PRINCIPAL", cada registro debe incluir obligatoriamente al menos UN factor de riesgo explícito.
         - A. RIESGOS FÍSICOS: Si es SÍ, verifica detalles estrictos (Ruido, Vibración, Radiación, Iluminación, Temperaturas, Altura, Confinados).
         - B. RIESGOS QUÍMICOS: Si es SÍ, verifica detalles.
         - C y E. BIOLÓGICOS Y PSICOSOCIALES: NO REQUIEREN VERIFICACIÓN.
         - D. ERGONÓMICOS: ATENCIÓN VISUAL ESTRICTA: Revisa con cuidado dónde está la marca. NO asumas "SÍ" si la marca está sobre "NO" o es ambigua. SOLO si es un "SÍ" claro e innegable, verifica detalles estrictos (Años, Horas, Observaciones).
-        - OBSERVACIONES DEL EXAMINADOR. En caso de que A, B, C, D, E Sean NO, (las 4) en esta sección se requiere la leyenda exacta "Niega exposición a silice, monoxido de carbono, cianuro de hidrogeno, plomo, estireno, tolueno, etilo benceno, xileno."
-        
+        - OBSERVACIONES DEL EXAMINADOR. En caso de que A, B, C, D, E Sean NO, (las 4) en esta sección se requiere la leyenda exacta "Niega exposición a silice, monoxido de carbono, cianuro de hidrogeno, plomo, estireno, tolueno, etilo benceno, xileno." 
         ### SECCIÓN DE RIESGOS LABORALES
         - 4 y 5: Si es SÍ, verifica que CADA dato esté contestado (Empresa, causa, días, cuándo, qué le pasó, secuelas, proceso).
         - 6 al 11: NO REQUIEREN VERIFICACIÓN.
