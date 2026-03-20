@@ -817,8 +817,8 @@
         }
 
         function mostrarVista(idVista, btnActivo) {
-            // Lista actualizada con TODAS las pantallas (incluyendo panel-estadisticas)
-            ['vista-inicio', 'vista-directorio', 'vista-admin', 'vista-minas', 'panel-estadisticas'].forEach(id => {
+            // AÑADIMOS vista-laboratorio A LA LISTA DE LIMPIEZA
+            ['vista-inicio', 'vista-directorio', 'vista-laboratorio', 'vista-admin', 'vista-minas', 'panel-estadisticas'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) {
                     el.classList.add('hidden');
@@ -845,6 +845,7 @@
                 btnActivo.classList.add('bg-gray-800', 'text-lapiOrange', 'border-l-4', 'border-lapiOrange');
             }
         }
+            
         function actualizarUI() {
             if (!rolActual) return;
             if (rolActual === 'admin') {
