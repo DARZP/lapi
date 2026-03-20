@@ -1030,27 +1030,69 @@
 
         function renderizarExpedientesMinas() {
             const contenedor = document.getElementById('contenedorExpedientesMinas');
+            if(!contenedor) return; // Protección extra
             contenedor.innerHTML = '';
-            if(!bdMinas[fechaActualStr]) return;
+            
+            if(!bdMinas[fechaActualStr]) {
+                // Si no hay datos, limpiamos las tarjetas de forma segura (sin que salgan errores en consola)
+                if(document.getElementById('stat-minas-hoy')) document.getElementById('stat-minas-hoy').textContent = '0';
+                if(document.getElementById('minas-pacientes-count')) document.getElementById('minas-pacientes-count').textContent = '0';
+                if(document.getElementById('stat-minas-completados')) document.getElementById('stat-minas-completados').textContent = '0%';
+                if(document.getElementById('stat-minas-100')) document.getElementById('stat-minas-100').textContent = '0';
+                if(document.getElementById('stat-minas-estudios')) document.getElementById('stat-minas-estudios').textContent = '0';
+                if(document.getElementById('stat-minas-desglose')) document.getElementById('stat-minas-desglose').textContent = 'Sin estudios';
+                return;
+            }
             
             let pacientes = bdMinas[fechaActualStr].pacientes;
-            document.getElementById('stat-minas-hoy').textContent = pacientes.length;
+            
+            // Actualización segura de Pacientes Hoy
+            if(document.getElementById('stat-minas-hoy')) document.getElementById('stat-minas-hoy').textContent = pacientes.length;
+            if(document.getElementById('minas-pacientes-count')) document.getElementById('minas-pacientes-count').textContent = pacientes.length;
             
             let pacCompletados = 0; let reqHC = 0, reqEs = 0, reqAu = 0; let apHC = 0, apEs = 0, apAu = 0;
+            let totalEstudios = 0;
+            let conteoTipos = { HC: 0, ESP: 0, AUD: 0, EKG: 0, OTR: 0 };
 
             pacientes.forEach(p => {
                 const keys = Object.keys(p.docsStatus);
                 const todosAprobados = keys.every(k => p.docsStatus[k].estado === 'aprobado');
                 if (todosAprobados && keys.length > 0) pacCompletados++;
+                
+                // NUEVO: Conteo de estudios para las nuevas tarjetas
+                keys.forEach(k => {
+                    totalEstudios++;
+                    if (k.includes('Historia')) conteoTipos.HC++;
+                    else if (k.includes('Espiro')) conteoTipos.ESP++;
+                    else if (k.includes('Audio')) conteoTipos.AUD++;
+                    else if (k.includes('Electro')) conteoTipos.EKG++;
+                    else conteoTipos.OTR++;
+                });
+
                 if(p.docsStatus['Historia Clínica']) { reqHC++; if(p.docsStatus['Historia Clínica'].estado === 'aprobado') apHC++; }
                 if(p.docsStatus['Espirometría']) { reqEs++; if(p.docsStatus['Espirometría'].estado === 'aprobado') apEs++; }
                 if(p.docsStatus['Audiometría']) { reqAu++; if(p.docsStatus['Audiometría'].estado === 'aprobado') apAu++; }
             });
 
-            document.getElementById('stat-minas-completados').textContent = pacientes.length > 0 ? Math.round((pacCompletados/pacientes.length)*100) + '%' : '0%';
-            document.getElementById('stat-progreso-hc').textContent = reqHC > 0 ? Math.round((apHC/reqHC)*100) + '%' : '-';
-            document.getElementById('stat-progreso-espiro').textContent = reqEs > 0 ? Math.round((apEs/reqEs)*100) + '%' : '-';
-            document.getElementById('stat-progreso-audio').textContent = reqAu > 0 ? Math.round((apAu/reqAu)*100) + '%' : '-';
+            // Actualizaciones Seguras UI (Conteo de Completados y Progreso)
+            if(document.getElementById('stat-minas-completados')) document.getElementById('stat-minas-completados').textContent = pacientes.length > 0 ? Math.round((pacCompletados/pacientes.length)*100) + '%' : '0%';
+            if(document.getElementById('stat-minas-100')) document.getElementById('stat-minas-100').textContent = pacCompletados; 
+            
+            if(document.getElementById('stat-progreso-hc')) document.getElementById('stat-progreso-hc').textContent = reqHC > 0 ? Math.round((apHC/reqHC)*100) + '%' : '-';
+            if(document.getElementById('stat-progreso-espiro')) document.getElementById('stat-progreso-espiro').textContent = reqEs > 0 ? Math.round((apEs/reqEs)*100) + '%' : '-';
+            if(document.getElementById('stat-progreso-audio')) document.getElementById('stat-progreso-audio').textContent = reqAu > 0 ? Math.round((apAu/reqAu)*100) + '%' : '-';
+
+            // NUEVO: Actualización de Tarjetas de Estudios Totales
+            if(document.getElementById('stat-minas-estudios')) document.getElementById('stat-minas-estudios').textContent = totalEstudios;
+            if(document.getElementById('stat-minas-desglose')) {
+                let desgloseArr = [];
+                if (conteoTipos.HC > 0) desgloseArr.push(`${conteoTipos.HC} HC`);
+                if (conteoTipos.ESP > 0) desgloseArr.push(`${conteoTipos.ESP} ESP`);
+                if (conteoTipos.AUD > 0) desgloseArr.push(`${conteoTipos.AUD} AUD`);
+                if (conteoTipos.EKG > 0) desgloseArr.push(`${conteoTipos.EKG} EKG`);
+                if (conteoTipos.OTR > 0) desgloseArr.push(`${conteoTipos.OTR} OTR`);
+                document.getElementById('stat-minas-desglose').textContent = desgloseArr.length > 0 ? desgloseArr.join(' | ') : 'Sin estudios';
+            }
 
             // APLICAR BÚSQUEDA
             const terminoBusqueda = (document.getElementById('buscadorMinas')?.value || '').toLowerCase();
@@ -1134,7 +1176,6 @@
             });
         }
 
-        
 
         function abrirModalChecklistMinas(idPaciente, docName) {
             const paciente = bdMinas[fechaActualStr].pacientes.find(p => p.id === idPaciente.toString() || p.id === idPaciente);
