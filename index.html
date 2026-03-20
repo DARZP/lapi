@@ -90,7 +90,7 @@
 
     <aside id="sidebar" class="hidden w-64 bg-gray-900 text-white flex-col shadow-lg z-40">
         <div class="p-5 border-b border-gray-800">
-            <h2 class="text-2xl font-extrabold tracking-tight cursor-pointer" onclick="mostrarVista('vista-inicio', document.getElementById('btn-nav-inicio'))">LAP<span class="text-lapiOrange">.IA</span></h2>
+            <h2 class="text-2xl font-extrabold tracking-tight cursor-pointer" onclick=a-inicio', document.getElementById('btn-nav-inicio'))">LAP<span class="text-lapiOrange">.IA</span></h2>
             <p id="usuario-actual" class="text-xs text-gray-400 mt-1">Usuario</p>
         </div>
         <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
@@ -99,7 +99,8 @@
             </button>
             
             <button onclick="mostrarVista('vista-admin', this)" id="btn-nav-admin" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium">Panel de Red</button>
-            <button onclick="mostrarVista('vista-admin-directorio', this)" id="btn-nav-directorio" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium flex justify-between items-center">Directorio ➔</button>
+            <button onclick="mostrarVista('panel-estadisticas', this); inicializarDashboardHistorico();" id="btn-nav-estadisticas" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium text-blue-400">📊 Analítica Histórica</button>
+        <button onclick="mostrarVista('vista-admin-directorio', this)" id="btn-nav-directorio" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium flex justify-between items-center">Directorio ➔</button>
             <button onclick="mostrarVista('vista-minas', this)" id="btn-nav-minas" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium text-yellow-500">Módulo MINAS ⛏️</button>
             
             <button onclick="mostrarVista('vista-registro', this)" id="btn-nav-registro" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium">Registro de Pacientes</button>
@@ -135,6 +136,85 @@
                 <div id="grid-inicio" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-5xl">
                     </div>
             </section>
+
+                <section id="panel-estadisticas" class="hidden h-full flex flex-col overflow-y-auto">
+                <div class="max-w-7xl mx-auto space-y-6 w-full">
+                    
+                    <div class="bg-white p-6 rounded-lg shadow-sm border-t-4 border-blue-500 flex flex-col lg:flex-row gap-6 items-center mt-4">
+                        <div class="flex-1 w-full border-2 border-dashed border-blue-300 bg-blue-50 p-6 rounded-lg text-center">
+                            <h3 class="text-lg font-bold text-blue-800 mb-2">⚙️ Alimentar Base Histórica</h3>
+                            <p class="text-sm text-gray-600 mb-4">Sube los concentrados (Excel/CSV) de meses anteriores. La IA ordenará sucursales y estudios.</p>
+                            <div class="flex flex-col sm:flex-row justify-center items-center gap-3">
+                                <input type="file" id="archivosCargaHistorica" multiple accept=".csv, .xlsx, .xls" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 cursor-pointer bg-white border border-gray-300 rounded-full">
+                                <button id="btnProcesarHistorico" onclick="procesarArchivosHistoricos()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full shadow transition w-full sm:w-auto">⚡ Procesar Datos</button>
+                                <button onclick="limpiarDatosHistoricos()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-full shadow transition w-full sm:w-auto">🗑️ Borrar Todo</button>
+                            </div>
+                        </div>
+                        <div class="flex-1 w-full bg-gray-100 p-5 rounded-lg border border-gray-200 h-full max-h-48 overflow-y-auto chat-scroll">
+                            <h4 class="font-bold text-gray-700 border-b border-gray-300 pb-2 mb-3 text-sm">💾 Memoria del Navegador</h4>
+                            <div id="listaMemoriaHistorica" class="text-sm text-gray-600 space-y-2">
+                                <p class="italic text-center mt-4">No hay datos guardados actualmente.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-wrap gap-4 items-end">
+                        <div class="flex-1 min-w-[150px]">
+                            <label class="block text-xs font-bold text-gray-500 mb-1">Mes Operativo</label>
+                            <select id="filtroMesHist" onchange="aplicarFiltrosHistoricos()" class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-lapiOrange focus:border-lapiOrange outline-none"><option value="Todos">Todos</option></select>
+                        </div>
+                        <div class="flex-1 min-w-[150px]">
+                            <label class="block text-xs font-bold text-gray-500 mb-1">Sucursal</label>
+                            <select id="filtroSucursalHist" onchange="aplicarFiltrosHistoricos()" class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-lapiOrange focus:border-lapiOrange outline-none"><option value="Todas">Todas</option></select>
+                        </div>
+                        <div class="flex-1 min-w-[150px]">
+                            <label class="block text-xs font-bold text-gray-500 mb-1">Tipo de Estudio</label>
+                            <select id="filtroEstudioHist" onchange="aplicarFiltrosHistoricos()" class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-lapiOrange focus:border-lapiOrange outline-none"><option value="Todos">Todos</option></select>
+                        </div>
+                        <div>
+                            <button onclick="exportarExcelHistorico()" class="bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-6 rounded shadow transition">📥 Descargar Vista</button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="bg-white p-4 rounded-lg shadow-sm border-t-4 border-blue-500 text-center">
+                            <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Total Estudios</h3>
+                            <p id="totEstudiosHist" class="text-3xl font-black text-gray-800">0</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg shadow-sm border-t-4 border-indigo-500 text-center">
+                            <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Pacientes Únicos</h3>
+                            <p id="totPacientesHist" class="text-3xl font-black text-gray-800">0</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg shadow-sm border-t-4 border-green-500 text-center">
+                            <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Estudios / Paciente</h3>
+                            <p id="totDensidadHist" class="text-3xl font-black text-green-600">0.0</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg shadow-sm border-t-4 border-purple-500 text-center">
+                            <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Personal Activo</h3>
+                            <p id="totMedicosHist" class="text-3xl font-black text-gray-800">0</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-6">
+                        <div class="bg-white p-2 rounded-lg shadow-sm border border-gray-200 lg:col-span-2">
+                            <div id="graficaTendenciaHist" class="w-full h-80"></div>
+                        </div>
+                        <div class="bg-white p-2 rounded-lg shadow-sm border border-gray-200">
+                            <div id="graficaDiasHist" class="w-full h-72"></div>
+                        </div>
+                        <div class="bg-white p-2 rounded-lg shadow-sm border border-gray-200">
+                            <div id="graficaSucursalesHist" class="w-full h-72"></div>
+                        </div>
+                        <div class="bg-white p-2 rounded-lg shadow-sm border border-gray-200">
+                            <div id="graficaEstudiosHist" class="w-full h-80"></div>
+                        </div>
+                        <div class="bg-white p-2 rounded-lg shadow-sm border border-gray-200">
+                            <div id="graficaMedicosHist" class="w-full h-80"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+                
 
             <section id="vista-admin" class="hidden space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -674,7 +754,8 @@
             document.getElementById('usuario-actual').textContent = rolActual === 'admin' ? 'Administrador LAPI' : `${sucursalActual}`;
             
             if (rolActual === 'admin') { 
-                ['btn-nav-admin', 'btn-nav-directorio', 'btn-nav-minas'].forEach(id => {
+                // AQUÍ AGREGAMOS 'btn-nav-estadisticas' PARA QUE SE VEA
+                ['btn-nav-admin', 'btn-nav-directorio', 'btn-nav-minas', 'btn-nav-estadisticas'].forEach(id => {
                     const el = document.getElementById(id);
                     if(el) el.classList.remove('hidden');
                 }); 
@@ -687,7 +768,8 @@
                 cargarPacientesMinasDesdeFirebase();
                 cargarPacientesRedDesdeFirebase(); 
             } else { 
-                ['btn-nav-admin', 'btn-nav-directorio', 'btn-nav-minas'].forEach(id => {
+                // AQUÍ LO AGREGAMOS PARA QUE SE OCULTE A LAS SUCURSALES
+                ['btn-nav-admin', 'btn-nav-directorio', 'btn-nav-minas', 'btn-nav-estadisticas'].forEach(id => {
                     const el = document.getElementById(id);
                     if(el) el.classList.add('hidden');
                 }); 
