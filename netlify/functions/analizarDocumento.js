@@ -330,6 +330,7 @@ exports.handler = async (event, context) => {
           "aprobadoGeneral": true/false,
           "motivoPrincipal": "Resumen de la falla o 'Documento congruente y óptimo'",
           "medicoTratante": "No Aplica",
+          "checklist": [
             { "categoria": "1. Identificación", "pass": true/false, "comentario": "..." },
             { "categoria": "2. Antecedentes Personales Patológicos", "pass": true/false, "comentario": "..." },
             { "categoria": "3. Antecedentes Laborales (Ruido)", "pass": true/false, "comentario": "..." },
