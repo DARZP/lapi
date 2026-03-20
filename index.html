@@ -137,7 +137,7 @@
                     </div>
             </section>
 
-                <section id="panel-estadisticas" class="hidden h-full flex flex-col overflow-y-auto">
+               <section id="panel-estadisticas" class="hidden h-full flex flex-col overflow-y-auto">
                 <div class="max-w-7xl mx-auto space-y-6 w-full">
                     
                     <div class="bg-white p-6 rounded-lg shadow-sm border-t-4 border-blue-500 flex flex-col lg:flex-row gap-6 items-center mt-4">
@@ -213,7 +213,7 @@
                         </div>
                     </div>
                 </div>
-            </section>
+            </section> 
                 
 
             <section id="vista-admin" class="hidden space-y-6">
@@ -2312,6 +2312,221 @@
                     db.collection("PacientesRed").doc(nuevoPaciente.id).set(pacGuardar).catch(e=>console.error(e));
                 }
             }
+        }
+        // ==============================================================================
+        // MÓDULO DE ANALÍTICA HISTÓRICA GERENCIAL (Integrado localmente)
+        // ==============================================================================
+        let datosCompletosHist = []; 
+        let datosFiltradosHist = [];
+        let dashboardHistoricoIniciado = false;
+
+        const nombresMesesHist = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+        const mesesTextoHist = { "ENE":0, "FEB":1, "MAR":2, "ABR":3, "MAY":4, "JUN":5, "JUL":6, "AGO":7, "SEP":8, "OCT":9, "NOV":10, "DIC":11 };
+        
+        const estudiosMapeoHist = {
+            "HC": "HC", "SEGURO": "Seguro", "AUDIOMETRIA": "Audiometría", 
+            "ESPIROMETRIA": "Espirometría", "ELECTROCARDIOGRAMA": "Electrocardiograma", 
+            "AGUDEZA VISUAL": "Agudeza Visual", "LOGOAUDIOMETRIA": "Logoaudiometría", 
+            "TIMPANOMETRIA": "Timpanometría", "CERTIFICADO": "Certificado", 
+            "NORDICO": "Nórdico", "OTRO": "Otro"
+        };
+
+        function inicializarDashboardHistorico() {
+            if(dashboardHistoricoIniciado) return;
+            let guardado = localStorage.getItem('lapiaHistoricoDataV1');
+            if (guardado) { datosCompletosHist = JSON.parse(guardado); }
+            actualizarTodoElPanelHistorico();
+            dashboardHistoricoIniciado = true;
+        }
+
+        async function procesarArchivosHistoricos() {
+            const inputArchivos = document.getElementById('archivosCargaHistorica');
+            const btn = document.getElementById('btnProcesarHistorico');
+
+            if(inputArchivos.files.length === 0) return mostrarToast("Selecciona un archivo Excel primero.", "advertencia");
+
+            btn.disabled = true; btn.innerText = "Procesando...";
+            let nuevosRegistros = 0; let hojasLeidas = 0;
+
+            try {
+                for(let i = 0; i < inputArchivos.files.length; i++) {
+                    let file = inputArchivos.files[i];
+                    let data = await file.arrayBuffer();
+                    let workbook = XLSX.read(data, {type: 'array'});
+                    
+                    for (let nombreHoja of workbook.SheetNames) {
+                        hojasLeidas++;
+                        let hoja = workbook.Sheets[nombreHoja];
+                        let filas = XLSX.utils.sheet_to_json(hoja, {header: 1});
+                        
+                        let fechaExtracta = "01/01/2026"; 
+                        let mesNum = 0; let sucursalExtracta = "Sin Sucursal"; 
+                        let indiceEncabezado = -1; let mapaColumnas = {};
+
+                        for(let r = 0; r < Math.min(20, filas.length); r++) {
+                            if(!filas[r]) continue;
+                            let celdasLimpias = filas[r].map(c => c ? String(c).trim().toUpperCase() : "");
+                            let filaTexto = celdasLimpias.join(" ");
+                            
+                            let idxFecha = celdasLimpias.findIndex(v => v.includes("FECHA"));
+                            if(idxFecha !== -1) {
+                                let partesFecha = [];
+                                for(let c = idxFecha + 1; c < celdasLimpias.length; c++) {
+                                    let val = celdasLimpias[c];
+                                    if(val !== "" && val !== ":" && val !== "/" && val !== "-") partesFecha.push(val);
+                                    if(partesFecha.length === 3) break; 
+                                }
+                                if(partesFecha.length === 3) {
+                                    let dia = partesFecha[0].padStart(2, '0');
+                                    let mesRaw = partesFecha[1];
+                                    let anio = partesFecha[2];
+                                    mesNum = isNaN(mesRaw) ? (mesesTextoHist[mesRaw.substring(0,3)] || 0) : parseInt(mesRaw) - 1;
+                                    fechaExtracta = `${dia}/${String(mesNum + 1).padStart(2, '0')}/${anio.length === 2 ? "20"+anio : anio}`;
+                                }
+                            }
+
+                            let colSucursal = celdasLimpias.findIndex(val => val.includes("SUCURSAL"));
+                            if(colSucursal !== -1 && celdasLimpias[colSucursal + 1]) {
+                                sucursalExtracta = celdasLimpias[colSucursal + 1].replace(":", "").trim();
+                            }
+
+                            if(filaTexto.includes("NOMBRE") && filaTexto.includes("EMPRESA")) {
+                                indiceEncabezado = r;
+                                filas[r].forEach((valor, colIdx) => { if(valor) mapaColumnas[String(valor).trim().toUpperCase()] = colIdx; });
+                            }
+                        }
+
+                        if(indiceEncabezado !== -1) {
+                            for(let r = indiceEncabezado + 1; r < filas.length; r++) {
+                                let fila = filas[r]; if(!fila) continue; 
+                                let textoDeTodaLaFila = fila.map(v=>v||"").join("").toUpperCase();
+                                if(textoDeTodaLaFila.includes("PENDIENTES")) break; 
+                                if(!fila[mapaColumnas["NOMBRE"]]) continue; 
+                                
+                                let paciente = String(fila[mapaColumnas["NOMBRE"]]).trim();
+                                let empresa = fila[mapaColumnas["EMPRESA"]] ? String(fila[mapaColumnas["EMPRESA"]]).trim() : "Sin Empresa";
+
+                                Object.keys(estudiosMapeoHist).forEach(estudioClave => {
+                                    let colIdx = mapaColumnas[estudioClave];
+                                    if(colIdx !== undefined && fila[colIdx]) {
+                                        let celdaLimpia = String(fila[colIdx]).trim().toUpperCase();
+                                        if(celdaLimpia !== "" && !celdaLimpia.includes("PEND")) {
+                                            datosCompletosHist.push({ Fecha: fechaExtracta, MesNumero: mesNum, MesNombre: nombresMesesHist[mesNum], Sucursal: sucursalExtracta, Paciente: paciente, Empresa: empresa, Estudio: estudiosMapeoHist[estudioClave], Personal: celdaLimpia });
+                                            nuevosRegistros++;
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                    } 
+                } 
+                localStorage.setItem('lapiaHistoricoDataV1', JSON.stringify(datosCompletosHist));
+                btn.disabled = false; btn.innerText = "⚡ Procesar Datos"; inputArchivos.value = ""; 
+                mostrarToast(`¡Éxito! Se añadieron ${nuevosRegistros} estudios a la Base de Datos.`, 'exito');
+                actualizarTodoElPanelHistorico();
+            } catch (error) {
+                console.error(error); mostrarToast("Error procesando el archivo. Verifica el formato.", "error");
+                btn.disabled = false; btn.innerText = "⚡ Procesar Datos";
+            }
+        }
+
+        function renderizarGestorMemoriaHistorica() {
+            let contenedor = document.getElementById("listaMemoriaHistorica"); contenedor.innerHTML = "";
+            if(datosCompletosHist.length === 0) { contenedor.innerHTML = "<p class='italic text-center mt-4 text-gray-400'>No hay datos guardados. Sube tu primer Excel arriba.</p>"; return; }
+            let mesesGuardados = [...new Set(datosCompletosHist.map(d => JSON.stringify({num: d.MesNumero, nombre: d.MesNombre})))].map(JSON.parse).sort((a,b) => a.num - b.num);
+            mesesGuardados.forEach(mes => {
+                let datosDelMes = datosCompletosHist.filter(d => d.MesNumero === mes.num);
+                let sucursalesEnMes = new Set(datosDelMes.map(d => d.Sucursal)).size;
+                let div = document.createElement("div"); div.className = "flex justify-between items-center py-2 border-b border-gray-200";
+                div.innerHTML = `<span><strong class="text-gray-800">${mes.nombre.toUpperCase()}</strong>: ${datosDelMes.length} estudios en ${sucursalesEnMes} sucursales.</span> 
+                                 <button onclick="borrarMesHistorico(${mes.num}, '${mes.nombre}')" class="text-red-500 hover:text-red-700 font-bold text-xs bg-red-50 px-2 py-1 rounded">Borrar</button>`;
+                contenedor.appendChild(div);
+            });
+        }
+
+        function borrarMesHistorico(numMes, nombreMes) {
+            if(confirm(`¿Deseas eliminar de la memoria TODOS los datos del mes de ${nombreMes}?`)) {
+                datosCompletosHist = datosCompletosHist.filter(d => d.MesNumero !== numMes);
+                localStorage.setItem('lapiaHistoricoDataV1', JSON.stringify(datosCompletosHist)); actualizarTodoElPanelHistorico();
+            }
+        }
+
+        function limpiarDatosHistoricos() {
+            if(confirm("⚠️ ATENCIÓN: Esto borrará TODOS los datos de todos los meses de forma permanente. ¿Estás segura?")) {
+                datosCompletosHist = []; localStorage.removeItem('lapiaHistoricoDataV1'); actualizarTodoElPanelHistorico();
+            }
+        }
+
+        function actualizarTodoElPanelHistorico() {
+            renderizarGestorMemoriaHistorica(); poblarFiltrosHistoricos(); aplicarFiltrosHistoricos();
+        }
+
+        function poblarFiltrosHistoricos() {
+            let selectMes = document.getElementById("filtroMesHist"); let selectSuc = document.getElementById("filtroSucursalHist"); let selectEst = document.getElementById("filtroEstudioHist");
+            let mesActual = selectMes.value; let sucActual = selectSuc.value; let estActual = selectEst.value;
+            selectMes.options.length = 1; selectSuc.options.length = 1; selectEst.options.length = 1;
+
+            let mesesUnicos = [...new Set(datosCompletosHist.map(d => JSON.stringify({num: d.MesNumero, nombre: d.MesNombre})))].map(JSON.parse).sort((a,b) => a.num - b.num);
+            mesesUnicos.forEach(m => selectMes.add(new Option(m.nombre, m.num)));
+            [...new Set(datosCompletosHist.map(d => d.Sucursal))].sort().forEach(s => selectSuc.add(new Option(s, s)));
+            [...new Set(datosCompletosHist.map(d => d.Estudio))].sort().forEach(e => selectEst.add(new Option(e, e)));
+
+            if(Array.from(selectMes.options).some(o => o.value === mesActual)) selectMes.value = mesActual;
+            if(Array.from(selectSuc.options).some(o => o.value === sucActual)) selectSuc.value = sucActual;
+            if(Array.from(selectEst.options).some(o => o.value === estActual)) selectEst.value = estActual;
+        }
+
+        function aplicarFiltrosHistoricos() {
+            const mes = document.getElementById("filtroMesHist").value; const suc = document.getElementById("filtroSucursalHist").value; const est = document.getElementById("filtroEstudioHist").value;
+            datosFiltradosHist = datosCompletosHist.filter(d => (mes === "Todos" || d.MesNumero == mes) && (suc === "Todas" || d.Sucursal === suc) && (est === "Todos" || d.Estudio === est));
+            dibujarDashboardHistorico();
+        }
+
+        function dibujarDashboardHistorico() {
+            if(datosFiltradosHist.length === 0) {
+                document.getElementById("totEstudiosHist").innerText = "0"; document.getElementById("totPacientesHist").innerText = "0";
+                document.getElementById("totDensidadHist").innerText = "0.0"; document.getElementById("totMedicosHist").innerText = "0";
+                ['graficaTendenciaHist', 'graficaDiasHist', 'graficaSucursalesHist', 'graficaEstudiosHist', 'graficaMedicosHist'].forEach(id => Plotly.purge(id));
+                return;
+            }
+
+            let totalPacientes = new Set(datosFiltradosHist.map(d => d.Paciente)).size;
+            document.getElementById("totEstudiosHist").innerText = datosFiltradosHist.length; document.getElementById("totPacientesHist").innerText = totalPacientes;
+            document.getElementById("totMedicosHist").innerText = new Set(datosFiltradosHist.map(d => d.Personal)).size;
+            document.getElementById("totDensidadHist").innerText = totalPacientes > 0 ? (datosFiltradosHist.length / totalPacientes).toFixed(1) : 0;
+
+            let conteoFechas = {};
+            datosFiltradosHist.forEach(d => { let p = d.Fecha.split('/'); conteoFechas[`${p[2]}-${p[1]}-${p[0]}`] = (conteoFechas[`${p[2]}-${p[1]}-${p[0]}`] || 0) + 1; });
+            let fechasOrd = Object.keys(conteoFechas).sort();
+            
+            let layoutBase = { paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', margin: {t: 40, b: 40, l:40, r:20}, font: {family: 'Inter, sans-serif'} };
+
+            Plotly.newPlot('graficaTendenciaHist', [{ x: fechasOrd.map(f => { let p=f.split('-'); return `${p[2]}/${p[1]}`; }), y: fechasOrd.map(f => conteoFechas[f]), type: 'scatter', mode: 'lines+markers', line: {color: '#F26522', width: 3}, marker: {size: 6} }], { ...layoutBase, title: '📈 Tendencia de Carga Operativa', xaxis: {tickangle: -45} });
+
+            let conteoDias = { "Lunes":0, "Martes":0, "Miércoles":0, "Jueves":0, "Viernes":0, "Sábado":0, "Domingo":0 };
+            datosFiltradosHist.forEach(d => { let p = d.Fecha.split('/'); conteoDias[["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"][new Date(p[2], parseInt(p[1]) - 1, p[0]).getDay()]]++; });
+            let xDias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+            Plotly.newPlot('graficaDiasHist', [{ x: xDias, y: xDias.map(d => conteoDias[d]), type: 'bar', marker: {color: '#3b82f6'} }], { ...layoutBase, title: '📅 Volumen por Día' });
+
+            let conteoSuc = {}; datosFiltradosHist.forEach(d => { conteoSuc[d.Sucursal] = (conteoSuc[d.Sucursal] || 0) + 1; });
+            let sucArr = Object.keys(conteoSuc).map(k => ({name: k, count: conteoSuc[k]})).sort((a, b) => b.count - a.count).slice(0, 8);
+            Plotly.newPlot('graficaSucursalesHist', [{ x: sucArr.map(d => d.name), y: sucArr.map(d => d.count), type: 'bar', marker: {color: '#10b981'} }], { ...layoutBase, title: '🏢 Top Sucursales' });
+
+            let conteoEst = {}; datosFiltradosHist.forEach(d => { conteoEst[d.Estudio] = (conteoEst[d.Estudio] || 0) + 1; });
+            Plotly.newPlot('graficaEstudiosHist', [{ labels: Object.keys(conteoEst), values: Object.values(conteoEst), type: 'pie', hole: 0.5, marker: {colors: ['#F26522', '#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899']} }], { ...layoutBase, title: '🔬 Distribución de Estudios' });
+
+            let conteoMed = {}; datosFiltradosHist.forEach(d => { conteoMed[d.Personal] = (conteoMed[d.Personal] || 0) + 1; });
+            let medArr = Object.keys(conteoMed).map(k => ({name: k, count: conteoMed[k]})).sort((a, b) => a.count - b.count).slice(-10);
+            Plotly.newPlot('graficaMedicosHist', [{ x: medArr.map(d => d.count), y: medArr.map(d => d.name), type: 'bar', orientation: 'h', marker: {color: '#8b5cf6'} }], { ...layoutBase, title: '👨‍⚕️ Top Personal Activo', margin: {t:40, b:30, l:120, r:20} });
+        }
+
+        function exportarExcelHistorico() {
+            if(datosFiltradosHist.length === 0) return mostrarToast("No hay datos para exportar.", "advertencia");
+            let datosParaExcel = datosFiltradosHist.map(({MesNumero, MesNombre, ...resto}) => resto);
+            const worksheet = XLSX.utils.json_to_sheet(datosParaExcel);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Histórico_Filtrado");
+            XLSX.writeFile(workbook, "LAPIA_Reporte_Historico.xlsx");
         }
     </script>
 </body>
