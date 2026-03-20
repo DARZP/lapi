@@ -93,19 +93,16 @@
             <h2 class="text-2xl font-extrabold tracking-tight cursor-pointer" onclick=a-inicio', document.getElementById('btn-nav-inicio'))">LAP<span class="text-lapiOrange">.IA</span></h2>
             <p id="usuario-actual" class="text-xs text-gray-400 mt-1">Usuario</p>
         </div>
-        <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
-            <button onclick="mostrarVista('vista-inicio', this)" id="btn-nav-inicio" class="w-full text-left p-3 rounded hover:bg-gray-800 transition font-medium flex items-center bg-gray-800 border-l-4 border-lapiOrange">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg> Inicio
-            </button>
-            
-            <button onclick="mostrarVista('vista-admin', this)" id="btn-nav-admin" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium">Panel de Red</button>
-            <button onclick="mostrarVista('panel-estadisticas', this); inicializarDashboardHistorico();" id="btn-nav-estadisticas" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium text-blue-400">📊 Analítica Histórica</button>
-        <button onclick="mostrarVista('vista-admin-directorio', this)" id="btn-nav-directorio" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium flex justify-between items-center">Directorio ➔</button>
-            <button onclick="mostrarVista('vista-minas', this)" id="btn-nav-minas" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium text-yellow-500">Módulo MINAS ⛏️</button>
-            
-            <button onclick="mostrarVista('vista-registro', this)" id="btn-nav-registro" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium">Registro de Pacientes</button>
-            <button onclick="mostrarVista('vista-carga', this)" id="btn-nav-carga" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium">Módulo Documental</button>
-            
+        <nav class="flex-1 space-y-2 mt-4">
+                <button id="btn-nav-inicio" onclick="mostrarVista('vista-inicio', this)" class="w-full text-left p-3 rounded bg-gray-800 text-lapiOrange border-l-4 border-lapiOrange font-bold transition">🏠 Inicio</button>
+                <button id="btn-nav-admin" onclick="mostrarVista('vista-admin', this)" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium">🌐 Panel de Red</button>
+                <button id="btn-nav-estadisticas" onclick="mostrarVista('panel-estadisticas', this); inicializarDashboardHistorico();" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium text-blue-400">📊 Analítica Histórica</button>
+                <button id="btn-nav-directorio" onclick="mostrarVista('vista-directorio', this)" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium">📞 Directorio Médico</button>
+                <button id="btn-nav-laboratorio" onclick="mostrarVista('vista-laboratorio', this)" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium">🧪 Laboratorio Libre</button>
+                <button id="btn-nav-minas" onclick="mostrarVista('vista-minas', this)" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium">⛏️ Módulo MINAS</button>
+                <button id="btn-nav-registro" onclick="mostrarVista('vista-registro', this)" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium">📝 Registro Diario</button>
+                <button id="btn-nav-carga" onclick="mostrarVista('vista-carga', this)" class="w-full text-left p-3 rounded hover:bg-gray-800 transition hidden font-medium">📂 Módulo Documental</button>
+            </nav>
             <div class="pt-4 mt-2 border-t border-gray-800">
                 <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-2 font-bold px-2">Herramientas IA</p>
                 <button onclick="mostrarVista('vista-analisis-libre', this)" id="btn-nav-libre" class="w-full text-left p-3 rounded hover:bg-gray-800 transition font-medium flex items-center">
@@ -743,46 +740,49 @@
         }
 
         function iniciarSesion() {
-            const acceso = document.getElementById('selector-acceso').value;
-            rolActual = acceso === 'admin' ? 'admin' : 'sucursal'; sucursalActual = acceso === 'admin' ? '' : acceso;
-            inicializarDiaYSucursal();
-            
-            document.getElementById('pantalla-login').classList.add('hidden'); 
-            document.getElementById('sidebar').classList.remove('hidden'); 
-            document.getElementById('sidebar').classList.add('flex'); 
-            
-            // ESTA ES LA LÍNEA QUE FALTABA (Enciende la pantalla blanca de trabajo)
-            document.getElementById('contenido-principal').classList.remove('hidden');
-            
-            document.getElementById('usuario-actual').textContent = rolActual === 'admin' ? 'Administrador LAPI' : `${sucursalActual}`;
-            
-            if (rolActual === 'admin') { 
-                ['btn-nav-admin', 'btn-nav-directorio', 'btn-nav-minas', 'btn-nav-estadisticas'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if(el) el.classList.remove('hidden');
-                }); 
-                ['btn-nav-registro', 'btn-nav-carga'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if(el) el.classList.add('hidden');
-                }); 
+            try {
+                const acceso = document.getElementById('selector-acceso').value;
+                rolActual = acceso === 'admin' ? 'admin' : 'sucursal'; sucursalActual = acceso === 'admin' ? '' : acceso;
+                inicializarDiaYSucursal();
                 
-                cargarPacientesMinasDesdeFirebase();
-                cargarPacientesRedDesdeFirebase(); 
-            } else { 
-                ['btn-nav-admin', 'btn-nav-directorio', 'btn-nav-minas', 'btn-nav-estadisticas'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if(el) el.classList.add('hidden');
-                }); 
-                ['btn-nav-registro', 'btn-nav-carga'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if(el) el.classList.remove('hidden');
-                }); 
+                document.getElementById('pantalla-login').classList.add('hidden'); 
+                document.getElementById('sidebar').classList.remove('hidden'); 
+                document.getElementById('sidebar').classList.add('flex'); 
+                document.getElementById('contenido-principal').classList.remove('hidden');
                 
-                cargarPacientesRedDesdeFirebase(); 
+                document.getElementById('usuario-actual').textContent = rolActual === 'admin' ? 'Administrador LAPI' : `${sucursalActual}`;
+                
+                if (rolActual === 'admin') { 
+                    // AQUÍ ESTÁN LOS 5 BOTONES DEL ADMINISTRADOR
+                    ['btn-nav-admin', 'btn-nav-estadisticas', 'btn-nav-directorio', 'btn-nav-laboratorio', 'btn-nav-minas'].forEach(id => {
+                        const el = document.getElementById(id);
+                        if(el) el.classList.remove('hidden');
+                    }); 
+                    ['btn-nav-registro', 'btn-nav-carga'].forEach(id => {
+                        const el = document.getElementById(id);
+                        if(el) el.classList.add('hidden');
+                    }); 
+                    
+                    cargarPacientesMinasDesdeFirebase();
+                    cargarPacientesRedDesdeFirebase(); 
+                } else { 
+                    ['btn-nav-admin', 'btn-nav-estadisticas', 'btn-nav-directorio', 'btn-nav-laboratorio', 'btn-nav-minas'].forEach(id => {
+                        const el = document.getElementById(id);
+                        if(el) el.classList.add('hidden');
+                    }); 
+                    ['btn-nav-registro', 'btn-nav-carga'].forEach(id => {
+                        const el = document.getElementById(id);
+                        if(el) el.classList.remove('hidden');
+                    }); 
+                    
+                    cargarPacientesRedDesdeFirebase(); 
+                }
+                
+                mostrarVista('vista-inicio', document.getElementById('btn-nav-inicio'));
+                actualizarUI();
+            } catch (error) {
+                console.error("Error al iniciar sesión:", error);
             }
-            
-            mostrarVista('vista-inicio', document.getElementById('btn-nav-inicio'));
-            actualizarUI();
         }
 
         function cerrarSesion() { rolActual = ''; sucursalActual = ''; document.getElementById('pantalla-login').classList.remove('hidden'); document.getElementById('sidebar').classList.add('hidden'); document.getElementById('contenido-principal').classList.add('hidden'); }
@@ -816,35 +816,35 @@
         }
 
         function mostrarVista(idVista, btnActivo) {
-            // Lista exacta de todas las secciones de tu plataforma
+            // Lista con los nombres EXACTOS de las secciones en tu HTML
             [
                 'vista-inicio', 
                 'panel-estadisticas', 
                 'vista-admin', 
-                'vista-admin-directorio', 
                 'vista-admin-detalle', 
+                'vista-directorio', 
+                'vista-laboratorio', 
                 'vista-minas', 
                 'vista-registro', 
-                'vista-carga', 
-                'vista-analisis-libre'
+                'vista-carga'
             ].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) {
                     el.classList.add('hidden');
-                    el.classList.remove('flex'); // Previene el desfase de flexbox
+                    el.classList.remove('flex'); // Limpia el formato flex para evitar encimamientos
                 }
             });
             
             const vista = document.getElementById(idVista);
             if (vista) {
                 vista.classList.remove('hidden');
-                // Si la vista requiere formato flex (pantalla completa o lado a lado), se lo regresamos
-                if (idVista === 'vista-minas' || idVista === 'panel-estadisticas' || idVista === 'vista-admin' || idVista === 'vista-admin-directorio' || idVista === 'vista-admin-detalle') {
+                // Devolvemos el formato flex a las pantallas que lo necesitan
+                if (idVista === 'vista-minas' || idVista === 'panel-estadisticas' || idVista === 'vista-admin' || idVista === 'vista-directorio' || idVista === 'vista-admin-detalle' || idVista === 'vista-laboratorio') {
                     vista.classList.add('flex');
                 }
             }
 
-            // Reiniciar iluminación de botones
+            // Reiniciar botones
             document.querySelectorAll('#sidebar button').forEach(btn => {
                 btn.classList.remove('bg-gray-800', 'text-lapiOrange', 'border-l-4', 'border-lapiOrange');
             });
