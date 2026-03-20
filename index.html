@@ -564,8 +564,9 @@
                         <p id="kpi-total-evaluados" class="text-4xl font-black text-gray-800 mt-1">0</p>
                     </div>
                     <div class="bg-white p-4 rounded shadow-sm border-l-4 border-green-500">
-                        <h3 class="text-gray-500 text-xs font-bold uppercase tracking-wider">Efectividad Global</h3>
+                        <h3 class="text-gray-500 text-xs font-bold uppercase tracking-wider">Efectividad Real (Justa)</h3>
                         <p id="kpi-efectividad" class="text-4xl font-black text-green-600 mt-1">0%</p>
+                        <p class="text-xs text-gray-400 mt-1">Basado en puntos revisados vs errores</p>
                     </div>
                     <div class="bg-white p-4 rounded shadow-sm border-l-4 border-red-500">
                         <h3 class="text-gray-500 text-xs font-bold uppercase tracking-wider">Errores Detectados</h3>
@@ -582,6 +583,19 @@
                     </div>
                 </div>
 
+                <div class="bg-white p-4 rounded shadow-sm border border-gray-200 mt-6">
+                    <div class="flex flex-col sm:flex-row justify-between items-center mb-4 pb-2 border-b border-gray-100">
+                        <h3 class="text-gray-800 font-bold text-lg mb-2 sm:mb-0">⚠️ Top Errores Más Comunes</h3>
+                        <div class="flex items-center space-x-2">
+                            <label class="text-sm font-bold text-gray-500">Filtrar Médico:</label>
+                            <select id="filtro-medico-errores" onchange="actualizarGraficaErrores()" class="border border-gray-300 rounded p-2 text-sm focus:ring-indigo-500 outline-none min-w-[200px]">
+                                <option value="TODOS">Todos los Médicos</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="grafica-errores-frecuentes" class="w-full h-72"></div>
+                </div>
+
                 <div class="bg-white rounded shadow-sm border border-gray-200 overflow-hidden">
                     <div class="bg-gray-800 text-white px-4 py-3 font-bold text-sm">🏆 Ranking de Desempeño por Médico</div>
                     <div class="overflow-x-auto">
@@ -590,14 +604,13 @@
                                 <tr>
                                     <th class="p-3">Médico Tratante</th>
                                     <th class="p-3 text-center">Estudios Revisados</th>
-                                    <th class="p-3 text-center">Aprobados</th>
-                                    <th class="p-3 text-center">Rechazados</th>
+                                    <th class="p-3 text-center">Puntos Evaluados</th>
                                     <th class="p-3 text-center">Errores (Taches)</th>
                                     <th class="p-3 text-center">% Efectividad</th>
                                 </tr>
                             </thead>
                             <tbody id="tabla-medicos-metricas" class="divide-y divide-gray-100">
-                                <tr><td colspan="6" class="p-6 text-center text-gray-400 italic">Cargando datos desde la nube...</td></tr>
+                                <tr><td colspan="5" class="p-6 text-center text-gray-400 italic">Cargando datos desde la nube...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -1354,14 +1367,16 @@
                         statusObj.estado = resultadoIA.aprobadoGeneral ? 'aprobado' : 'rechazado';
                         
                         if (esPrimeraEvaluacion && db) {
-                            const cantidadErrores = resultadoIA.checklist.filter(item => item.pass === false).length;
+                            const erroresLista = resultadoIA.checklist.filter(item => item.pass === false);
                             db.collection("AuditoriaEstadisticas").add({
                                 fechaRegistro: new Date().toISOString(),
                                 mesOperativo: fechaActualStr,
                                 medico: statusObj.medicoTratante,
                                 estudio: docName,
                                 aprobado: resultadoIA.aprobadoGeneral,
-                                erroresContados: cantidadErrores,
+                                erroresContados: erroresLista.length,
+                                totalPuntos: resultadoIA.checklist.length, // NUEVO: Puntos totales
+                                detallesErrores: erroresLista.map(e => e.categoria), // NUEVO: Nombres de los errores
                                 origen: 'MINAS'
                             }).catch(err => console.error("Error guardando métricas:", err));
                         }
@@ -1962,14 +1977,16 @@
                         statusObj.estado = resultadoIA.aprobadoGeneral ? 'aprobado' : 'rechazado';
                         
                         if (esPrimeraEvaluacion && db) {
-                            const cantidadErrores = resultadoIA.checklist.filter(item => item.pass === false).length;
+                            const erroresLista = resultadoIA.checklist.filter(item => item.pass === false);
                             db.collection("AuditoriaEstadisticas").add({
                                 fechaRegistro: new Date().toISOString(),
                                 mesOperativo: fechaActualStr,
                                 medico: statusObj.medicoTratante,
                                 estudio: tipoEstudio,
                                 aprobado: resultadoIA.aprobadoGeneral,
-                                erroresContados: cantidadErrores,
+                                erroresContados: erroresLista.length,
+                                totalPuntos: resultadoIA.checklist.length, // NUEVO: Puntos totales
+                                detallesErrores: erroresLista.map(e => e.categoria), // NUEVO: Nombres de los errores
                                 origen: 'RED'
                             }).catch(err => console.error("Error guardando métricas:", err));
                         }
@@ -2428,6 +2445,8 @@
         // ==============================================================================
         // MÓDULO DE MÉTRICAS DE CALIDAD MÉDICA (AUDITORÍA IA FIREBASE)
         // ==============================================================================
+        let datosAuditoriaGlobal = [];
+
         function abrirModalMetricas() {
             document.getElementById('modal-metricas-calidad').classList.remove('hidden');
             cargarMetricasDesdeFirebase();
@@ -2438,101 +2457,122 @@
         }
 
         async function cargarMetricasDesdeFirebase() {
-            if (!db) {
-                mostrarToast("Conexión a la base de datos no disponible.", "error");
-                return;
-            }
+            if (!db) return mostrarToast("Conexión a la base de datos no disponible.", "error");
 
             try {
-                // Descargamos todo el historial de auditorías
                 const snapshot = await db.collection("AuditoriaEstadisticas").get();
                 let datos = [];
                 snapshot.forEach(doc => datos.push(doc.data()));
+                datosAuditoriaGlobal = datos; // Guardamos en memoria para el filtro
 
                 if (datos.length === 0) {
-                    document.getElementById('tabla-medicos-metricas').innerHTML = `<tr><td colspan="6" class="p-6 text-center text-gray-500 italic">Aún no hay estudios evaluados por la IA en la base de datos. ¡Sube el primero!</td></tr>`;
+                    document.getElementById('tabla-medicos-metricas').innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-500 italic">Aún no hay estudios evaluados por la IA en la base de datos. ¡Sube el primero!</td></tr>`;
                     return;
                 }
 
-                // 1. Cálculos para Tarjetas KPI
+                // 1. Cálculos Justos para Tarjetas KPI
                 const totalEvaluados = datos.length;
                 const totalAprobados = datos.filter(d => d.aprobado).length;
                 const totalRechazados = totalEvaluados - totalAprobados;
-                const efectividadGlobal = totalEvaluados > 0 ? ((totalAprobados / totalEvaluados) * 100).toFixed(1) : 0;
+                
+                // NUEVA EFECTIVIDAD: Basada en puntos totales evaluados vs errores
+                // (Si hay registros viejos sin totalPuntos, asumimos 10 puntos por defecto)
+                const puntosTotales = datos.reduce((sum, d) => sum + (d.totalPuntos || 10), 0);
                 const totalErrores = datos.reduce((sum, d) => sum + (d.erroresContados || 0), 0);
+                const efectividadGlobal = puntosTotales > 0 ? (((puntosTotales - totalErrores) / puntosTotales) * 100).toFixed(1) : 0;
 
                 document.getElementById('kpi-total-evaluados').innerText = totalEvaluados;
                 document.getElementById('kpi-efectividad').innerText = efectividadGlobal + '%';
                 document.getElementById('kpi-total-errores').innerText = totalErrores;
 
-                // 2. Gráfica de Pastel (Aprobados vs Rechazados)
+                // 2. Gráficas Básicas
                 Plotly.newPlot('grafica-aprobacion-metricas', [{
-                    labels: ['Aprobados', 'Rechazados'],
+                    labels: ['Documento Perfecto', 'Con Observaciones'],
                     values: [totalAprobados, totalRechazados],
-                    type: 'pie',
-                    hole: 0.4,
-                    marker: { colors: ['#10b981', '#ef4444'] }
-                }], { margin: {t: 40, b: 20, l: 20, r: 20}, title: 'Estatus Global de Auditoría' });
+                    type: 'pie', hole: 0.4, marker: { colors: ['#10b981', '#ef4444'] }
+                }], { margin: {t: 40, b: 20, l: 20, r: 20}, title: 'Estatus Global de Documentos' });
 
-                // 3. Gráfica de Barras (Estudios con más rechazos)
                 let rechazosPorEstudio = {};
-                datos.filter(d => !d.aprobado).forEach(d => {
-                    rechazosPorEstudio[d.estudio] = (rechazosPorEstudio[d.estudio] || 0) + 1;
-                });
+                datos.filter(d => !d.aprobado).forEach(d => { rechazosPorEstudio[d.estudio] = (rechazosPorEstudio[d.estudio] || 0) + 1; });
                 let estArr = Object.keys(rechazosPorEstudio).map(k => ({name: k, count: rechazosPorEstudio[k]})).sort((a,b) => b.count - a.count);
 
                 if (estArr.length > 0) {
-                    Plotly.newPlot('grafica-estudios-metricas', [{
-                        x: estArr.map(d => d.name),
-                        y: estArr.map(d => d.count),
-                        type: 'bar',
-                        marker: { color: '#f59e0b' }
-                    }], { margin: {t: 40, b: 40, l: 40, r: 20}, title: 'Estudios más propensos a errores' });
-                } else {
-                    document.getElementById('grafica-estudios-metricas').innerHTML = '<div class="flex items-center justify-center h-full text-gray-400 italic">No hay rechazos registrados aún.</div>';
+                    Plotly.newPlot('grafica-estudios-metricas', [{ x: estArr.map(d => d.name), y: estArr.map(d => d.count), type: 'bar', marker: { color: '#f59e0b' } }], { margin: {t: 40, b: 40, l: 40, r: 20}, title: 'Estudios con más Observaciones' });
                 }
 
-                // 4. Ranking de Médicos (Tabla)
+                // 3. Ranking de Médicos (Tabla Justa)
                 let medicos = {};
                 datos.forEach(d => {
                     let med = d.medico || 'No Identificado';
-                    // Limpiamos la firma para no mostrar "Extrae el nombre completo..." si la IA falla
                     if (med.length > 50) med = 'Firma Ilegible / No Identificada'; 
                     
-                    if (!medicos[med]) medicos[med] = { evaluados: 0, aprobados: 0, rechazados: 0, errores: 0 };
+                    if (!medicos[med]) medicos[med] = { evaluados: 0, puntosTotales: 0, errores: 0 };
                     medicos[med].evaluados++;
-                    if (d.aprobado) medicos[med].aprobados++;
-                    else medicos[med].rechazados++;
+                    medicos[med].puntosTotales += (d.totalPuntos || 10);
                     medicos[med].errores += (d.erroresContados || 0);
                 });
 
-                // Ordenamos del que evalúa más estudios al que menos
+                // Llenar el Dropdown de Médicos
+                const selectMedico = document.getElementById('filtro-medico-errores');
+                selectMedico.innerHTML = '<option value="TODOS">Todos los Médicos</option>';
+                Object.keys(medicos).sort().forEach(m => selectMedico.add(new Option(m, m)));
+
+                // Pintar Tabla
                 let ranking = Object.keys(medicos).map(k => {
-                    let m = medicos[k];
-                    m.nombre = k;
-                    m.efectividad = m.evaluados > 0 ? ((m.aprobados / m.evaluados) * 100).toFixed(1) : 0;
+                    let m = medicos[k]; m.nombre = k;
+                    m.efectividad = m.puntosTotales > 0 ? (((m.puntosTotales - m.errores) / m.puntosTotales) * 100).toFixed(1) : 0;
                     return m;
-                }).sort((a,b) => b.evaluados - a.evaluados); 
+                }).sort((a,b) => b.efectividad - a.efectividad); 
 
                 let htmlTabla = '';
                 ranking.forEach(m => {
-                    let colorEfectividad = m.efectividad >= 90 ? 'text-green-600' : (m.efectividad >= 70 ? 'text-yellow-600' : 'text-red-600');
+                    let colorEfectividad = m.efectividad >= 90 ? 'text-green-600' : (m.efectividad >= 75 ? 'text-yellow-600' : 'text-red-600');
                     htmlTabla += `
                         <tr class="hover:bg-indigo-50 transition">
                             <td class="p-3 font-bold text-gray-700">${m.nombre}</td>
                             <td class="p-3 text-center bg-gray-50 font-medium">${m.evaluados}</td>
-                            <td class="p-3 text-center text-green-600 font-bold">${m.aprobados}</td>
-                            <td class="p-3 text-center text-red-500 font-bold">${m.rechazados}</td>
-                            <td class="p-3 text-center text-gray-600">${m.errores}</td>
+                            <td class="p-3 text-center font-bold text-gray-500">${m.puntosTotales} pts</td>
+                            <td class="p-3 text-center text-red-500 font-bold">${m.errores}</td>
                             <td class="p-3 text-center font-black ${colorEfectividad}">${m.efectividad}%</td>
                         </tr>
                     `;
                 });
                 document.getElementById('tabla-medicos-metricas').innerHTML = htmlTabla;
 
+                // Dibujar Top Errores Inicial
+                actualizarGraficaErrores();
+
             } catch (error) {
                 console.error("Error cargando métricas:", error);
-                mostrarToast("Error al cargar métricas de Firebase.", "error");
+            }
+        }
+
+        // NUEVO: Función para dibujar y filtrar la gráfica de Top Errores
+        function actualizarGraficaErrores() {
+            const medicoSeleccionado = document.getElementById('filtro-medico-errores').value;
+            let datosFiltrados = medicoSeleccionado === "TODOS" ? datosAuditoriaGlobal : datosAuditoriaGlobal.filter(d => d.medico === medicoSeleccionado);
+            
+            let conteoErrores = {};
+            datosFiltrados.forEach(d => {
+                if (d.detallesErrores && Array.isArray(d.detallesErrores)) {
+                    d.detallesErrores.forEach(err => {
+                        // Cortamos el texto si es muy largo (ej. quitamos los paréntesis explicativos)
+                        let nombreCorto = err.split('(')[0].trim(); 
+                        conteoErrores[nombreCorto] = (conteoErrores[nombreCorto] || 0) + 1;
+                    });
+                }
+            });
+
+            let errArr = Object.keys(conteoErrores).map(k => ({name: k, count: conteoErrores[k]})).sort((a,b) => a.count - b.count).slice(-8); // Top 8
+
+            if (errArr.length > 0) {
+                Plotly.newPlot('grafica-errores-frecuentes', [{
+                    y: errArr.map(d => d.name),
+                    x: errArr.map(d => d.count),
+                    type: 'bar', orientation: 'h', marker: { color: '#ef4444' }
+                }], { margin: {t: 20, b: 30, l: 220, r: 20} });
+            } else {
+                document.getElementById('grafica-errores-frecuentes').innerHTML = '<div class="flex items-center justify-center h-full text-gray-400 italic">No hay errores específicos registrados para este filtro.</div>';
             }
         }
             
