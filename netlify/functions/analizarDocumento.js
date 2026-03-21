@@ -420,7 +420,7 @@ exports.handler = async (event, context) => {
         Eres un asistente de extracción de datos médicos. Analiza la primera página del documento adjunto de forma rápida.
         Extrae y clasifica la información básica.
         1. tipoDocumento: Identifica si el documento es una "Historia Clínica", "Espirometría", "Audiometría" o "Electrocardiograma". (Usa exactamente estas palabras).
-        2. nombre: Nombre completo del paciente (Solo el nombre, sin etiquetas).
+        2. nombre: Nombre completo del paciente, sin etiquetas, REGLA ESTRICTA: Formátalo SIEMPRE empezando por los APELLIDOS seguidos de los NOMBRES.",
         3. fechaNacimiento: Formateada estrictamente como "YYYY-MM-DD" (Año-Mes-Día). Si no está, pon null.
         4. orden: Número de Orden, Identificador o ID de paciente. Si no tiene, pon null.
         5. folio: Folio de Historia Clínica (solo aplica si es HC). Si no tiene, pon null.
