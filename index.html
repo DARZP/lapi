@@ -708,22 +708,30 @@
 
         async function cargarPacientesMinasDesdeFirebase() {
             if (!db) return;
-            mostrarCarga('Descargando expedientes MINAS...');
+            mostrarCarga('Sincronizando últimos 7 días...');
             try {
-                // Buscamos los pacientes de la fecha seleccionada
+                // 1. Calculamos la fecha de hace 7 días
+                const fechaLimite = new Date();
+                fechaLimite.setDate(fechaLimite.getDate() - 7);
+                const limiteStr = fechaLimite.toISOString().split('T')[0];
+
+                // 2. Descargamos de Firebase TODOS los pacientes de la última semana
                 const snapshot = await db.collection("PacientesMinas")
-                                         .where("fechaOperativa", "==", fechaActualStr)
+                                         .where("fechaOperativa", ">=", limiteStr)
                                          .get();
                 
-                // Limpiamos la memoria local temporal
-                bdMinas[fechaActualStr] = { pacientes: [] };
+                // 3. Reconstruimos la memoria histórica
+                bdMinas = {}; 
                 
-                // Llenamos la memoria con los datos reales de la base de datos
                 snapshot.forEach(doc => {
-                    bdMinas[fechaActualStr].pacientes.push(doc.data());
+                    const data = doc.data();
+                    if (!bdMinas[data.fechaOperativa]) bdMinas[data.fechaOperativa] = { pacientes: [] };
+                    bdMinas[data.fechaOperativa].pacientes.push(data);
                 });
                 
-                // Le decimos a la pantalla que se dibuje de nuevo
+                // Aseguramos que exista la carpeta de hoy aunque esté vacía
+                if (!bdMinas[fechaActualStr]) bdMinas[fechaActualStr] = { pacientes: [] };
+                
                 renderizarExpedientesMinas();
             } catch (error) {
                 console.error("Error al descargar desde Firebase:", error);
@@ -1200,7 +1208,21 @@
                     else if (statusObj.estado === 'rechazado') { divClasses += "bg-red-50/50 border-red-200"; } 
                     else { divClasses += "bg-white border-gray-200"; }
 
-                    // INYECTAMOS LA ETIQUETA DE FECHA AQUÍ
+                   let etiquetaFecha = statusObj.fechaOriginal && statusObj.fechaOriginal !== fechaActualStr 
+                        ? `<span class="bg-orange-100 text-orange-700 border border-orange-300 px-1.5 py-0.5 rounded text-[9px] font-bold ml-2 shadow-sm">📅 ${statusObj.fechaOriginal}</span>` : '';
+                    
+                    let alertaReanalisis = (statusObj.estado === 'rechazado' && statusObj.checklist && statusObj.checklist.some(i => i.comentario.includes('PENDIENTE')) && p.docsStatus['Historia Clínica'] && p.docsStatus['Historia Clínica'].estado === 'aprobado') 
+                        ? `<span class="absolute -top-1 -right-1 flex h-3 w-3"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-red-500 border border-white"></span></span>` : '';
+                    
+                    let btnAnalizarMod = alertaReanalisis !== '' ? 'bg-blue-600 text-white hover:bg-blue-700 px-2 py-0.5 rounded animate-pulse shadow-md' : 'text-blue-600 hover:text-blue-800';
+                    let textoBtnAnalizar = alertaReanalisis !== '' ? '✨ Re-evaluar' : '↻ Repetir';
+
+                    if (statusObj.estado === 'aprobado' || statusObj.estado === 'rechazado') {
+                        let iconoEstado = statusObj.estado === 'aprobado' ? '✅ Aprobado' : '❌ Rechazado';
+                        let colorEstado = statusObj.estado === 'aprobado' ? 'bg-green-100 text-green-700 border-green-300' : 'bg-red-100 text-red-700 border-red-300';
+                        docBtn = `<div class="flex items-center space-x-2 relative">${alertaReanalisis}<span class="${colorEstado} border px-2 py-0.5 rounded text-[10px] font-bold flex items-center">${iconoEstado} ${btnChecklist}</span> <button onclick="accionDocMinasIndividual('${p.id}', '${docName}', 'analizar')" class="text-[10px] ${btnAnalizarMod} font-bold transition">${textoBtnAnalizar}</button> <button onclick="accionDocMinasIndividual('${p.id}', '${docName}', 'subir')" class="text-[10px] text-gray-400 hover:text-gray-600 underline">Resubir</button></div>`;
+                    }
+
                     html += `<div class="${divClasses}">${animHTML}<span class="relative z-10 text-sm text-gray-700 font-medium">${docName} ${etiquetaFecha}</span><div class="relative z-10">${docBtn}</div></div>`;
                 });
 
@@ -2230,6 +2252,72 @@
             renderizarExpedientesMinas();
         }
 
+        // ==========================================
+        // LÓGICA MULTIDÍA: RECUPERACIÓN HISTÓRICA
+        // ==========================================
+        function recuperarPacienteHistoricoMinas(nombre, orden, folio) {
+            // 1. Buscar en la bandeja de hoy
+            let pacientesHoy = bdMinas[fechaActualStr] ? bdMinas[fechaActualStr].pacientes : [];
+            let pacienteHoy = pacientesHoy.find(p => {
+                const coincideOrden = orden && p.numeroOrden === orden;
+                const coincideFolio = folio && p.folioHC === folio;
+                let coincideNombre = false;
+                if (p.nombre && nombre && nombre !== 'Paciente Sin Nombre') {
+                    const palabrasNuevas = nombre.toLowerCase().split(' ').filter(w => w.length > 2);
+                    const nombreViejo = p.nombre.toLowerCase();
+                    const coincidencias = palabrasNuevas.filter(w => nombreViejo.includes(w)).length;
+                    coincideNombre = coincidencias >= 3 || (palabrasNuevas.length > 0 && palabrasNuevas.length <= 2 && coincidencias === palabrasNuevas.length);
+                }
+                return coincideOrden || coincideFolio || coincideNombre;
+            });
+            
+            if (pacienteHoy) return pacienteHoy;
+
+            // 2. Si no está hoy, viajar al pasado en la base de datos
+            for (let fechaAnterior in bdMinas) {
+                if (fechaAnterior === fechaActualStr) continue;
+                
+                let pacientesViejos = bdMinas[fechaAnterior].pacientes;
+                let index = pacientesViejos.findIndex(p => {
+                    const coincideOrden = orden && p.numeroOrden === orden;
+                    const coincideFolio = folio && p.folioHC === folio;
+                    let coincideNombre = false;
+                    if (p.nombre && nombre && nombre !== 'Paciente Sin Nombre') {
+                        const palabrasNuevas = nombre.toLowerCase().split(' ').filter(w => w.length > 2);
+                        const nombreViejo = p.nombre.toLowerCase();
+                        const coincidencias = palabrasNuevas.filter(w => nombreViejo.includes(w)).length;
+                        coincideNombre = coincidencias >= 3 || (palabrasNuevas.length > 0 && palabrasNuevas.length <= 2 && coincidencias === palabrasNuevas.length);
+                    }
+                    return coincideOrden || coincideFolio || coincideNombre;
+                });
+                
+                if (index !== -1) {
+                    let pacienteRecuperado = pacientesViejos.splice(index, 1)[0]; 
+                    
+                    // Etiquetar documentos viejos
+                    Object.keys(pacienteRecuperado.docsStatus).forEach(doc => {
+                        if (!pacienteRecuperado.docsStatus[doc].fechaOriginal && pacienteRecuperado.docsStatus[doc].estado !== 'pendiente') {
+                            pacienteRecuperado.docsStatus[doc].fechaOriginal = fechaAnterior;
+                        }
+                    });
+
+                    if(!bdMinas[fechaActualStr]) bdMinas[fechaActualStr] = { pacientes: [] };
+                    bdMinas[fechaActualStr].pacientes.push(pacienteRecuperado);
+                    
+                    if (db) {
+                        db.collection("PacientesMinas").doc(pacienteRecuperado.id.toString()).update({
+                            docsStatus: pacienteRecuperado.docsStatus,
+                            fechaOperativa: fechaActualStr 
+                        }).catch(e => console.error("Error migrando paciente:", e));
+                    }
+                    
+                    mostrarToast(`📅 Expediente de ${pacienteRecuperado.nombre} recuperado de días anteriores.`, 'exito');
+                    return pacienteRecuperado;
+                }
+            }
+            return null; 
+        }
+
         function asignarDocumentoAPacienteSeguro(datosExtraidos, base64) {
             const tipoDocumento = datosExtraidos.tipoDocumento || 'Documento Desconocido';
             const nombre = datosExtraidos.nombre || 'Paciente Sin Nombre';
@@ -2237,31 +2325,10 @@
             let orden = datosExtraidos.orden || '';
             let folio = datosExtraidos.folio || '';
 
-            if (tipoDocumento.includes('Historia')) {
-                orden = ''; 
-            } else {
-                folio = ''; 
-            }
+            if (tipoDocumento.includes('Historia')) { orden = ''; } else { folio = ''; }
 
-            let pacienteExistente = bdMinas[fechaActualStr].pacientes.find(p => {
-                const coincideOrden = orden && p.numeroOrden === orden;
-                const coincideFolio = folio && p.folioHC === folio;
-                
-                // ==========================================
-                // FILTRO ESTRICTO DE NOMBRES (Mínimo 3 palabras)
-                // ==========================================
-                let coincideNombre = false;
-                if (p.nombre && nombre && nombre !== 'Paciente Sin Nombre') {
-                    const palabrasNuevas = nombre.toLowerCase().split(' ').filter(w => w.length > 2); // Ignora "de", "la", etc.
-                    const nombreViejo = p.nombre.toLowerCase();
-                    const coincidencias = palabrasNuevas.filter(w => nombreViejo.includes(w)).length;
-                    
-                    // Exigimos 3 coincidencias. Si el nombre es corto (1 o 2 palabras), exigimos que coincidan todas.
-                    coincideNombre = coincidencias >= 3 || (palabrasNuevas.length > 0 && palabrasNuevas.length <= 2 && coincidencias === palabrasNuevas.length);
-                }
-
-                return coincideOrden || coincideFolio || coincideNombre;
-            });
+            // Usar la máquina del tiempo
+            let pacienteExistente = recuperarPacienteHistoricoMinas(nombre, orden, folio);
 
             if (pacienteExistente) {
                 if (!pacienteExistente.estudios.includes(tipoDocumento)) {
@@ -2269,7 +2336,7 @@
                     pacienteExistente.docsStatus[tipoDocumento] = { estado: 'subido', pdfBase64: base64, checklist: [] };
                 } else {
                     const obj = pacienteExistente.docsStatus[tipoDocumento];
-                    if (obj.estado === 'pendiente' || confirm(`El paciente ${pacienteExistente.nombre} ya tiene asignado(a) un(a) ${tipoDocumento}. ¿Deseas reemplazar el archivo cargado?`)) {
+                    if (obj.estado === 'pendiente' || confirm(`El paciente ${pacienteExistente.nombre} ya tiene ${tipoDocumento}. ¿Reemplazar archivo?`)) {
                         pacienteExistente.docsStatus[tipoDocumento] = { estado: 'subido', pdfBase64: base64, checklist: [] };
                         pacienteExistente.statusIntegral = 'pendiente';
                     }
@@ -2302,8 +2369,7 @@
                 }
             }
         }
-
-        // Helper
+            
         function convertirArchivoABase64(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
