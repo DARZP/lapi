@@ -262,7 +262,8 @@ exports.handler = async (event, context) => {
         // PROMPT 4: ESPIROMETRÍA (DINÁMICO CON Y SIN HC)
         // ============================================================================
         const PROMPT_ESPIROMETRIA = `
-        Eres un Auditor Médico evaluando el PDF de una ESPIROMETRÍA.
+        Eres un Auditor Médico evaluando un Cuestionario Clínico de ESPIROMETRÍA de Salud Ocupacional. 
+        Nota: Este documento es un cuestionario de antecedentes y exposición, NO contiene gráficas ni tablas de capacidad pulmonar.
         
         DATOS DE LA PLATAFORMA PARA CRUZAR:
         - Nombre registrado: ${dp.nombre || 'No proporcionado'}
@@ -271,19 +272,22 @@ exports.handler = async (event, context) => {
         
         CONDICIÓN DE HISTORIA CLÍNICA:
         - ¿El paciente requiere Historia Clínica?: ${requiereHC ? 'SÍ' : 'NO'}
-        - DATOS EXTRAÍDOS DE HC: ${hc ? `Estatura: ${hc.estatura}, Peso: ${hc.peso}, Fuma: ${hc.fuma}, Detalles Tabaco: ${hc.fumaDetalles}` : (requiereHC ? 'NO DISPONIBLES AÚN' : 'NO APLICA')}
+        - DATOS EXTRAÍDOS DE HC: ${hc ? JSON.stringify(hc) : (requiereHC ? 'NO DISPONIBLES AÚN' : 'NO APLICA')}
 
-        REGLAS DE ESPIROMETRÍA:
-        1. "Fecha Nacimiento": Verifica que coincida con la de Plataforma (${dp.nacimiento || 'No proporcionado'}).
-        2. "Nombre y Apellidos": Verifica que coincidan con Plataforma (${dp.nombre || 'No proporcionado'}).
-        3. "Identificación Personal": Verifica que coincida con el Número de Orden de Plataforma (${dp.orden || 'No proporcionado'}).
-        4. "Estatura y Peso": 
-           - Si REQUIERE Historia Clínica (SÍ): Verifica que coincidan con los datos de HC. Si dicen "NO DISPONIBLES AÚN", pon pass: false y comentario "⚠️ PENDIENTE: Se requiere analizar primero la Historia Clínica".
-           - Si NO requiere Historia Clínica (NO): Pon pass: true y comentario "Validado - No requiere cruce con HC".
-        5. "Fumador": 
-           - REGLA BASE (Siempre aplica): Si el PDF marca "SI" o "DEJAR", DEBE tener detalles de cantidad, frecuencia y tiempo anotados a un lado. Si marca "NO", no debe haber detalles.
-           - CRUCE (Solo si Requiere HC es SÍ): La respuesta debe coincidir con la HC. Si los datos de HC dicen "NO DISPONIBLES AÚN", pon pass: false y comentario "⚠️ PENDIENTE: Cruzar con Historia Clínica". Si la HC no existe porque no la requiere (NO), solo aplica la regla base y pon pass: true.
-        (Nota: Edad, Género, BMI, Profesión, Código Paciente y Grupo Étnico NO requieren verificación, ignóralos).
+        REGLAS ESTRICTAS DE ESPIROMETRÍA (CUESTIONARIO):
+        1. "Identificación": El Número de Orden debe coincidir con ${dp.orden || 'No proporcionado'}. El Nombre y Apellidos deben coincidir con ${dp.nombre || 'No proporcionado'}. La Fecha de Nacimiento debe coincidir con ${dp.nacimiento || 'No proporcionado'}. (Ignorar Empresa, Sucursal, Puesto, Talla y Peso).
+        
+        2. "Exposición Laboral": Si el paciente marca exposición a agentes (Químicos, Polvos, etc.), debe estar especificado cuáles y si usa E.P.P.
+           - Si REQUIERE Historia Clínica (SÍ): Esta exposición debe ser congruente con los Riesgos Químicos/Neumoconiógenos declarados en la HC. Si la HC dice "NO DISPONIBLES AÚN", pon pass: false y comentario "⚠️ PENDIENTE: Analizar primero la Historia Clínica para cruzar riesgos laborales".
+           
+        3. "Tabaquismo (Hábitos) - DEDUCCIÓN INTELIGENTE": 
+           - ATENCIÓN VISUAL: Las marcas de "Sí/No" en "¿Fuma actualmente?" o "¿Fumó?" suelen ser ambiguas o estar mal tachadas. USA ESTA LÓGICA INFALIBLE: Si el paciente escribió cualquier número o detalle en "Edad comenzó", "Número de cigarrillos", "Frecuencia" o "Edad dejó de fumar", ASUME AUTOMÁTICAMENTE QUE SÍ ES (O FUE) FUMADOR.
+           - Si esos campos de texto están completamente vacíos, asume que NO.
+           - Si REQUIERE Historia Clínica (SÍ): Cruza este estatus deducido con los Hábitos Tóxicos (Tabaquismo) de la HC. Si la HC dice "NO DISPONIBLES AÚN", pon pass: false y comentario "⚠️ PENDIENTE: Analizar primero la Historia Clínica para cruzar Tabaquismo".
+           
+        4. "Antecedentes Patológicos": Revisa la sección de enfermedades (Diabetes, Hipertensión, Asma, Bronquitis, Covid_19, Cirugías, etc.).
+           - Si REQUIERE Historia Clínica (SÍ): Cualquier enfermedad que esté marcada con una "X" o "Palomita" aquí, DEBE estar también declarada en la HC. Si la HC dice "NO DISPONIBLES AÚN", pon pass: false y comentario "⚠️ PENDIENTE: Analizar primero la Historia Clínica para cruzar Padecimientos".
+           - Si NO requiere HC (NO): Solo evalúa que las secciones hayan sido llenadas correctamente (evaluación interna).
 
         DEVUELVE ÚNICAMENTE un JSON estricto con esta estructura (sin markdown):
         {
@@ -291,11 +295,10 @@ exports.handler = async (event, context) => {
           "motivoPrincipal": "Resumen de la falla o 'Documento congruente y óptimo'",
           "medicoTratante": "No Aplica",
           "checklist": [
-            { "categoria": "1. Fecha de Nacimiento", "pass": true/false, "comentario": "..." },
-            { "categoria": "2. Nombre y Apellidos", "pass": true/false, "comentario": "..." },
-            { "categoria": "3. Identificación (Número de Orden)", "pass": true/false, "comentario": "..." },
-            { "categoria": "4. Cruce de Somatometría (Estatura/Peso)", "pass": true/false, "comentario": "..." },
-            { "categoria": "5. Cruce de Tabaquismo (Fumador)", "pass": true/false, "comentario": "..." }
+            { "categoria": "1. Identificación", "pass": true/false, "comentario": "..." },
+            { "categoria": "2. Exposición Laboral", "pass": true/false, "comentario": "..." },
+            { "categoria": "3. Tabaquismo (Hábitos)", "pass": true/false, "comentario": "..." },
+            { "categoria": "4. Antecedentes Patológicos", "pass": true/false, "comentario": "..." }
           ]
         }
         `;
