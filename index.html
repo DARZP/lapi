@@ -1036,11 +1036,10 @@
 
         function renderizarExpedientesMinas() {
             const contenedor = document.getElementById('contenedorExpedientesMinas');
-            if(!contenedor) return; // Protección extra
+            if(!contenedor) return; 
             contenedor.innerHTML = '';
             
             if(!bdMinas[fechaActualStr]) {
-                // Si no hay datos, limpiamos las tarjetas de forma segura (sin que salgan errores en consola)
                 if(document.getElementById('stat-minas-hoy')) document.getElementById('stat-minas-hoy').textContent = '0';
                 if(document.getElementById('minas-pacientes-count')) document.getElementById('minas-pacientes-count').textContent = '0';
                 if(document.getElementById('stat-minas-completados')) document.getElementById('stat-minas-completados').textContent = '0%';
@@ -1065,7 +1064,6 @@
                 const todosAprobados = keys.every(k => p.docsStatus[k].estado === 'aprobado');
                 if (todosAprobados && keys.length > 0) pacCompletados++;
                 
-                // NUEVO: Conteo de estudios para las nuevas tarjetas
                 keys.forEach(k => {
                     totalEstudios++;
                     if (k.includes('Historia')) conteoTipos.HC++;
@@ -1080,15 +1078,13 @@
                 if(p.docsStatus['Audiometría']) { reqAu++; if(p.docsStatus['Audiometría'].estado === 'aprobado') apAu++; }
             });
 
-            // Actualizaciones Seguras UI (Conteo de Completados y Progreso)
+            // Actualizaciones UI
             if(document.getElementById('stat-minas-completados')) document.getElementById('stat-minas-completados').textContent = pacientes.length > 0 ? Math.round((pacCompletados/pacientes.length)*100) + '%' : '0%';
             if(document.getElementById('stat-minas-100')) document.getElementById('stat-minas-100').textContent = pacCompletados; 
-            
             if(document.getElementById('stat-progreso-hc')) document.getElementById('stat-progreso-hc').textContent = reqHC > 0 ? Math.round((apHC/reqHC)*100) + '%' : '-';
             if(document.getElementById('stat-progreso-espiro')) document.getElementById('stat-progreso-espiro').textContent = reqEs > 0 ? Math.round((apEs/reqEs)*100) + '%' : '-';
             if(document.getElementById('stat-progreso-audio')) document.getElementById('stat-progreso-audio').textContent = reqAu > 0 ? Math.round((apAu/reqAu)*100) + '%' : '-';
 
-            // NUEVO: Actualización de Tarjetas de Estudios Totales
             if(document.getElementById('stat-minas-estudios')) document.getElementById('stat-minas-estudios').textContent = totalEstudios;
             if(document.getElementById('stat-minas-desglose')) {
                 let desgloseArr = [];
@@ -1100,26 +1096,14 @@
                 document.getElementById('stat-minas-desglose').textContent = desgloseArr.length > 0 ? desgloseArr.join(' | ') : 'Sin estudios';
             }
 
-            // APLICAR BÚSQUEDA
             const terminoBusqueda = (document.getElementById('buscadorMinas')?.value || '').toLowerCase();
-            if (terminoBusqueda !== '') {
-                pacientes = pacientes.filter(p => p.nombre.toLowerCase().includes(terminoBusqueda) || p.numeroOrden.toLowerCase().includes(terminoBusqueda) || p.folioHC.toLowerCase().includes(terminoBusqueda));
-            }
+            if (terminoBusqueda !== '') pacientes = pacientes.filter(p => p.nombre.toLowerCase().includes(terminoBusqueda) || p.numeroOrden.toLowerCase().includes(terminoBusqueda) || p.folioHC.toLowerCase().includes(terminoBusqueda));
 
-            // APLICAR FILTROS RÁPIDOS
-            if (filtroActualMinas === 'pendientes') {
-                pacientes = pacientes.filter(p => Object.values(p.docsStatus).some(d => d.estado === 'pendiente' || d.estado === 'subido'));
-            } else if (filtroActualMinas === 'rechazados') {
-                pacientes = pacientes.filter(p => Object.values(p.docsStatus).some(d => d.estado === 'rechazado'));
-            }
+            if (filtroActualMinas === 'pendientes') pacientes = pacientes.filter(p => Object.values(p.docsStatus).some(d => d.estado === 'pendiente' || d.estado === 'subido'));
+            else if (filtroActualMinas === 'rechazados') pacientes = pacientes.filter(p => Object.values(p.docsStatus).some(d => d.estado === 'rechazado'));
 
             if(pacientes.length === 0) {
-                contenedor.innerHTML = `
-                    <div class="flex flex-col items-center justify-center py-12 text-gray-400 fade-in">
-                        <span class="text-6xl mb-4 opacity-50 grayscale">📂</span>
-                        <p class="text-lg font-bold text-gray-500">Bandeja Limpia</p>
-                        <p class="text-sm mt-1">No hay expedientes que coincidan con la búsqueda actual.</p>
-                    </div>`;
+                contenedor.innerHTML = `<div class="flex flex-col items-center justify-center py-12 text-gray-400 fade-in"><span class="text-6xl mb-4 opacity-50 grayscale">📂</span><p class="text-lg font-bold text-gray-500">Bandeja Limpia</p><p class="text-sm mt-1">No hay expedientes que coincidan.</p></div>`;
                 return;
             }
             
@@ -1128,7 +1112,6 @@
                 const card = document.createElement('div');
                 card.className = "border border-gray-200 rounded-lg p-4 bg-gray-50 shadow-sm fade-in mb-4";
                 
-                // AQUÍ ESTÁ EL CAMBIO CON LOS DOS BOTONES (EDITAR Y ELIMINAR)
                 let html = `
                     <div class="flex justify-between items-start mb-4 border-b border-gray-200 pb-3">
                         <div>
@@ -1152,6 +1135,31 @@
                     let docBtn = '';
                     let btnChecklist = (statusObj.estado === 'aprobado' || statusObj.estado === 'rechazado') ? `<button onclick="abrirModalChecklistMinas('${p.id}', '${docName}')" class="text-[10px] text-blue-500 hover:underline font-bold ml-2">📋 Detalles</button>` : '';
 
+                    // =========================================================================
+                    // NUEVO 1: ETIQUETA VISUAL MULTIDÍA (Para estudios viejos)
+                    // =========================================================================
+                    let etiquetaFecha = statusObj.fechaOriginal && statusObj.fechaOriginal !== fechaActualStr 
+                        ? `<span class="bg-orange-100 text-orange-700 border border-orange-300 px-1.5 py-0.5 rounded text-[9px] font-bold ml-2 shadow-sm" title="Recuperado de visita anterior">📅 ${statusObj.fechaOriginal}</span>` 
+                        : '';
+
+                    // =========================================================================
+                    // NUEVO 2: LÓGICA DE RE-ANÁLISIS INTELIGENTE
+                    // =========================================================================
+                    let alertaReanalisis = '';
+                    let claseBotonAnalizar = 'text-blue-600 hover:text-blue-800';
+                    let textoBotonAnalizar = '↻ Repetir';
+
+                    // CONDICIÓN: Si reprobó por culpa de un "PENDIENTE" (Historia Clínica faltante) 
+                    // y el sistema detecta que HOY la HC ya fue aprobada... ¡Brilla el botón!
+                    if (statusObj.estado === 'rechazado' && 
+                        statusObj.checklist && statusObj.checklist.some(item => item.comentario.includes('PENDIENTE')) &&
+                        p.docsStatus['Historia Clínica'] && p.docsStatus['Historia Clínica'].estado === 'aprobado') {
+                        
+                        alertaReanalisis = `<span class="absolute -top-1 -right-1 flex h-3 w-3"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-red-500" title="¡HC detectada! Re-evalúa este estudio"></span></span>`;
+                        claseBotonAnalizar = 'bg-blue-600 text-white hover:bg-blue-700 px-2 py-0.5 rounded animate-pulse shadow-md';
+                        textoBotonAnalizar = '✨ Re-evaluar ahora';
+                    }
+
                     if (statusObj.estado === 'pendiente') {
                         docBtn = `<button onclick="accionDocMinasIndividual('${p.id}', '${docName}', 'subir')" class="text-xs bg-white border border-gray-300 px-3 py-1 rounded hover:bg-gray-100 font-bold">Subir Archivo</button>`; 
                     } else if (statusObj.estado === 'subido') {
@@ -1159,9 +1167,9 @@
                     } else if (statusObj.estado === 'analizando') {
                         docBtn = `<span class="text-lapiOrange text-xs font-bold animate-pulse">🧠 IA Analizando...</span>`; 
                     } else if (statusObj.estado === 'aprobado') {
-                        docBtn = `<div class="flex items-center space-x-2"><span class="bg-green-100 text-green-700 border border-green-300 px-2 py-0.5 rounded text-[10px] font-bold flex items-center">✅ Aprobado ${btnChecklist}</span> <button onclick="accionDocMinasIndividual('${p.id}', '${docName}', 'analizar')" class="text-[10px] text-blue-600 hover:text-blue-800 font-bold transition" title="Volver a auditar este documento">↻ Repetir</button> <button onclick="accionDocMinasIndividual('${p.id}', '${docName}', 'subir')" class="text-[10px] text-gray-400 hover:text-gray-600 underline">Resubir</button></div>`; 
+                        docBtn = `<div class="flex items-center space-x-2 relative">${alertaReanalisis}<span class="bg-green-100 text-green-700 border border-green-300 px-2 py-0.5 rounded text-[10px] font-bold flex items-center">✅ Aprobado ${btnChecklist}</span> <button onclick="accionDocMinasIndividual('${p.id}', '${docName}', 'analizar')" class="text-[10px] ${claseBotonAnalizar} font-bold transition" title="Volver a auditar">${textoBotonAnalizar}</button> <button onclick="accionDocMinasIndividual('${p.id}', '${docName}', 'subir')" class="text-[10px] text-gray-400 hover:text-gray-600 underline">Resubir</button></div>`; 
                     } else if (statusObj.estado === 'rechazado') {
-                        docBtn = `<div class="flex items-center space-x-2"><span class="bg-red-100 text-red-700 border border-red-300 px-2 py-0.5 rounded text-[10px] font-bold flex items-center">❌ Rechazado ${btnChecklist}</span> <button onclick="accionDocMinasIndividual('${p.id}', '${docName}', 'analizar')" class="text-[10px] text-blue-600 hover:text-blue-800 font-bold transition" title="Volver a auditar este documento">↻ Repetir</button> <button onclick="accionDocMinasIndividual('${p.id}', '${docName}', 'subir')" class="text-[10px] text-gray-400 hover:text-gray-600 underline">Resubir</button></div>`;
+                        docBtn = `<div class="flex items-center space-x-2 relative">${alertaReanalisis}<span class="bg-red-100 text-red-700 border border-red-300 px-2 py-0.5 rounded text-[10px] font-bold flex items-center">❌ Rechazado ${btnChecklist}</span> <button onclick="accionDocMinasIndividual('${p.id}', '${docName}', 'analizar')" class="text-[10px] ${claseBotonAnalizar} font-bold transition" title="Volver a auditar">${textoBotonAnalizar}</button> <button onclick="accionDocMinasIndividual('${p.id}', '${docName}', 'subir')" class="text-[10px] text-gray-400 hover:text-gray-600 underline">Resubir</button></div>`;
                     }
 
                     let divClasses = "relative overflow-hidden flex justify-between items-center p-2 rounded border ";
@@ -1173,7 +1181,8 @@
                     else if (statusObj.estado === 'rechazado') { divClasses += "bg-red-50/50 border-red-200"; } 
                     else { divClasses += "bg-white border-gray-200"; }
 
-                    html += `<div class="${divClasses}">${animHTML}<span class="relative z-10 text-sm text-gray-700 font-medium">${docName}</span><div class="relative z-10">${docBtn}</div></div>`;
+                    // INYECTAMOS LA ETIQUETA DE FECHA AQUÍ
+                    html += `<div class="${divClasses}">${animHTML}<span class="relative z-10 text-sm text-gray-700 font-medium">${docName} ${etiquetaFecha}</span><div class="relative z-10">${docBtn}</div></div>`;
                 });
 
                 html += `</div>`;
@@ -2892,6 +2901,49 @@
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Histórico_Filtrado");
             XLSX.writeFile(workbook, "LAPIA_Reporte_Historico.xlsx");
+        }
+            
+        function recuperarPacienteHistorico(nombre, orden, folio) {
+            let pacientesHoy = bdMinas[fechaActualStr] ? bdMinas[fechaActualStr].pacientes : [];
+            
+            // 1. ¿Ya está en la bandeja de hoy?
+            let pacienteHoy = pacientesHoy.find(p => p.nombre === nombre || (p.numeroOrden && p.numeroOrden === orden) || (p.folioHC && p.folioHC === folio));
+            if (pacienteHoy) return pacienteHoy;
+
+            // 2. Si no está hoy, buscamos en TODOS los días anteriores de la base de datos
+            for (let fechaAnterior in bdMinas) {
+                if (fechaAnterior === fechaActualStr) continue; // Saltamos el día de hoy
+                
+                let pacientesViejos = bdMinas[fechaAnterior].pacientes;
+                let index = pacientesViejos.findIndex(p => p.nombre === nombre || (p.numeroOrden && p.numeroOrden === orden) || (p.folioHC && p.folioHC === folio));
+                
+                if (index !== -1) {
+                    // ¡Lo encontramos en el pasado! Hacemos la migración
+                    let pacienteRecuperado = pacientesViejos.splice(index, 1)[0]; 
+                    
+                    // Le pegamos una etiqueta de "Fecha Original" a sus estudios viejos para no confundirlos
+                    Object.keys(pacienteRecuperado.docsStatus).forEach(doc => {
+                        if (!pacienteRecuperado.docsStatus[doc].fechaOriginal && pacienteRecuperado.docsStatus[doc].estado !== 'pendiente') {
+                            pacienteRecuperado.docsStatus[doc].fechaOriginal = fechaAnterior;
+                        }
+                    });
+
+                    // Lo insertamos en la bandeja de hoy
+                    if(!bdMinas[fechaActualStr]) bdMinas[fechaActualStr] = { pacientes: [] };
+                    bdMinas[fechaActualStr].pacientes.push(pacienteRecuperado);
+                    
+                    // Si tienes conexión a Firebase, actualizamos su registro para que se mude a hoy
+                    if (db) {
+                        db.collection("PacientesMinas").doc(pacienteRecuperado.id.toString()).update({
+                            docsStatus: pacienteRecuperado.docsStatus
+                        }).catch(e => console.error("Error migrando paciente:", e));
+                    }
+                    
+                    mostrarToast(`📅 Expediente de ${nombre} recuperado de una visita anterior.`, 'exito');
+                    return pacienteRecuperado;
+                }
+            }
+            return null; // Si es completamente nuevo
         }
         
     </script>
