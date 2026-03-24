@@ -40,10 +40,13 @@ exports.handler = async (event, context) => {
         - 1. NO REQUIERE VERIFICACIÓN.
         - 2. Antigüedad y Congruencia Lógica: Formato de tiempo (Años o Meses). EXTREMA ATENCIÓN: Para el trabajo más reciente (el empleo actual), calcula matemáticamente si la 'Antigüedad' escrita coincide con el año de ingreso reportado hasta la fecha actual. (Ejemplo: Si ingresó en enero de 2018 y estamos en 2026, la antigüedad correcta es de 8 años. Si escribieron 9 años, el cálculo falla, es ERROR y debes marcar 'pass: false').
         - 3. Orden de Registros: Cronológicos (Más reciente a más antiguo).
-        - A. RIESGOS FÍSICOS: Si es SÍ, verificar: Ruido, Vibración, Radiación, Iluminación, Temperaturas, Altura, Confinados con sus respectivos EPP y detalles.
+        - 3. "Riesgos Físicos, Químicos y Ergonómicos": 
+
+        A. RIESGOS FÍSICOS: Si es SÍ, verificar: Ruido, Vibración, Radiación, Iluminación, Temperaturas, Altura, Confinados con sus respectivos EPP y detalles.
         - B. RIESGOS QUÍMICOS: Si es NO, NO REQUIERE VERIFICACIÓN. Si es SÍ, verificar (Tipo, EPP).
         - C. BIOLÓGICOS y E. PSICOSOCIALES: NO REQUIEREN VERIFICACIÓN.
-        - D. ERGONÓMICOS: ATENCIÓN VISUAL ESTRICTA: Revisa con extremo cuidado si la casilla "SÍ" está claramente marcada. NO asumas "SÍ" si está tachado o marcado en "NO". SOLO si "SÍ" está innegablemente marcado, verifica (Tipo de objeto/peso, EPP para carga. Movimiento y segmento. Tipo de postura).
+        - D. ERGONÓMICOS: ATENCIÓN VISUAL ESTRICTA: Revisa con extremo cuidado si la casilla "SÍ" está claramente marcada. NO asumas "SÍ" si está tachado o marcado en "NO". Si Ergonómicos está marcado como "SÍ", NO es obligatorio que haya texto en "Observaciones", es 100% VÁLIDO y correcto si en la tabla que está inmediatamente debajo se llenó alguna de las filas correspondientes ("Levantamiento de carga", "Movimientos de repetición" o "Sobrecarga postural"). 
+        
         - RIESGOS LABORALES (4 y 5): Si es SÍ, verificar que cada dato esté lleno. 6 al 11: NO VERIFICAR.
         - OBSERVACIONES DEL EXAMINADOR: NO REQUIERE VERIFICACIÓN.
 
@@ -107,7 +110,17 @@ exports.handler = async (event, context) => {
         {
           "aprobadoGeneral": true/false, "motivoPrincipal": "...",
           "medicoTratante": "Busca en la ÚLTIMA PÁGINA, recuadro inferior derecho, justo arriba de la Cédula Profesional (8 dígitos). Extrae SOLO el nombre completo. OMITE obligatoriamente prefijos como 'S.O', 'S.O.', 'Dr.', 'Dra.', 'M.C.'. Devuelve el nombre todo en MAYÚSCULAS. Si no lo encuentras, pon 'No Identificado'",
-          "datosExtraidosHC": { "estatura": "...", "peso": "...", "fuma": "...", "fumaDetalles": "...", "audio_patologicos": "...", "audio_exantematicas": "...", "audio_ruido": "..." },
+          "datosExtraidosHC": { 
+              "estatura": "...", 
+              "peso": "...", 
+              "fuma": "...", 
+              "fumaDetalles": "...", 
+              "audio_patologicos": "...", 
+              "audio_exantematicas": "...", 
+              "audio_ruido": "...",
+              "espiro_riesgos": "REGLA ESTRICTA: Extrae explícitamente si hay 'Riesgos Químicos/Neumoconiógenos' (Polvos, humos, gases, vapores). NO te quedes solo con el Ruido.",
+              "espiro_patologicos": "REGLA ESTRICTA: Revisa TODAS las casillas de Antecedentes Patológicos (Alergias, Cirugías, etc.) y OBLIGATORIAMENTE lee el texto manuscrito de 'Observaciones del examinador'. Anota TODO."
+          },
           "checklist": [
             { "categoria": "1. Identidad (Folio, Nombre, Nacimiento)", "pass": true/false, "comentario": "..." },
             { "categoria": "2. Integridad Demográfica", "pass": true/false, "comentario": "..." },
@@ -119,7 +132,8 @@ exports.handler = async (event, context) => {
             { "categoria": "8. Exploración Física (Leyendas y Cruces)", "pass": true/false, "comentario": "..." },
             { "categoria": "9. Firma del Paciente", "pass": true/false, "comentario": "..." }
           ]
-        }`;
+        }
+        `;
 
         // ============================================================================
         // PROMPT 2: HISTORIA CLÍNICA LIBRE (LABORATORIO IA)
@@ -172,7 +186,6 @@ exports.handler = async (event, context) => {
         3. Fecha de nacimiento: Verifica que la fecha coincida EXACTAMENTE con la registrada en la plataforma.
         4. Datos que NO REQUIEREN VERIFICACIÓN: Nacionalidad, Originario de, Estado civil, Religión, Empresa, Puesto, Departamento, Escolaridad, Grupo sanguíneo, Acepta transfusiones.
         5. Datos que REQUIEREN VERIFICACIÓN DE LLENADO: Debes verificar que CADA DATO de la siguiente lista SIEMPRE ESTÉ CONTESTADO: Grupo étnico, Discapacidad, Domicilio particular (calle, # ext, # int, colonia, localidad, municipio, estado y C.P.), Teléfono de casa, Teléfono celular, IMSS, RFC, CURP, Contacto de emergencia (Nombre, dirección, parentesco, teléfono, celular). MPORTANTE: No juzgues la validez del texto; cualquier respuesta escrita (ej. 'Desconoce', 'No aporta', '0000', 'N/A' o rayas '-') es 100% VÁLIDA. SOLO marca error si el espacio o renglón está completamente en blanco.
-
 
         ### SECCIÓN ANTECEDENTES LABORALES
         - 1. NO REQUIERE VERIFICACIÓN.
@@ -240,7 +253,15 @@ exports.handler = async (event, context) => {
           "motivoPrincipal": "Resumen de la falla o 'Documento óptimo'",
           "medicoTratante": "Busca en la ÚLTIMA PÁGINA, recuadro inferior derecho, justo arriba de la Cédula Profesional (8 dígitos). Extrae SOLO el nombre completo. OMITE obligatoriamente prefijos como 'S.O', 'S.O.', 'Dr.', 'Dra.', 'M.C.'. Devuelve el nombre todo en MAYÚSCULAS. Si no lo encuentras, pon 'No Identificado'",
           "datosExtraidosHC": {
-              "estatura": "...", "peso": "...", "fuma": "...", "fumaDetalles": "...", "audio_patologicos": "...", "audio_exantematicas": "...", "audio_ruido": "..."
+              "estatura": "...", 
+              "peso": "...", 
+              "fuma": "...", 
+              "fumaDetalles": "...", 
+              "audio_patologicos": "...", 
+              "audio_exantematicas": "...", 
+              "audio_ruido": "...",
+              "espiro_riesgos": "REGLA ESTRICTA: Extrae explícitamente si hay 'Riesgos Químicos/Neumoconiógenos' (Polvos, humos, gases, vapores). NO te quedes solo con el Ruido.",
+              "espiro_patologicos": "REGLA ESTRICTA: Revisa TODAS las casillas de Antecedentes Patológicos (Alergias, Cirugías, etc.) y OBLIGATORIAMENTE lee el texto manuscrito de 'Observaciones del examinador'. Anota TODO."
           },
           "checklist": [
             { "categoria": "1. Identidad y Demográficos", "pass": true/false, "comentario": "..." },
@@ -278,16 +299,16 @@ exports.handler = async (event, context) => {
         1. "Identificación": El Número de Orden debe coincidir con ${dp.orden || 'No proporcionado'}. El Nombre y Apellidos deben coincidir con ${dp.nombre || 'No proporcionado'}. La Fecha de Nacimiento debe coincidir con ${dp.nacimiento || 'No proporcionado'}. (Ignorar Empresa, Sucursal, Puesto, Talla y Peso).
         
         2. "Exposición Laboral": Si el paciente marca exposición a agentes (Químicos, Polvos, etc.), debe estar especificado cuáles y si usa E.P.P.
-           - Si REQUIERE Historia Clínica (SÍ): Esta exposición debe ser congruente con los Riesgos Químicos/Neumoconiógenos declarados en la HC. Si la HC dice "NO DISPONIBLES AÚN", pon pass: false y comentario "⚠️ PENDIENTE: Analizar primero la Historia Clínica para cruzar riesgos laborales".
+           - Si REQUIERE Historia Clínica (SÍ): Esta exposición debe ser congruente con la HC (revisa la variable 'espiro_riesgos'). SÉ INTELIGENTE CON LOS SINÓNIMOS (ej. 'polvos de minerales' o 'humos de soldadura' es igual a 'Polvos, Humos, Gases o Vapores'). Si la HC dice "NO DISPONIBLES AÚN", pon pass: false y comentario "⚠️ PENDIENTE: Analizar primero la Historia Clínica".
            
         3. "Tabaquismo (Hábitos) - DEDUCCIÓN INTELIGENTE": 
            - ATENCIÓN VISUAL: Las marcas de "Sí/No" en "¿Fuma actualmente?" o "¿Fumó?" suelen ser ambiguas o estar mal tachadas. USA ESTA LÓGICA INFALIBLE: Si el paciente escribió cualquier número o detalle en "Edad comenzó", "Número de cigarrillos", "Frecuencia" o "Edad dejó de fumar", ASUME AUTOMÁTICAMENTE QUE SÍ ES (O FUE) FUMADOR.
            - Si esos campos de texto están completamente vacíos, asume que NO.
            - Si REQUIERE Historia Clínica (SÍ): Cruza este estatus deducido con los Hábitos Tóxicos (Tabaquismo) de la HC. Si la HC dice "NO DISPONIBLES AÚN", pon pass: false y comentario "⚠️ PENDIENTE: Analizar primero la Historia Clínica para cruzar Tabaquismo".
            
-        4. "Antecedentes Patológicos": Revisa la sección de enfermedades (Diabetes, Hipertensión, Asma, Bronquitis, Covid_19, Cirugías, etc.).
-           - Si REQUIERE Historia Clínica (SÍ): Cualquier enfermedad que esté marcada con una "X" o "Palomita" aquí, DEBE estar también declarada en la HC. Si la HC dice "NO DISPONIBLES AÚN", pon pass: false y comentario "⚠️ PENDIENTE: Analizar primero la Historia Clínica para cruzar Padecimientos".
-           - Si NO requiere HC (NO): Solo evalúa que las secciones hayan sido llenadas correctamente (evaluación interna).
+        4. "Antecedentes Patológicos": Revisa la sección de enfermedades (Diabetes, Hipertensión, Asma, Alergias, Covid_19, Cirugías, etc.).
+           - Si REQUIERE Historia Clínica (SÍ): Cualquier enfermedad marcada aquí DEBE estar declarada en la HC (revisa la variable 'espiro_patologicos'). ATENCIÓN: Las alergias o detalles específicos suelen estar escritos a mano en las 'Observaciones del examinador' de la HC. Analiza el contexto completo. Si definitivamente falta algo (ej. Covid_19 no está en la HC), marca pass: false y especifica EXACTAMENTE qué enfermedad faltó declarar en la HC. Si la HC dice "NO DISPONIBLES AÚN", pon pass: false y comentario "⚠️ PENDIENTE: Analizar primero la Historia Clínica".
+           - Si NO requiere HC (NO): Solo evalúa que las secciones hayan sido llenadas correctamente.
 
         DEVUELVE ÚNICAMENTE un JSON estricto con esta estructura (sin markdown):
         {
@@ -302,7 +323,6 @@ exports.handler = async (event, context) => {
           ]
         }
         `;
-
         // ============================================================================
         // PROMPT 5: AUDIOMETRÍA (DINÁMICO CON Y SIN HC)
         // ============================================================================
