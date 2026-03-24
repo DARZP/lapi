@@ -279,8 +279,9 @@ exports.handler = async (event, context) => {
         }
         `;
 
+
         // ============================================================================
-        // PROMPT 4: ESPIROMETRÍA (DINÁMICO CON Y SIN HC)
+        // TEXTO BASE: REGLAS ESPIROMETRÍA (NUEVO FORMATO CUESTIONARIO + SOMATOMETRÍA)
         // ============================================================================
         const PROMPT_ESPIROMETRIA = `
         Eres un Auditor Médico evaluando un Cuestionario Clínico de ESPIROMETRÍA de Salud Ocupacional. 
@@ -296,18 +297,22 @@ exports.handler = async (event, context) => {
         - DATOS EXTRAÍDOS DE HC: ${hc ? JSON.stringify(hc) : (requiereHC ? 'NO DISPONIBLES AÚN' : 'NO APLICA')}
 
         REGLAS ESTRICTAS DE ESPIROMETRÍA (CUESTIONARIO):
-        1. "Identificación": El Número de Orden debe coincidir con ${dp.orden || 'No proporcionado'}. El Nombre y Apellidos deben coincidir con ${dp.nombre || 'No proporcionado'}. La Fecha de Nacimiento debe coincidir con ${dp.nacimiento || 'No proporcionado'}. (Ignorar Empresa, Sucursal, Puesto, Talla y Peso).
+        1. "Identificación": El Número de Orden debe coincidir con ${dp.orden || 'No proporcionado'}. El Nombre y Apellidos deben coincidir con ${dp.nombre || 'No proporcionado'}. La Fecha de Nacimiento debe coincidir con ${dp.nacimiento || 'No proporcionado'}. (Ignorar Empresa, Sucursal, Puesto).
         
-        2. "Exposición Laboral": Si el paciente marca exposición a agentes (Químicos, Polvos, etc.), debe estar especificado cuáles y si usa E.P.P.
-           - Si REQUIERE Historia Clínica (SÍ): Esta exposición debe ser congruente con la HC (revisa la variable 'espiro_riesgos'). SÉ INTELIGENTE CON LOS SINÓNIMOS (ej. 'polvos de minerales' o 'humos de soldadura' es igual a 'Polvos, Humos, Gases o Vapores'). Si la HC dice "NO DISPONIBLES AÚN", pon pass: false y comentario "⚠️ PENDIENTE: Analizar primero la Historia Clínica".
+        2. "Cruce de Somatometría (Estatura/Peso)":
+           - Si REQUIERE Historia Clínica (SÍ): Verifica que la Talla/Estatura y el Peso anotados coincidan con los datos de la HC (revisa las variables 'estatura' y 'peso' de la HC). Si los datos de HC dicen "NO DISPONIBLES AÚN", pon pass: false y comentario "⚠️ PENDIENTE: Se requiere analizar primero la Historia Clínica para cruzar somatometría".
+           - Si NO requiere Historia Clínica (NO): Pon pass: true y comentario "Validado - No requiere cruce con HC".
+
+        3. "Exposición Laboral": Si el paciente marca exposición a agentes (Químicos, Polvos, etc.), debe estar especificado cuáles y si usa E.P.P.
+           - Si REQUIERE Historia Clínica (SÍ): Esta exposición debe ser congruente con la HC (revisa 'espiro_riesgos' de la HC). SÉ INTELIGENTE CON LOS SINÓNIMOS (ej. 'polvos de minerales' o 'humos de soldadura' es igual a 'Polvos, Humos, Gases o Vapores'). Si la HC dice "NO DISPONIBLES AÚN", pon pass: false y comentario "⚠️ PENDIENTE: Analizar primero la Historia Clínica".
            
-        3. "Tabaquismo (Hábitos) - DEDUCCIÓN INTELIGENTE": 
+        4. "Tabaquismo (Hábitos) - DEDUCCIÓN INTELIGENTE": 
            - ATENCIÓN VISUAL: Las marcas de "Sí/No" en "¿Fuma actualmente?" o "¿Fumó?" suelen ser ambiguas o estar mal tachadas. USA ESTA LÓGICA INFALIBLE: Si el paciente escribió cualquier número o detalle en "Edad comenzó", "Número de cigarrillos", "Frecuencia" o "Edad dejó de fumar", ASUME AUTOMÁTICAMENTE QUE SÍ ES (O FUE) FUMADOR.
            - Si esos campos de texto están completamente vacíos, asume que NO.
-           - Si REQUIERE Historia Clínica (SÍ): Cruza este estatus deducido con los Hábitos Tóxicos (Tabaquismo) de la HC. Si la HC dice "NO DISPONIBLES AÚN", pon pass: false y comentario "⚠️ PENDIENTE: Analizar primero la Historia Clínica para cruzar Tabaquismo".
+           - Si REQUIERE Historia Clínica (SÍ): Cruza este estatus deducido con los Hábitos Tóxicos de la HC (revisa 'fuma' o 'espiro_tabaquismo'). Si la HC dice "NO DISPONIBLES AÚN", pon pass: false y comentario "⚠️ PENDIENTE: Cruzar con Historia Clínica".
            
-        4. "Antecedentes Patológicos": Revisa la sección de enfermedades (Diabetes, Hipertensión, Asma, Alergias, Covid_19, Cirugías, etc.).
-           - Si REQUIERE Historia Clínica (SÍ): Cualquier enfermedad marcada aquí DEBE estar declarada en la HC (revisa la variable 'espiro_patologicos'). ATENCIÓN: Las alergias o detalles específicos suelen estar escritos a mano en las 'Observaciones del examinador' de la HC. Analiza el contexto completo. Si definitivamente falta algo (ej. Covid_19 no está en la HC), marca pass: false y especifica EXACTAMENTE qué enfermedad faltó declarar en la HC. Si la HC dice "NO DISPONIBLES AÚN", pon pass: false y comentario "⚠️ PENDIENTE: Analizar primero la Historia Clínica".
+        5. "Antecedentes Patológicos": Revisa la sección de enfermedades (Diabetes, Hipertensión, Asma, Alergias, Covid_19, Cirugías, etc.).
+           - Si REQUIERE Historia Clínica (SÍ): Cualquier enfermedad marcada aquí DEBE estar declarada en la HC (revisa 'espiro_patologicos'). ATENCIÓN: Las alergias o detalles específicos suelen estar escritos a mano en las 'Observaciones del examinador' de la HC. Analiza el contexto completo. Si falta algo (ej. Covid_19 no está en la HC), marca pass: false y especifica EXACTAMENTE qué enfermedad faltó. Si la HC dice "NO DISPONIBLES AÚN", pon pass: false y comentario "⚠️ PENDIENTE: Analizar primero la Historia Clínica".
            - Si NO requiere HC (NO): Solo evalúa que las secciones hayan sido llenadas correctamente.
 
         DEVUELVE ÚNICAMENTE un JSON estricto con esta estructura (sin markdown):
@@ -317,12 +322,14 @@ exports.handler = async (event, context) => {
           "medicoTratante": "No Aplica",
           "checklist": [
             { "categoria": "1. Identificación", "pass": true/false, "comentario": "..." },
-            { "categoria": "2. Exposición Laboral", "pass": true/false, "comentario": "..." },
-            { "categoria": "3. Tabaquismo (Hábitos)", "pass": true/false, "comentario": "..." },
-            { "categoria": "4. Antecedentes Patológicos", "pass": true/false, "comentario": "..." }
+            { "categoria": "2. Cruce de Somatometría (Estatura/Peso)", "pass": true/false, "comentario": "..." },
+            { "categoria": "3. Exposición Laboral", "pass": true/false, "comentario": "..." },
+            { "categoria": "4. Tabaquismo (Hábitos)", "pass": true/false, "comentario": "..." },
+            { "categoria": "5. Antecedentes Patológicos", "pass": true/false, "comentario": "..." }
           ]
         }
         `;
+        
         // ============================================================================
         // PROMPT 5: AUDIOMETRÍA (DINÁMICO CON Y SIN HC)
         // ============================================================================
