@@ -59,13 +59,13 @@ exports.handler = async (event, context) => {
         - 28 (Fracturas): Si es SÍ, verificar coherencia y que en Observaciones incluya (Hueso, Año, Tratamiento).
         - 29: Verificar coherencia.
         - 30 (Tatuajes, Perforaciones, Expansiones): Si marcan "Tatuajes", en observaciones debe incluir (Región, Tipo, Monocromático/policromático, Dimensiones). EXCEPCIÓN OBLIGATORIA: Si marcan "Perforaciones" o "Expansiones", SOLO exige cantidad y ubicación (NO exijas color ni dimensiones para perforaciones o expansiones).
-        - 31 (Vacunas): Si es Incompleto, verificar qué faltan. Columna FECHA con fecha válida debe tener Dosis y Marca. "OTRAS" puede ir vacía.
-        - 32 (Alergias): Si es SÍ, el detalle o reacción de la alergia puede estar escrito directamente sobre la misma línea de la pregunta O en el cuadro de observaciones. Ambas ubicaciones son correctas y 100% válidas.
+        - 31 (Vacunas): Verificar qué si en cualquiera de las filas; "Hepatitis", "Influenza", "COVID-19", "Tétanos" incluye información, deberá tener todas las columnas con información; fecha válida, debe tener Dosis y Marca.
+        - 32 (Alergias): Si es SÍ, se debe verificar se mencione reacción de la alergia, puede estar escrito directamente sobre la misma línea de la pregunta O en el cuadro de observaciones. Ambas ubicaciones son correctas y 100% válidas.
         - OBSERVACIONES: Para cada SÍ (23,24,25,26,27,32) debe existir registro detallado haciendo referencia al número (respetando la flexibilidad de la línea para alergias).
         
         ### SECCIÓN INTERROGATORIO POR APARATOS Y SISTEMAS
-        - 34: Todo síntoma en "SÍ" DEBE estar en el cuadro de observaciones de su sistema afín.
-        - Alteración de la visión: Debe incluir Diagnóstico, Lentes, Antigüedad, Último ajuste.
+        - 34: Verificar que todo síntoma en "SÍ" DEBE estar referido en el cuadro de "observaciones del examinador"
+        - Para "Alteración de la visión" La referencia en el cuadro de "observacionnes del examinador"Debe incluir: Diagnóstico, Lentes, Antigüedad, Último ajuste.
         - Uso de prótesis: Si se selecciona, detallar en cuadro de Prótesis.
 
         ### SECCIÓN GINECOOBSTÉTRICOS
@@ -76,7 +76,9 @@ exports.handler = async (event, context) => {
         - POR APARATOS:
           Grupo A: Congruencia O "Sin datos patológicos".
           Grupo B: 5 (CAP y MTL bilateral), 13 (No palpables), 17, 20, 21, 22 (Normal).
-          Grupo C: 4 (Ojos) cruce con Ametropía y Alteración Visión. REGLA DE LENTES: Si en la 46 o 47 existe la medición "Con lentes" (OI, OD, Bilateral), evalúa la ametropía (>=20/30) basándote EXCLUSIVAMENTE en esa medición. Si la toma "Con lentes" corrige la visión, NO es necesario hacer referencia a la patología en Ojos. 23 (Tatuajes) cruce con 30.
+          Grupo C: 4 (Ojos) cruce con 46 (Agudeza visual lejana) En caso de cualquier Evalúa la ametropía >=20/30) basándote EXCLUSIVAMENTE en esa medición. Si la toma " hacer referencia a la patología en Ojos. 
+          
+          23 (Tatuajes) cruce con 30.
         
        ### FIRMA DEL PACIENTE (CRÍTICO)
         - REQUIERE VERIFICACIÓN VISUAL ESTRICTA: Debes buscar visualmente un trazo a mano, garabato o escritura cursiva en el recuadro inferior izquierdo. 
@@ -194,31 +196,35 @@ exports.handler = async (event, context) => {
         - A. RIESGOS FÍSICOS: Si es SÍ, verifica detalles estrictos (Ruido, Vibración, Radiación, Iluminación, Temperaturas, Altura, Confinados).
         - B. RIESGOS QUÍMICOS: Si es SÍ, verifica detalles.
         - C y E. BIOLÓGICOS Y PSICOSOCIALES: NO REQUIEREN VERIFICACIÓN.
-        - D. ERGONÓMICOS: ATENCIÓN VISUAL ESTRICTA: Revisa con cuidado dónde está la marca. NO asumas "SÍ" si la marca está sobre "NO" o es ambigua. SOLO si es un "SÍ" claro e innegable, verifica detalles estrictos (Años, Horas, Observaciones).
+        - D. ERGONÓMICOS: ATENCIÓN VISUAL ESTRICTA: Revisa con cuidado dónde está la marca. NO asumas "SÍ" si la marca está sobre "NO" o es ambigua. SOLO si es un "SÍ" claro e innegable. Si Ergonómicos está marcado como "SÍ", NO es obligatorio que haya texto en "Observaciones", es 100% VÁLIDO y correcto si en la tabla que está inmediatamente debajo se llenó alguna de las filas correspondientes ("Levantamiento de carga", "Movimientos de repetición" o "Sobrecarga postural"). 
         - OBSERVACIONES DEL EXAMINADOR. En caso de que A, B, C, D, E Sean NO, (las 4) en esta sección se requiere la leyenda exacta "Niega exposición a silice, monoxido de carbono, cianuro de hidrogeno, plomo, estireno, tolueno, etilo benceno, xileno." 
         ### SECCIÓN DE RIESGOS LABORALES
         - 4 y 5: Si es SÍ, verifica que CADA dato esté contestado (Empresa, causa, días, cuándo, qué le pasó, secuelas, proceso).
         - 6 al 11: NO REQUIEREN VERIFICACIÓN.
 
         ### SECCIÓN ANTECEDENTES HÁBITOS Y COSTUMBRES
-        - 15 al 20, y 22: NO REQUIEREN VERIFICACIÓN.
+        - 12 al 20, y 22: NO REQUIEREN VERIFICACIÓN.
         - 21 (Mascotas): Si es SÍ, requiere 4 datos obligatorios: Tipo, Cantidad(en caso de que el tipo sea plural), Intra/extradomiciliarias, y Vacunados/Desparasitados.
 
         ### SECCIÓN ANTECEDENTES PERSONALES PATOLÓGICOS
-        - 23 al 26: Si es SÍ, verificar coherencia.
+        - 23: Si es SÍ, verifica que en "OBSERVACIONES DEL EXAMINADOR" se describa fecha, motivo y días de incapacidad
+        - 24: Si es SÍ, verifica que en "OBSERVACIONES DEL EXAMINADOR" se describa fecha, motivo y días de hospitalización
+        - 25: Si es SÍ: verifica que en "OBSERVACIONES DEL EXAMINADOR" se describa fechaa, diagnóstico y el tipo de cirugía
+        al 26: Si es SÍ, verifica que en "OBSERVACIONES DEL EXAMINADOR" se describa fecha, motivo y tipo de hemocomponente transfundido
         - 27: Ignorar aquí.
         - 28 (Fracturas): Si es SÍ, verificar coherencia y en Observaciones debe incluir (Hueso, Año, Tratamiento).
         - 29: Enfermedades, verificar coherencia.
         - 30 (Tatuajes, Perforaciones, Expansiones): Si marcan "Tatuajes", en observaciones debe incluir (Región, Tipo, Monocromático/policromático, Dimensiones). EXCEPCIÓN OBLIGATORIA: Si marcan "Perforaciones" o "Expansiones", SOLO exige cantidad y ubicación (NO exijas color ni dimensiones para perforaciones o expansiones).
-        - 31 (Vacunas): Si es Incompleto, verificar qué faltan. Columna FECH debe tener Dosis y Marca. Fila OTRAS puede ir vacía.
-        - 32 (Alergias): Si es SÍ, el detalle o reacción de la alergia puede estar escrito directamente sobre la misma línea de la pregunta O en el cuadro de observaciones. Ambas ubicaciones son correctas y 100% válidas.
-        - OBSERVACIONES: Para cada SÍ (23,24,25,26,27,32) debe existir registro detallado haciendo referencia al número (respetando la flexibilidad de la línea para alergias).
+        - 31 (Vacunas): Verificar qué si en cualquiera de las filas; "Hepatitis", "Influenza", "COVID-19", "Tétanos" incluye información, deberá tener todas las columnas con información; fecha válida, debe tener Dosis y Marca.
+        - 32 (Alergias): Si es SÍ, se debe verificar se mencione reacción de la alergia, puede estar escrito directamente sobre la misma línea de la pregunta O en el cuadro de observaciones. Ambas ubicaciones son correctas y 100% válidas.
+        
+        - OBSERVACIONES: Para cada SÍ (23,24,25,26,27,32) debe existir referencia al número  (con la excepción de la flexibilidad de la línea 32, para alergias ). y cumplir con lo necesario para su propia regla
         
         ### SECCIÓN INTERROGATORIO POR APARATOS Y SISTEMAS
-        - 34: Todo síntoma en "SÍ" DEBE estar descrito en el cuadro de observaciones de su sistema afín incluyendo 4 datos (Síntoma, Antigüedad, Tratamiento, Seguimiento).
-        - Alteración de la visión: Debe incluir Diagnóstico, Lentes, Antigüedad y Último ajuste.
-        - Uso de prótesis: Si se selecciona, detallar en cuadro de Prótesis.
-
+        - 34: Todo síntoma en "SÍ" DEBE estar descrito en el cuadro de "observaciones del examinador" Verificar incluya 4 datos (Síntoma, Antigüedad, Tratamiento, Seguimiento).
+        - Si "Alteración de la visión" es si. Su descripción en "observaciones del examinador" Debe incluir Diagnóstico, uso o no de lentes, Antigüedad y Último ajuste en caso de usar lentes
+        - Uso de prótesis: IGNORAR
+        
         ### SECCIÓN DE ANTECEDENTES GINECOOBSTÉTRICOS
         - Sólo femeninos. 36, 38 al 43: NO REQUIEREN VERIFICACIÓN.
         - 37: La suma de Partos+Cesáreas+Abortos debe dar igual al total de Gestaciones (G = P + C + A).
@@ -229,7 +235,9 @@ exports.handler = async (event, context) => {
         - POR APARATOS: 
           Grupo A (1,2,3,6,7,8,9,10,11,12,14,15,16,18): Deben tener congruencia O decir "Sin datos patológicos". Ignorar signos de 14, 15, 16.
           Grupo B: 5 (CAP y MTL bilateral), 13 (No palpables), 17, 20, 21, 22 (Normal).
-          Grupo C: 4 (Ojos) cruce con Ametropía y Alteración de Visión. REGLA DE LENTES: Si en la 46 o 47 existe la medición "Con lentes" (OI, OD, Bilateral), evalúa la ametropía (>=20/30) basándote EXCLUSIVAMENTE en esa medición. Si la toma "Con lentes" corrige la visión, NO es necesario hacer referencia a la patología en Ojos. 23 (Tatuajes) cruce con 30 (Si no hay, decir "No presentes").
+          Grupo C: 4 (Ojos) cruce con "46": Se debe colocar el diagnóstico de "Ametropía" En caso de al menos un registros de visión lejana >=20/30, con o sin lentes. Cruce con "48": Se debe mencionar el hallazgo en caso de "Hiporrefléxicas" o "Hiperrefléxicas". Cruce con "50": Se debe mencionar el hallazgo en caso de "Visión cromática Anormal"
+          
+          23 (Tatuajes) cruce con 30 (Si no hay, decir "No presentes").
           Grupo D (19, 24-30, Actitud, Observaciones): NO REQUIEREN VERIFICACIÓN.
 
         ### FIRMA DEL PACIENTE (CRÍTICO)
