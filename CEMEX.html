@@ -151,7 +151,7 @@
         <div class="full-width"><label>DIRECCIÓN:</label> <input type="text"></div>
     </div>
 
-    <h2>MOTIVO DE EXAMEN (Llenado por médico CEMEX)</h2>
+    <h2>MOTIVO DE EXAMEN </h2>
     <div class="section-grid" style="grid-template-columns: repeat(4, 1fr); background: #fafafa; padding: 8px; border: 1px solid #ddd;">
         <div><label><input type="checkbox"> PERIÓDICO</label></div>
         <div><label><input type="checkbox"> CAMBIO DE PUESTO</label></div>
@@ -399,7 +399,6 @@
 
 <script>
     // INTERFAZ 
-
     function updatePatientName() {
         const nombre = document.getElementById('paciente_nombre').value.toUpperCase();
         document.getElementById('sig_nombre_paciente').innerText = nombre || "NOMBRE COMPLETO Y FIRMA DEL COLABORADOR";
