@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historia Clínica Digital - LAPI / Cemex</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        :root {
+            --cemex-blue: #0033a0;
+            --light-bg: #f4f4f9;
+            --border-color: #aaa;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: var(--light-bg);
+            color: #222;
+            margin: 0;
+            padding: 10px;
+            font-size: 11px;
+        }
+        .container {
+            max-width: 850px;
+            margin: auto;
+            background: #fff;
+            padding: 20px 30px;
+            border-radius: 4px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        h2 {
+            background-color: #333;
+            color: white;
+            padding: 5px;
+            text-align: center;
+            font-size: 12px;
+            border-radius: 2px;
+            margin-top: 12px;
+            margin-bottom: 8px;
+            page-break-after: avoid; 
+        }
+        .section-grid {
+            display: grid;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .risk-row {
+            border: 1px solid var(--border-color);
+            padding: 8px;
+            border-radius: 4px;
+            background-color: #fafafa;
+            page-break-inside: avoid;
+        }
+        .risk-header {
+            font-weight: bold;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        label { font-size: 11px; font-weight: bold; }
+        input[type="text"], input[type="number"], input[type="tel"], input[type="date"], select, textarea {
+            width: 100%; padding: 4px; border: 1px solid var(--border-color); border-radius: 3px; box-sizing: border-box; font-family: inherit; font-size: 11px;
+        }
+        .full-width { grid-column: 1 / -1; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 11px;}
+        tr { page-break-inside: avoid; } 
+        th, td { border: 1px solid var(--border-color); padding: 4px; }
+        
+        .btn-add { background-color: #28a745; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 10px; margin-top: 4px; }
+        .btn-add:hover { background-color: #218838; }
+        .dynamic-item { display: flex; gap: 5px; margin-bottom: 5px; }
+        .dynamic-item-risk { display: grid; grid-template-columns: 100px 1fr 1fr 30px; gap: 5px; margin-bottom: 5px; }
+        .btn-remove { background-color: #dc3545; color: white; border: none; padding: 4px 6px; border-radius: 3px; cursor: pointer; font-size: 10px;}
+        
+        .action-bar { position: sticky; bottom: 0; background: white; padding: 10px; border-top: 2px solid #ddd; display: flex; justify-content: space-between; gap: 10px; z-index: 1000; box-shadow: 0 -4px 10px rgba(0,0,0,0.05); }
+        .btn-action { padding: 8px 15px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 12px; }
+        .btn-pdf { background-color: var(--cemex-blue); color: white; }
+        .btn-save { background-color: #17a2b8; color: white; }
+        
+        .signature-pad { border: 1px solid #999; border-radius: 3px; width: 100%; height: 100px; cursor: crosshair; background: #fff; }
+        .sig-clear { font-size: 10px; color: #dc3545; cursor: pointer; text-decoration: underline; display: block; text-align: right; margin-top: 2px;}
+
+        .keep-together {
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        body.pdf-generating {
+            background: white !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        .pdf-mode {
+            max-width: 800px !important;
+            margin: 0 auto !important;
+            padding: 10px 20px !important;
+            box-shadow: none !important;
+            border: none !important;
+        }
+        .pdf-mode .no-print, .pdf-mode .sig-clear, .pdf-mode .btn-add, .pdf-mode .btn-remove { 
+            display: none !important; 
+        }
+        .pdf-mode input, .pdf-mode select, .pdf-mode textarea { 
+            border: none !important; 
+            border-bottom: 1px solid #555 !important; 
+            border-radius: 0 !important; 
+            background: transparent !important; 
+            padding: 2px !important; 
+            font-size: 10px !important; 
+        }
+        .pdf-mode .signature-pad { border: none !important; border-bottom: 1px solid #000 !important; }
+    </style>
+</head>
+<body>
+
+<div class="container" id="historia-clinica">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #333; padding-bottom: 5px; margin-bottom: 15px;">
+        <div><h1 style="margin: 0; color: #0033a0; font-style: italic; font-size: 24px;">//CEMEX</h1></div>
+        <div style="text-align: center;"><h2 style="margin: 0; background: none; color: #333; padding: 0; font-size: 16px;">HISTORIA CLÍNICA PERIÓDICA</h2></div>
+        <div style="text-align: right; font-size: 10px;">
+            <p style="margin: 2px 0;">SGI-CM-FO-PT-8.2.2-80 / Rev: 0</p>
+            <div style="margin-top: 3px;"><label>FECHA:</label> <input type="date" id="doc_fecha" style="padding: 2px; border:1px solid #ccc; width:auto;"></div>
+        </div>
+    </div>
+
+    <h2>FICHA DE IDENTIFICACIÓN</h2>
+    <div class="section-grid" style="grid-template-columns: repeat(4, 1fr);">
+        <div style="grid-column: span 3;">
+            <label>NOMBRE COMPLETO:</label> 
+            <input type="text" id="paciente_nombre" oninput="updatePatientName()">
+        </div>
+        <div><label>EDAD:</label> <input type="number"></div>
+        
+        <div><label>GÉNERO:</label> 
+            <select id="paciente_genero" onchange="toggleGYO()">
+                <option value="">Seleccionar</option><option value="Masculino">Masculino</option><option value="Femenino">Femenino</option>
+            </select>
+        </div>
+        <div><label>TELÉFONO:</label> <input type="tel"></div>
+        <div><label>GPO. SANGUÍNEO/RH:</label> 
+            <select><option value="">Opcional...</option><option>O+</option><option>O-</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option></select>
+        </div>
+        <div><label>NSS:</label> <input type="text"></div>
+
+        <div style="grid-column: span 2;"><label>ÁREA DE TRABAJO:</label> <input type="text"></div>
+        <div style="grid-column: span 2;"><label>PUESTO DE TRABAJO:</label> <input type="text"></div>
+        
+        <div style="grid-column: span 2;"><label>ANTIGÜEDAD EN EL PUESTO:</label> <input type="text"></div>
+        <div style="grid-column: span 2;"><label>NO. DE NÓMINA:</label> <input type="text"></div>
+        
+        <div class="full-width"><label>DIRECCIÓN:</label> <input type="text"></div>
+    </div>
+
+    <h2>MOTIVO DE EXAMEN (Llenado por médico CEMEX)</h2>
+    <div class="section-grid" style="grid-template-columns: repeat(4, 1fr); background: #fafafa; padding: 8px; border: 1px solid #ddd;">
+        <div><label><input type="checkbox"> PERIÓDICO</label></div>
+        <div><label><input type="checkbox"> CAMBIO DE PUESTO</label></div>
+        <div><label><input type="checkbox"> POSTERIOR A INCAPACIDAD</label></div>
+        <div><label><input type="checkbox"> EGRESO</label></div>
+    </div>
+
+    <h2>ANTECEDENTES HEREDOFAMILIARES</h2>
+    <div class="section-grid" style="grid-template-columns: 1fr;">
+        <div>
+            <label>ASCENDENTES:</label>
+            <div id="list-ascendentes"></div>
+            <button class="btn-add" onclick="addDynamicItem('list-ascendentes', 'Describa antecedente')">+ Agregar Ascendente</button>
+        </div>
+        <hr style="width:100%; border:0; border-top:1px solid #eee; margin:2px 0;">
+        <div>
+            <label>COLATERALES:</label>
+            <div id="list-colaterales"></div>
+            <button class="btn-add" onclick="addDynamicItem('list-colaterales', 'Describa antecedente')">+ Agregar Colateral</button>
+        </div>
+        <hr style="width:100%; border:0; border-top:1px solid #eee; margin:2px 0;">
+        <div>
+            <label>DESCENDENTES:</label>
+            <div id="list-descendentes"></div>
+            <button class="btn-add" onclick="addDynamicItem('list-descendentes', 'Describa antecedente')">+ Agregar Descendente</button>
+        </div>
+    </div>
+
+    <h2>ANTECEDENTES PERSONALES NO PATOLÓGICOS (APNP)</h2>
+    <div class="section-grid" style="grid-template-columns: 1fr; border: 1px solid #ddd; padding: 10px; background: #fafafa;">
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; align-items: center; border-bottom: 1px solid #ccc; padding-bottom: 8px;">
+            <div><label><input type="checkbox"> TABAQUISMO/VAPEO</label></div>
+            <div><label><input type="checkbox"> EX FUMADOR</label></div>
+            <div><label># CIGARRILLOS/DÍA:</label> <input type="number"></div>
+            <div><label>AÑOS EXPOSICIÓN:</label> <input type="number"></div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; align-items: center; border-bottom: 1px solid #ccc; padding-bottom: 8px; padding-top: 8px;">
+            <div><label><input type="checkbox"> ALCOHOLISMO</label></div>
+            <div><label><input type="checkbox"> OCASIONAL</label></div>
+            <div><label>CANTIDAD/SEM:</label> <input type="text"></div>
+            <div><label>AÑOS CONSUMO:</label> <input type="number"></div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 2fr 1fr 1fr; gap: 10px; align-items: center; border-bottom: 1px solid #ccc; padding-bottom: 8px; padding-top: 8px;">
+            <div><label>ACTIVIDAD FÍSICA:</label></div>
+            <div><input type="text" placeholder="Especifique"></div>
+            <div><label><input type="checkbox"> ALIM. BALANCEADA</label></div>
+            <div><label><input type="checkbox"> ALIM. INADECUADA</label></div>
+        </div>
+        <div style="display: grid; grid-template-columns: auto 1fr 1fr 1fr auto 1fr; gap: 10px; align-items: center; padding-top: 8px;">
+            <div style="font-weight: bold;">VACUNAS:</div>
+            <div><label><input type="checkbox"> HEPATITIS B</label></div>
+            <div><label><input type="checkbox"> INFLUENZA</label></div>
+            <div><label><input type="checkbox"> NEUMOCOCO</label></div>
+            <div><label><input type="checkbox"> TÉTANOS</label></div>
+            <div><label>OTRAS:</label> <input type="text"></div>
+        </div>
+    </div>
+
+    <h2>ANTECEDENTES PERSONALES PATOLÓGICOS (APP)</h2>
+    <div class="section-grid" style="grid-template-columns: 1fr;">
+        <div>
+            <label>ENFERMEDADES CRÓNICAS:</label>
+            <div id="list-cronicas"></div>
+            <button class="btn-add" onclick="addDynamicItem('list-cronicas', 'Describa la enfermedad')">+ Agregar Enfermedad</button>
+        </div>
+        <hr style="width:100%; border:0; border-top:1px solid #eee; margin:2px 0;">
+        <div>
+            <label>CIRUGÍAS:</label>
+            <div id="list-cirugias"></div>
+            <button class="btn-add" onclick="addDynamicItem('list-cirugias', 'Describa la cirugía')">+ Agregar Cirugía</button>
+        </div>
+        <hr style="width:100%; border:0; border-top:1px solid #eee; margin:2px 0;">
+        <div>
+            <label>HOSPITALIZACIONES:</label>
+            <div id="list-hosp"></div>
+            <button class="btn-add" onclick="addDynamicItem('list-hosp', 'Describa motivo de hospitalización')">+ Agregar Hospitalización</button>
+        </div>
+        <hr style="width:100%; border:0; border-top:1px solid #eee; margin:2px 0;">
+        <div>
+            <label>ALERGIAS:</label>
+            <div id="list-alergias"></div>
+            <button class="btn-add" onclick="addDynamicItem('list-alergias', 'Especifique alergia')">+ Agregar Alergia</button>
+        </div>
+        <hr style="width:100%; border:0; border-top:1px solid #eee; margin:2px 0;">
+        <div>
+            <label>USO DE MEDICAMENTOS:</label>
+            <div id="list-meds"></div>
+            <button class="btn-add" onclick="addDynamicItem('list-meds', 'Medicamento y dosis')">+ Agregar Medicamento</button>
+        </div>
+    </div>
+
+    <h2>INTERROGATORIO POR APARATOS Y SISTEMAS</h2>
+    <table>
+        <tr style="background-color: #eee; text-align: left;">
+            <th style="width: 25%;">APARATO/SISTEMA</th>
+            <th>MANIFESTACIONES CLÍNICAS / ESPECIFIQUE</th>
+        </tr>
+        <tbody id="tabla-sistemas"></tbody>
+        
+        <tr id="row-gyo" style="display: none;">
+            <td style="font-weight: bold;">GINECO-OBSTÉTRICO</td>
+            <td>
+                <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 5px;">
+                    <div><label>Menarca:</label> <input type="text" style="width: 50px;"></div>
+                    <div><label>IVSA:</label> <input type="text" style="width: 50px;"></div>
+                    <div><label>FUM:</label> <input type="date"></div>
+                    <div><label>Anticonceptivos:</label> <input type="text" style="width: 80px;"></div>
+                    <div><label>PAP:</label> <input type="text" style="width: 60px;"></div>
+                </div>
+                <input type="text" placeholder="Otros datos GYO...">
+            </td>
+        </tr>
+    </table>
+
+    <h2>EXPOSICIÓN A RIESGOS</h2>
+    <div class="section-grid" id="riesgos-container"></div>
+
+    <h2>RIESGOS DE TRABAJO</h2>
+    <div class="section-grid">
+        <div class="risk-row">
+            <label>Accidentes de trabajo:</label>
+            <div id="list-acc-trabajo"></div>
+            <button class="btn-add" onclick="addRiskItem('list-acc-trabajo')">+ Agregar Evento</button>
+        </div>
+        <div class="risk-row">
+            <label>Enfermedades de trabajo:</label>
+            <div id="list-enf-trabajo"></div>
+            <button class="btn-add" onclick="addRiskItem('list-enf-trabajo')">+ Agregar Evento</button>
+        </div>
+        <div class="risk-row">
+            <label>Accidentes de trayecto:</label>
+            <div id="list-acc-trayecto"></div>
+            <button class="btn-add" onclick="addRiskItem('list-acc-trayecto')">+ Agregar Evento</button>
+        </div>
+        <div class="risk-row">
+            <label>Incapacidades previas:</label>
+            <div id="list-incap"></div>
+            <button class="btn-add" onclick="addRiskItem('list-incap')">+ Agregar Evento</button>
+        </div>
+    </div>
+
+    <h2>EXPLORACIÓN FÍSICA</h2>
+    <div class="risk-row section-grid" style="grid-template-columns: repeat(6, 1fr);">
+        <div class="full-width"><label style="border-bottom: 2px solid #ccc; display: block;">Signos Vitales y Antropometría</label></div>
+        
+        <div><label>TA:</label> <input type="text" placeholder="120/80"></div>
+        <div><label>FC (lpm):</label> <input type="number"></div>
+        <div><label>FR (rpm):</label> <input type="number"></div>
+        <div><label>Temp (°C):</label> <input type="number" step="0.1"></div>
+        <div><label>SPO2 (%):</label> <input type="number"></div>
+        <div></div>
+
+        <div><label>Peso (kg):</label> <input type="number" id="ef_peso" step="0.1" oninput="calcIMC()"></div>
+        <div><label>Talla (m):</label> <input type="number" id="ef_talla" step="0.01" oninput="calcIMC()"></div>
+        <div><label>IMC:</label> <input type="text" id="ef_imc" readonly style="background:#eee; font-weight:bold;"></div>
+        
+        <div><label>Cintura (cm):</label> <input type="number" id="ef_cintura" step="0.1" oninput="calcICC()"></div>
+        <div><label>Cadera (cm):</label> <input type="number" id="ef_cadera" step="0.1" oninput="calcICC()"></div>
+        <div><label>ICC:</label> <input type="text" id="ef_icc" readonly style="background:#eee; font-weight:bold;"></div>
+
+        <div class="full-width" style="margin-top: 10px;"><label style="border-bottom: 2px solid #ccc; display: block;">Inspección Topográfica</label></div>
+        
+        <div class="full-width" id="inspeccion-container"></div>
+    </div>
+
+    <h2>AUXILIARES DE DIAGNÓSTICO</h2>
+    <div class="section-grid" style="border: 1px solid #ddd; padding: 10px; background: #fafafa;">
+        <div class="full-width">
+            <label>LABORATORIO:</label>
+            <div style="display:flex; gap:10px; margin-bottom:10px;" class="no-print">
+                <select id="lab-template" style="width: auto;">
+                    <option value="">Seleccionar estudio común...</option>
+                    <option value="Biometría / Química Básica">Biometría / Química Básica</option>
+                    <option value="Perfil Lipídico">Perfil Lipídico</option>
+                    <option value="Examen General de Orina">Examen General de Orina</option>
+                </select>
+                <button class="btn-add" onclick="addLabStudy()">+ Añadir Estudio Enlistado</button>
+            </div>
+            <div id="list-labs"></div>
+        </div>
+        
+        <div class="full-width"><label>IMAGEN (RX):</label><textarea rows="2"></textarea></div>
+        <div class="full-width"><label>AUDIOMETRÍA:</label><textarea rows="2"></textarea></div>
+        <div class="full-width"><label>ESPIROMETRÍA:</label><textarea rows="2"></textarea></div>
+    </div>
+
+    <div class="keep-together">
+        <h2>DIAGNÓSTICO MÉDICO OCUPACIONAL</h2>
+        <div class="section-grid" style="grid-template-columns: 1fr;">
+            <textarea rows="3" placeholder="Redacte el diagnóstico médico de manera integral..."></textarea>
+        </div>
+    </div>
+
+    <div class="keep-together">
+        <h2>SEMÁFORO DE RIESGO OCUPACIONAL</h2>
+        <div class="section-grid" style="grid-template-columns: 1fr 1fr 1fr; text-align: center; background: #fafafa; padding: 10px; border: 1px solid #ddd;">
+            <div><label style="cursor: pointer;"><input type="radio" name="semaforo_riesgo" value="bajo"> BAJO</label></div>
+            <div><label style="cursor: pointer;"><input type="radio" name="semaforo_riesgo" value="moderado"> MODERADO</label></div>
+            <div><label style="cursor: pointer;"><input type="radio" name="semaforo_riesgo" value="alto"> ALTO</label></div>
+        </div>
+    </div>
+
+    <div class="keep-together">
+        <div class="section-grid" style="grid-template-columns: 1fr; margin-top: 15px;">
+            <label style="font-weight: bold; background-color: #333; color: white; padding: 4px 8px;">PLAN Y RECOMENDACIONES</label>
+            <textarea rows="3"></textarea>
+        </div>
+    </div>
+
+    <div class="keep-together" style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 30px; margin-bottom: 50px;">
+        
+        <div style="text-align: center;">
+            <canvas id="sig-paciente" class="signature-pad"></canvas>
+            <span class="sig-clear" onclick="clearPad(padPaciente)">Limpiar firma</span>
+            <p id="sig_nombre_paciente" style="margin: 0; font-weight: bold; font-size: 12px; border-top: 1px solid #333; padding-top: 5px;">NOMBRE COMPLETO Y FIRMA DEL COLABORADOR</p>
+            <p style="margin: 2px 0 0 0; font-size: 10px;">La información proporcionada es voluntaria y en apego a la verdad</p>
+        </div>
+
+        <div style="text-align: center;">
+            <canvas id="sig-medico" class="signature-pad"></canvas>
+            <span class="sig-clear" onclick="clearPad(padMedico)">Limpiar firma</span>
+            
+            <div style="margin-top: 5px; display:flex; gap:5px;" class="no-print">
+                <select id="select-medico" onchange="fillDoctorInfo()"><option value="">Seleccionar Médico...</option></select>
+                <button type="button" class="btn-add" onclick="manageDoctors()" style="margin-top:0; background-color:#0033a0;">+ Guardar Perfil</button>
+            </div>
+            
+            <input type="text" id="doc_nombre_print" placeholder="Nombre del Médico" style="margin-top: 5px; text-align: center; border:none; font-weight:bold; font-size:12px;">
+            <input type="text" id="doc_cedula_print" placeholder="Cédula" style="text-align: center; border:none; font-size:11px;">
+            <p style="margin: 0; font-weight: bold; font-size: 11px; border-top: 1px solid #333; padding-top: 2px;">FIRMA DEL MÉDICO</p>
+        </div>
+    </div>
+</div>
+
+<div class="action-bar no-print">
+    <div>
+        <button class="btn-action btn-save" onclick="saveData()">💾 Guardar Archivo LAPI</button>
+        <label class="btn-action" style="background:#6c757d; color:white; cursor:pointer;">
+            📂 Cargar Archivo LAPI
+            <input type="file" accept=".lapi,.json" onchange="loadData(event)" style="display:none;">
+        </label>
+    </div>
+    <button class="btn-action btn-pdf" onclick="exportPDF()">📄 Generar PDF CEMEX</button>
+</div>
+
+<script>
+    // INTERFAZ 
+
+    function updatePatientName() {
+        const nombre = document.getElementById('paciente_nombre').value.toUpperCase();
+        document.getElementById('sig_nombre_paciente').innerText = nombre || "NOMBRE COMPLETO Y FIRMA DEL COLABORADOR";
+    }
+
+    function toggleGYO() {
+        const gen = document.getElementById('paciente_genero').value;
+        document.getElementById('row-gyo').style.display = (gen === 'Femenino') ? 'table-row' : 'none';
+    }
+
+    function addDynamicItem(containerId, placeholder) {
+        const cont = document.getElementById(containerId);
+        const div = document.createElement('div');
+        div.className = 'dynamic-item';
+        div.innerHTML = `<input type="text" placeholder="${placeholder}">
+                         <button type="button" class="btn-remove" onclick="this.parentElement.remove()">X</button>`;
+        cont.appendChild(div);
+    }
+
+    function addRiskItem(containerId) {
+        const cont = document.getElementById(containerId);
+        const div = document.createElement('div');
+        div.className = 'dynamic-item-risk';
+        div.innerHTML = `<input type="date" title="Fecha">
+                         <input type="text" placeholder="Motivo/Diagnóstico">
+                         <input type="text" placeholder="Secuelas">
+                         <button type="button" class="btn-remove" onclick="this.parentElement.remove()">X</button>`;
+        cont.appendChild(div);
+    }
+
+    function addLabStudy() {
+        const select = document.getElementById('lab-template');
+        const cont = document.getElementById('list-labs');
+        if(!select.value) return;
+        
+        let params = [];
+        if(select.value === "Biometría / Química Básica") params = ["Hemoglobina", "Hematocrito", "Glucosa", "Leucocitos", "Plaquetas"];
+        else if(select.value === "Perfil Lipídico") params = ["Colesterol Total", "Triglicéridos", "HDL", "LDL"];
+        else if(select.value === "Examen General de Orina") params = ["Aspecto", "Densidad", "pH", "Leucocitos"];
+        else params = ["Resultado"];
+
+        let inputsHtml = params.map(p => `<div style="display:flex; gap:5px; margin-bottom:3px;">
+            <label style="width:120px;">${p}:</label>
+            <input type="text" style="flex:1;">
+        </div>`).join("");
+
+        const div = document.createElement('div');
+        div.style.marginBottom = "10px";
+        div.className = "risk-row";
+        div.innerHTML = `<div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                            <span style="font-size:12px; font-weight:bold; color:var(--cemex-blue);">${select.value}</span>
+                            <span class="sig-clear" style="margin:0;" onclick="this.parentElement.parentElement.remove()">Quitar</span>
+                         </div>
+                         ${inputsHtml}`;
+        cont.appendChild(div);
+        select.value = "";
+    }
+
+    function calcIMC() {
+        let p = parseFloat(document.getElementById('ef_peso').value);
+        let t = parseFloat(document.getElementById('ef_talla').value);
+        if(p && t) document.getElementById('ef_imc').value = (p / (t*t)).toFixed(2);
+        else document.getElementById('ef_imc').value = "";
+    }
+    function calcICC() {
+        let c = parseFloat(document.getElementById('ef_cintura').value);
+        let cad = parseFloat(document.getElementById('ef_cadera').value);
+        if(c && cad) document.getElementById('ef_icc').value = (c / cad).toFixed(2);
+        else document.getElementById('ef_icc').value = "";
+    }
+
+    document.addEventListener('mousedown', function(e) {
+        if (e.target.type === 'radio') {
+            e.target.setAttribute('data-was-checked', e.target.checked);
+        }
+    });
+    document.addEventListener('click', function(e) {
+        if (e.target.type === 'radio') {
+            if (e.target.getAttribute('data-was-checked') === 'true') {
+                e.target.checked = false;
+                e.target.setAttribute('data-was-checked', 'false');
+            } else {
+                let radios = document.getElementsByName(e.target.name);
+                radios.forEach(r => r.setAttribute('data-was-checked', 'false'));
+                e.target.setAttribute('data-was-checked', 'true');
+            }
+        }
+    });
+
+    const sistemas = ["Neurológico", "Psiconeurológico / Emocional", "Visual", "Auditivo", "Cardiovascular", "Respiratorio", "Gastrointestinal", "Genitourinario", "Endocrinológico", "Hematológico", "Dermatológico", "Musculoesquelético", "Otros"];
+    const tbodySis = document.getElementById('tabla-sistemas');
+    sistemas.forEach(sis => {
+        tbodySis.innerHTML += `<tr>
+            <td style="font-weight:bold;">${sis}</td>
+            <td>
+                <div style="display:flex; gap:10px;">
+                    <select class="no-print" onchange="toggleText(this)" style="width:160px;">
+                        <option value="Interrogado y negado">Interrogado y negado</option>
+                        <option value="describir">Describir hallazgo...</option>
+                    </select>
+                    <input type="text" value="Interrogado y negado" class="print-input" style="flex:1; border:none; background:transparent;">
+                </div>
+            </td>
+        </tr>`;
+    });
+
+    const topografia = [
+        { nombre: "Habitus Exterior", indent: false },
+        { nombre: "Cabeza y Cuello", indent: false },
+        { nombre: "Tórax", indent: false },
+        { nombre: "Abdomen", indent: false },
+        { nombre: "Columna", indent: false },
+        { nombre: "Extremidades Superiores", indent: false },
+        { nombre: "Extremidades Inferiores", indent: false },
+        { nombre: "OÍDOS", isTitle: true },
+        { nombre: "Pabellón Auricular", indent: true },
+        { nombre: "Conducto Auditivo", indent: true },
+        { nombre: "Tímpano", indent: true }
+    ];
+    
+    const divTopo = document.getElementById('inspeccion-container');
+    topografia.forEach(top => {
+        if (top.isTitle) {
+            divTopo.innerHTML += `<div class="full-width" style="margin-top:8px; margin-bottom:4px; font-weight:bold; border-bottom:1px solid #ccc;">${top.nombre}</div>`;
+        } else {
+            let labelStyle = top.indent ? "margin-left: 20px; width: 140px;" : "width: 160px;";
+            divTopo.innerHTML += `<div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+                <label style="${labelStyle}">${top.nombre}:</label>
+                <select class="no-print" onchange="toggleText(this)" style="width:160px;">
+                    <option value="Sin datos patológicos">Sin datos patológicos</option>
+                    <option value="describir">Describir hallazgo...</option>
+                </select>
+                <input type="text" value="Sin datos patológicos" class="print-input" style="flex:1; border-bottom:1px solid #ccc; border-top:none; border-left:none; border-right:none;">
+            </div>`;
+        }
+    });
+
+    function toggleText(selectElement) {
+        const input = selectElement.nextElementSibling;
+        if(selectElement.value === "describir") {
+            input.value = ""; input.focus();
+        } else {
+            input.value = selectElement.value;
+        }
+    }
+
+    const riesgos = [
+        { id: "r_fis", nom: "Factores físicos (iluminación, ruido, temperaturas, radiación)", full: true },
+        { id: "r_qui", nom: "Factores químicos (gases, vapores, líquidos)", full: true },
+        { id: "r_bio", nom: "Factores biológicos (virus, bacterias, hongos)", full: true },
+        { id: "r_rad", nom: "Radiaciones (rayos X, láser, infrarrojos, UV u otros)", full: true },
+        { id: "r_mec", nom: "Factores mecánicos (máquinas y herramientas)", full: true },
+        { id: "r_alt", nom: "Trabajos en alturas (1.80m) / Espacios confinados", full: true },
+        { id: "r_erg1", nom: "Factores ergonómicos (manejo manual de cargas)", full: false },
+        { id: "r_erg2", nom: "Factores ergonómicos (posturas inadecuadas y/o mov. repetitivos)", full: false },
+        { id: "r_psi", nom: "Factores psicosociales (violencia laboral, carga de trabajo, turnos)", full: false }
+    ];
+    const containerRiesgos = document.getElementById('riesgos-container');
+    riesgos.forEach(r => {
+        let extraFields = r.full ? `
+            <div style="margin-top:6px; display:flex; gap:10px; align-items:center;">
+                <label>Frecuencia:</label>
+                <label><input type="radio" name="fq_${r.id}" value="Siempre"> Siempre</label>
+                <label><input type="radio" name="fq_${r.id}" value="A veces"> A veces</label>
+                <label><input type="radio" name="fq_${r.id}" value="Nunca"> Nunca</label>
+                <label style="margin-left:10px;">EPP:</label> <input type="text" style="flex:1;">
+            </div>` : '';
+        
+        containerRiesgos.innerHTML += `
+        <div class="risk-row">
+            <div class="risk-header"><input type="checkbox" id="${r.id}"> <label for="${r.id}">${r.nom}</label></div>
+            ${extraFields}
+            <div style="margin-top:6px; display:flex; align-items:center; gap:8px;">
+                <label>Comentarios:</label> <input type="text" style="flex:1;">
+            </div>
+        </div>`;
+    });
+
+    // PAD DE FIRMAs
+    function setupPad(canvasId) {
+        const canvas = document.getElementById(canvasId);
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+
+        function resize() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function startPosition(e) { isDrawing = true; draw(e); }
+        function endPosition() { isDrawing = false; ctx.beginPath(); }
+        function draw(e) {
+            if (!isDrawing) return;
+            ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#000';
+            let x, y;
+            if(e.type.includes('touch')) {
+                const rect = canvas.getBoundingClientRect();
+                x = e.touches[0].clientX - rect.left;
+                y = e.touches[0].clientY - rect.top;
+            } else {
+                x = e.offsetX; y = e.offsetY;
+            }
+            ctx.lineTo(x, y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x, y);
+            e.preventDefault();
+        }
+
+        canvas.addEventListener('mousedown', startPosition);
+        canvas.addEventListener('mouseup', endPosition);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('touchstart', startPosition, {passive: false});
+        canvas.addEventListener('touchend', endPosition);
+        canvas.addEventListener('touchmove', draw, {passive: false});
+        return canvas;
+    }
+    const padPaciente = setupPad('sig-paciente');
+    const padMedico = setupPad('sig-medico');
+    function clearPad(canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // MÉDICOS 
+    function loadDoctors() {
+        const docs = JSON.parse(localStorage.getItem('cemex_docs')) || [];
+        const sel = document.getElementById('select-medico');
+        sel.innerHTML = '<option value="">Seleccionar Médico...</option>';
+        docs.forEach((d, i) => sel.innerHTML += `<option value="${i}">${d.nombre}</option>`);
+    }
+    
+    function manageDoctors() {
+        if(!confirm("⚠️ IMPORTANTE:\nAsegúrate de haber dibujado tu firma en el recuadro antes de presionar OK. Se guardará tu perfil junto con la firma actual.")) return;
+        
+        let nombre = prompt("Nombre completo del médico:");
+        if(!nombre) return;
+        let cedula = prompt("Cédula profesional:");
+        let firma = padMedico.toDataURL();
+        
+        let docs = JSON.parse(localStorage.getItem('cemex_docs')) || [];
+        docs.push({nombre: nombre, cedula: cedula, firma: firma});
+        localStorage.setItem('cemex_docs', JSON.stringify(docs));
+        loadDoctors();
+        alert("Perfil y firma guardados exitosamente.");
+    }
+    
+    function fillDoctorInfo() {
+        const docs = JSON.parse(localStorage.getItem('cemex_docs')) || [];
+        const val = document.getElementById('select-medico').value;
+        clearPad(padMedico);
+        if(val !== "") {
+            document.getElementById('doc_nombre_print').value = docs[val].nombre;
+            document.getElementById('doc_cedula_print').value = "CED. PROF. " + docs[val].cedula;
+            if(docs[val].firma) {
+                let img = new Image();
+                img.onload = () => padMedico.getContext('2d').drawImage(img, 0, 0);
+                img.src = docs[val].firma;
+            }
+        } else {
+            document.getElementById('doc_nombre_print').value = "";
+            document.getElementById('doc_cedula_print').value = "";
+        }
+    }
+    loadDoctors();
+
+    // GUARDAR Y CARGAR 
+    function saveData() {
+        const data = {};
+        const inputs = document.querySelectorAll('input, select, textarea');
+        inputs.forEach((el, index) => {
+            if(el.type === 'file') return;
+            if(el.type === 'checkbox' || el.type === 'radio') {
+                data[`el_${index}`] = el.checked;
+            } else {
+                data[`el_${index}`] = el.value;
+            }
+        });
+        data['sig_paciente'] = padPaciente.toDataURL();
+        data['sig_medico'] = padMedico.toDataURL();
+
+        const jsonStr = JSON.stringify(data);
+        const blob = new Blob([jsonStr], {type: "application/json"});
+        const url = URL.createObjectURL(blob);
+        
+        let nombre = document.getElementById('paciente_nombre').value.toUpperCase().replace(/ /g, '_') || "PACIENTE";
+        let fecha = document.getElementById('doc_fecha').value || "SFECHA";
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${nombre}_${fecha}.lapi`;
+        a.click();
+    }
+
+    function loadData(event) {
+        const file = event.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = JSON.parse(e.target.result);
+                const inputs = document.querySelectorAll('input, select, textarea');
+                inputs.forEach((el, index) => {
+                    if(el.type === 'file') return;
+                    if(data[`el_${index}`] !== undefined) {
+                        if(el.type === 'checkbox' || el.type === 'radio') {
+                            el.checked = data[`el_${index}`];
+                        } else {
+                            el.value = data[`el_${index}`];
+                        }
+                    }
+                });
+                if(data['sig_paciente']) {
+                    let img = new Image(); img.onload = () => padPaciente.getContext('2d').drawImage(img, 0, 0); img.src = data['sig_paciente'];
+                }
+                if(data['sig_medico']) {
+                    let img2 = new Image(); img2.onload = () => padMedico.getContext('2d').drawImage(img2, 0, 0); img2.src = data['sig_medico'];
+                }
+                updatePatientName();
+                toggleGYO();
+                alert("Datos cargados correctamente.");
+            } catch(err) {
+                alert("Error al cargar el archivo. Asegúrate de que es un archivo .lapi válido.");
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    // EXPORTAR PDF
+    function exportPDF() {
+        window.scrollTo(0, 0);
+        
+        const element = document.getElementById('historia-clinica');
+        const body = document.body;
+        
+        body.classList.add('pdf-generating');
+        element.classList.add('pdf-mode');
+
+        setTimeout(() => {
+            let nombre = document.getElementById('paciente_nombre').value.toUpperCase().replace(/ /g, '_') || "PACIENTE";
+            let fecha = document.getElementById('doc_fecha').value || "SFECHA";
+            let fileName = `${nombre}_${fecha}.pdf`;
+
+            const opt = {
+                margin:       [10, 10, 10, 10],
+                filename:     fileName,
+                image:        { type: 'jpeg', quality: 0.98 },
+                pagebreak:    { mode: 'css', avoid: ['.risk-row', 'tr', 'h2', '.keep-together'] }, 
+                html2canvas:  { 
+                    scale: 2, 
+                    useCORS: true,
+                    scrollY: 0, 
+                    scrollX: 0  
+                },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(element).save().then(() => {
+                element.classList.remove('pdf-mode');
+                body.classList.remove('pdf-generating');
+            });
+        }, 300);
+    }
+</script>
+
+</body>
+</html>
